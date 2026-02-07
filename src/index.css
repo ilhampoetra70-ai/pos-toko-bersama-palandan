@@ -1,0 +1,386 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme Color Variables */
+:root,
+:root[data-theme="blue"] {
+  /* Default: Blue theme */
+  --color-primary-50: 239 246 255;
+  --color-primary-100: 219 234 254;
+  --color-primary-200: 191 219 254;
+  --color-primary-300: 147 197 253;
+  --color-primary-400: 96 165 250;
+  --color-primary-500: 59 130 246;
+  --color-primary-600: 37 99 235;
+  --color-primary-700: 29 78 216;
+  --color-primary-800: 30 64 175;
+  --color-primary-900: 30 58 138;
+}
+
+/* Green theme */
+:root[data-theme="green"] {
+  --color-primary-50: 236 253 245;
+  --color-primary-100: 209 250 229;
+  --color-primary-200: 167 243 208;
+  --color-primary-300: 110 231 183;
+  --color-primary-400: 52 211 153;
+  --color-primary-500: 16 185 129;
+  --color-primary-600: 5 150 105;
+  --color-primary-700: 4 120 87;
+  --color-primary-800: 6 95 70;
+  --color-primary-900: 6 78 59;
+}
+
+/* Purple theme */
+:root[data-theme="purple"] {
+  --color-primary-50: 245 243 255;
+  --color-primary-100: 237 233 254;
+  --color-primary-200: 221 214 254;
+  --color-primary-300: 196 181 253;
+  --color-primary-400: 167 139 250;
+  --color-primary-500: 139 92 246;
+  --color-primary-600: 124 58 237;
+  --color-primary-700: 109 40 217;
+  --color-primary-800: 91 33 182;
+  --color-primary-900: 76 29 149;
+}
+
+/* Orange theme */
+:root[data-theme="orange"] {
+  --color-primary-50: 255 251 235;
+  --color-primary-100: 254 243 199;
+  --color-primary-200: 253 230 138;
+  --color-primary-300: 252 211 77;
+  --color-primary-400: 251 191 36;
+  --color-primary-500: 245 158 11;
+  --color-primary-600: 217 119 6;
+  --color-primary-700: 180 83 9;
+  --color-primary-800: 146 64 14;
+  --color-primary-900: 120 53 15;
+}
+
+/* Red theme */
+:root[data-theme="red"] {
+  --color-primary-50: 254 242 242;
+  --color-primary-100: 254 226 226;
+  --color-primary-200: 254 202 202;
+  --color-primary-300: 252 165 165;
+  --color-primary-400: 248 113 113;
+  --color-primary-500: 239 68 68;
+  --color-primary-600: 220 38 38;
+  --color-primary-700: 185 28 28;
+  --color-primary-800: 153 27 27;
+  --color-primary-900: 127 29 29;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-100 text-gray-800 transition-colors duration-200;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Dark mode base styles - target html.dark */
+  html.dark,
+  html.dark body {
+    background-color: #111827 !important;
+    color: #f9fafb !important;
+  }
+
+  /* Dark mode for common elements */
+  html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+    @apply text-gray-100;
+  }
+
+  html.dark label {
+    @apply text-gray-300;
+  }
+
+  html.dark p {
+    @apply text-gray-300;
+  }
+
+  /* Dark mode for tables */
+  html.dark table {
+    @apply text-gray-100;
+  }
+
+  html.dark thead {
+    @apply bg-gray-800;
+  }
+
+  html.dark th {
+    @apply text-gray-300;
+  }
+
+  html.dark tbody tr {
+    @apply border-gray-700;
+  }
+
+  html.dark tbody tr:hover {
+    @apply bg-gray-800;
+  }
+
+  /* Dark mode background overrides for main content areas */
+  html.dark .bg-gray-50,
+  html.dark .bg-gray-100 {
+    background-color: #111827 !important;
+  }
+
+  html.dark .bg-white {
+    background-color: #1f2937 !important;
+  }
+
+  /* Dark mode text color overrides */
+  html.dark .text-gray-700,
+  html.dark .text-gray-800,
+  html.dark .text-gray-900 {
+    color: #f3f4f6 !important;
+  }
+
+  html.dark .text-gray-500,
+  html.dark .text-gray-600 {
+    color: #9ca3af !important;
+  }
+
+  /* Dark mode border overrides */
+  html.dark .border-gray-200,
+  html.dark .border-gray-300 {
+    border-color: #374151 !important;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium;
+  }
+  .btn-success {
+    @apply bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium;
+  }
+  .input-field {
+    @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors;
+    @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-colors;
+    @apply dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
+  }
+
+  /* Additional dark mode utilities */
+  html.dark select {
+    @apply bg-gray-700 border-gray-600 text-gray-100;
+  }
+
+  html.dark textarea {
+    @apply bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400;
+  }
+
+  html.dark input[type="checkbox"] {
+    @apply bg-gray-700 border-gray-600;
+  }
+
+  html.dark input[type="number"],
+  html.dark input[type="text"],
+  html.dark input[type="date"],
+  html.dark input[type="email"],
+  html.dark input[type="password"] {
+    @apply bg-gray-700 border-gray-600 text-gray-100;
+  }
+
+  /* Dark mode for cards */
+  html.dark .card {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+  }
+
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+
+/* Dark mode scrollbar */
+html.dark ::-webkit-scrollbar-track { background: #374151; }
+html.dark ::-webkit-scrollbar-thumb { background: #6b7280; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Receipt print styles */
+@media print {
+  body { margin: 0; padding: 0; }
+}
+
+/* Jspreadsheet custom styles */
+.jspreadsheet-container {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+}
+
+.jspreadsheet-container .jexcel {
+  border-collapse: collapse;
+}
+
+.jspreadsheet-container .jexcel thead td {
+  background-color: #f9fafb !important;
+  color: #4b5563 !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  padding: 10px 8px !important;
+  border-color: #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel tbody td {
+  font-size: 13px !important;
+  padding: 8px !important;
+  border-color: #f3f4f6 !important;
+  vertical-align: middle !important;
+}
+
+.jspreadsheet-container .jexcel tbody td:first-child {
+  background-color: #f9fafb !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+}
+
+.jspreadsheet-container .jexcel tbody tr:hover td {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jexcel tbody td.highlight {
+  background-color: #dbeafe !important;
+}
+
+.jspreadsheet-container .jexcel tbody td.highlight-selected {
+  background-color: #bfdbfe !important;
+}
+
+.jspreadsheet-container .jexcel_content {
+  padding: 0 !important;
+}
+
+.jspreadsheet-container .jexcel_pagination {
+  padding: 12px !important;
+  background-color: #f9fafb !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel_pagination select {
+  @apply input-field text-sm;
+  width: auto !important;
+  padding: 4px 8px !important;
+}
+
+.jspreadsheet-container .jexcel_search {
+  padding: 12px !important;
+  background-color: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel_search input {
+  @apply input-field text-sm;
+}
+
+/* Dropdown styles */
+.jspreadsheet-container .jdropdown-container {
+  font-size: 13px !important;
+}
+
+.jspreadsheet-container .jdropdown-item {
+  padding: 8px 12px !important;
+}
+
+.jspreadsheet-container .jdropdown-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jdropdown-item.jdropdown-selected {
+  background-color: #dbeafe !important;
+}
+
+/* Context menu styles */
+.jspreadsheet-container .jcontextmenu {
+  @apply bg-white rounded-lg shadow-lg border border-gray-200;
+  padding: 4px 0 !important;
+}
+
+.jspreadsheet-container .jcontextmenu > div {
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+}
+
+.jspreadsheet-container .jcontextmenu > div:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jcontextmenu hr {
+  margin: 4px 0 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Jspreadsheet dark mode styles */
+html.dark .jspreadsheet-container .jexcel thead td {
+  background-color: #1f2937 !important;
+  color: #d1d5db !important;
+  border-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td:first-child {
+  background-color: #1f2937 !important;
+  color: #9ca3af !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody tr:hover td {
+  background-color: #1f2937 !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td.highlight {
+  background-color: #1e3a5f !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td.highlight-selected {
+  background-color: #1e40af !important;
+}
+
+html.dark .jspreadsheet-container .jexcel_pagination {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jexcel_search {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu > div {
+  color: #f3f4f6 !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu > div:hover {
+  background-color: #374151 !important;
+}
+
+html.dark .jspreadsheet-container .jdropdown-item {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+}
+
+html.dark .jspreadsheet-container .jdropdown-item:hover {
+  background-color: #374151 !important;
+}

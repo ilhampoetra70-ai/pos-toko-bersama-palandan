@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-electron/
+dist-renderer/
+*.exe
+*.dmg
+*.AppImage
+*.snap
+.env
+.env.*
+nul
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Cek harga produk dengan mudah">
+
+  <title>Cek Harga</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-100);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .store-name {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    .status-dot.offline {
+      background: #ef4444;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    /* Search Section */
+    .search-section {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 1rem;
+      font-size: 1.125rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.75rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .search-input.scanner-ready {
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: var(--primary); }
+      50% { border-color: var(--success); }
+    }
+
+    .search-input::placeholder {
+      color: var(--gray-500);
+    }
+
+    .scan-btn {
+      padding: 1rem 1.25rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .scan-btn:active {
+      transform: scale(0.95);
+      background: var(--primary-dark);
+    }
+
+    .scan-btn svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Camera Scanner */
+    .scanner-container {
+      display: none;
+      background: black;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      margin-top: 1rem;
+      position: relative;
+    }
+
+    .scanner-container.active {
+      display: block;
+    }
+
+    #scanner-video {
+      width: 100%;
+      display: block;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      height: 100px;
+      border: 3px solid var(--success);
+      border-radius: 0.5rem;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    }
+
+    .close-scanner {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Product Card */
+    .product-card {
+      background: white;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .product-header {
+      background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+      color: white;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
+    .product-header .label {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 0.25rem;
+    }
+
+    .product-header .price {
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .product-header .unit {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .product-details {
+      padding: 1.25rem;
+    }
+
+    .product-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--gray-900);
+      margin-bottom: 0.75rem;
+    }
+
+    .product-info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .info-item {
+      background: var(--gray-50);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+    }
+
+    .info-item .label {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+      margin-bottom: 0.25rem;
+    }
+
+    .info-item .value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .stock-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .stock-badge.available {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .stock-badge.low {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .stock-badge.out {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Not Found */
+    .not-found {
+      background: white;
+      border-radius: 1rem;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .not-found svg {
+      width: 64px;
+      height: 64px;
+      color: var(--gray-300);
+      margin-bottom: 1rem;
+    }
+
+    .not-found h3 {
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+    }
+
+    .not-found p {
+      color: var(--gray-500);
+      font-size: 0.875rem;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Search Results */
+    .search-results {
+      background: white;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--gray-100);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:active {
+      background: var(--gray-50);
+    }
+
+    .result-info h4 {
+      font-size: 0.9375rem;
+      color: var(--gray-900);
+      margin-bottom: 0.25rem;
+    }
+
+    .result-info .barcode {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+    }
+
+    .result-price {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    /* Settings Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      align-items: flex-end;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      border-radius: 1rem 1rem 0 0;
+      padding: 1.5rem;
+      animation: slideUpModal 0.3s ease;
+    }
+
+    @keyframes slideUpModal {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.25rem;
+      color: var(--gray-900);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--gray-500);
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 0.5rem;
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:active {
+      background: var(--primary-dark);
+    }
+
+    /* Settings Button */
+    .settings-btn {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      width: 48px;
+      height: 48px;
+      background: white;
+      border: none;
+      border-radius: 50%;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-500);
+    }
+
+    .settings-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray-500);
+    }
+
+    .empty-state svg {
+      width: 80px;
+      height: 80px;
+      color: var(--gray-300);
+      margin-bottom: 1rem;
+    }
+
+    .empty-state h3 {
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+
+    /* Responsive */
+    @media (min-width: 768px) {
+      .header h1 { font-size: 1.75rem; }
+      .product-header .price { font-size: 3rem; }
+      .container { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <h1>Cek Harga</h1>
+    <div class="store-name" id="storeName">-</div>
+    <div class="connection-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Terhubung</span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Search Section -->
+    <section class="search-section">
+      <div class="search-box">
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Ketik nama atau scan barcode..."
+          autocomplete="off"
+          inputmode="search"
+        >
+        <button class="scan-btn" id="scanBtn" title="Scan Barcode">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Scanner -->
+      <div class="scanner-container" id="scannerContainer">
+        <video id="scanner-video" playsinline></video>
+        <div class="scanner-overlay"></div>
+        <button class="close-scanner" id="closeScanner">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- Result Container -->
+    <section id="resultContainer">
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <h3>Cari Produk</h3>
+        <p>Ketik nama produk atau scan barcode untuk melihat harga</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Settings Button -->
+  <button class="settings-btn" id="settingsBtn">
+    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+  </button>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Pengaturan Koneksi</h2>
+        <button class="modal-close" id="closeSettings">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="form-group">
+        <label for="serverUrl">Alamat Server POS</label>
+        <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3001">
+      </div>
+      <p style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 1rem;">
+        Masukkan alamat IP komputer POS Cashier. Contoh: http://192.168.1.100:3001
+      </p>
+      <button class="btn-primary" id="saveSettings">Simpan & Test Koneksi</button>
+    </div>
+  </div>
+
+  <!-- QuaggaJS for Barcode Scanning -->
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+
+  <script>
+    // ─── Configuration ─────────────────────────────────────
+    const CONFIG_KEY = 'price_checker_config';
+    let config = {
+      serverUrl: localStorage.getItem(CONFIG_KEY) || ''
+    };
+
+    // ─── DOM Elements ──────────────────────────────────────
+    const searchInput = document.getElementById('searchInput');
+    const scanBtn = document.getElementById('scanBtn');
+    const scannerContainer = document.getElementById('scannerContainer');
+    const closeScanner = document.getElementById('closeScanner');
+    const resultContainer = document.getElementById('resultContainer');
+    const emptyState = document.getElementById('emptyState');
+    const storeName = document.getElementById('storeName');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettings = document.getElementById('closeSettings');
+    const serverUrlInput = document.getElementById('serverUrl');
+    const saveSettings = document.getElementById('saveSettings');
+
+    let searchTimeout = null;
+    let isScanning = false;
+
+    // ─── Hardware Barcode Scanner Support ──────────────────
+    let lastInputTime = 0;
+    let inputBuffer = '';
+    let scannerDetectTimeout = null;
+    const SCANNER_INPUT_THRESHOLD = 50; // ms between characters (scanner is very fast)
+    const SCANNER_COMPLETE_DELAY = 100; // ms to wait before processing scanner input
+
+    // ─── Utilities ─────────────────────────────────────────
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function getStockBadge(stock) {
+      if (stock <= 0) return { class: 'out', text: 'Habis' };
+      if (stock <= 5) return { class: 'low', text: `Sisa ${stock}` };
+      return { class: 'available', text: 'Tersedia' };
+    }
+
+    // ─── API Functions ─────────────────────────────────────
+    async function fetchAPI(endpoint) {
+      if (!config.serverUrl) {
+        throw new Error('Server belum dikonfigurasi');
+      }
+      const response = await fetch(`${config.serverUrl}${endpoint}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Request failed');
+      }
+      return response.json();
+    }
+
+    async function checkConnection() {
+      try {
+        const data = await fetchAPI('/api/health');
+        statusDot.classList.remove('offline');
+        statusText.textContent = 'Terhubung';
+
+        // Load store info
+        const storeData = await fetchAPI('/api/store');
+        if (storeData.success) {
+          storeName.textContent = storeData.store.name;
+        }
+        return true;
+      } catch (e) {
+        statusDot.classList.add('offline');
+        statusText.textContent = 'Tidak terhubung';
+        storeName.textContent = '-';
+        return false;
+      }
+    }
+
+    async function searchProducts(query) {
+      try {
+        const data = await fetchAPI(`/api/products/search?q=${encodeURIComponent(query)}`);
+        return data.products || [];
+      } catch (e) {
+        console.error('Search error:', e);
+        return [];
+      }
+    }
+
+    async function getProductByBarcode(barcode) {
+      try {
+        const data = await fetchAPI(`/api/product/${encodeURIComponent(barcode)}`);
+        return data.product || null;
+      } catch (e) {
+        if (e.message === 'Produk tidak ditemukan') return null;
+        console.error('Barcode lookup error:', e);
+        return null;
+      }
+    }
+
+    // ─── Rendering ─────────────────────────────────────────
+    function showLoading() {
+      resultContainer.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p style="color: var(--gray-500)">Mencari produk...</p>
+        </div>
+      `;
+    }
+
+    function showEmpty() {
+      resultContainer.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+          </svg>
+          <h3>Siap Scan Barcode</h3>
+          <p>Arahkan scanner ke barcode produk atau ketik nama produk</p>
+          <div style="margin-top: 1rem; padding: 0.75rem; background: var(--gray-100); border-radius: 0.5rem; font-size: 0.75rem; color: var(--gray-600);">
+            <strong>Supported:</strong> Scanner USB, Bluetooth, dan kamera
+          </div>
+        </div>
+      `;
+    }
+
+    function showNotFound(query) {
+      resultContainer.innerHTML = `
+        <div class="not-found">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h3>Produk Tidak Ditemukan</h3>
+          <p>"${query}" tidak ditemukan dalam database</p>
+        </div>
+      `;
+    }
+
+    function showProduct(product) {
+      const stock = getStockBadge(product.stock);
+      resultContainer.innerHTML = `
+        <div class="product-card">
+          <div class="product-header">
+            <div class="label">Harga</div>
+            <div class="price">${formatCurrency(product.price)}</div>
+            <div class="unit">per ${product.unit}</div>
+          </div>
+          <div class="product-details">
+            <h2 class="product-name">${product.name}</h2>
+            <div class="product-info">
+              <div class="info-item">
+                <div class="label">Barcode</div>
+                <div class="value">${product.barcode || '-'}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Kategori</div>
+                <div class="value">${product.category || '-'}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Stok</div>
+                <div class="value">
+                  <span class="stock-badge ${stock.class}">${stock.text}</span>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="label">Satuan</div>
+                <div class="value">${product.unit}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showSearchResults(products) {
+      if (products.length === 0) {
+        showNotFound(searchInput.value);
+        return;
+      }
+
+      if (products.length === 1) {
+        showProduct(products[0]);
+        return;
+      }
+
+      const items = products.map(p => `
+        <div class="result-item" data-barcode="${p.barcode || ''}" data-id="${p.id}">
+          <div class="result-info">
+            <h4>${p.name}</h4>
+            <div class="barcode">${p.barcode || 'No barcode'}</div>
+          </div>
+          <div class="result-price">${formatCurrency(p.price)}</div>
+        </div>
+      `).join('');
+
+      resultContainer.innerHTML = `
+        <div class="search-results">${items}</div>
+      `;
+
+      // Add click handlers
+      resultContainer.querySelectorAll('.result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const barcode = item.dataset.barcode;
+          if (barcode) {
+            searchInput.value = barcode;
+            handleBarcodeSearch(barcode);
+          }
+        });
+      });
+    }
+
+    // ─── Search Handlers ───────────────────────────────────
+    async function handleSearch(query) {
+      if (!query || query.length < 2) {
+        showEmpty();
+        return;
+      }
+
+      showLoading();
+      const products = await searchProducts(query);
+      showSearchResults(products);
+    }
+
+    async function handleBarcodeSearch(barcode) {
+      showLoading();
+      const product = await getProductByBarcode(barcode);
+      if (product) {
+        showProduct(product);
+        // Clear input after displaying product (for next scan)
+        setTimeout(() => {
+          searchInput.value = '';
+          searchInput.focus();
+        }, 3000);
+      } else {
+        showNotFound(barcode);
+      }
+    }
+
+    // ─── Barcode Scanner ───────────────────────────────────
+    function startScanner() {
+      if (isScanning) return;
+      isScanning = true;
+      scannerContainer.classList.add('active');
+
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.getElementById('scanner-video'),
+          constraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        },
+        decoder: {
+          readers: [
+            "ean_reader",
+            "ean_8_reader",
+            "code_128_reader",
+            "code_39_reader",
+            "upc_reader",
+            "upc_e_reader"
+          ]
+        },
+        locate: true,
+        locator: {
+          halfSample: true,
+          patchSize: "medium"
+        }
+      }, function(err) {
+        if (err) {
+          console.error('Scanner init error:', err);
+          alert('Tidak dapat mengakses kamera');
+          stopScanner();
+          return;
+        }
+        Quagga.start();
+      });
+
+      Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        if (code) {
+          stopScanner();
+          searchInput.value = code;
+          handleBarcodeSearch(code);
+
+          // Vibrate feedback
+          if (navigator.vibrate) {
+            navigator.vibrate(100);
+          }
+        }
+      });
+    }
+
+    function stopScanner() {
+      isScanning = false;
+      scannerContainer.classList.remove('active');
+      Quagga.stop();
+    }
+
+    // ─── Hardware Scanner Detection ───────────────────────
+    function isHardwareScannerInput(timeDiff) {
+      // Hardware scanners input entire barcode in <100ms
+      // Humans type at ~200-300ms per character minimum
+      return timeDiff < SCANNER_INPUT_THRESHOLD;
+    }
+
+    function playBeep() {
+      // Audio feedback for successful scan
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 1200;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (e) {
+        // Audio not supported, use vibration instead
+        if (navigator.vibrate) navigator.vibrate(50);
+      }
+    }
+
+    async function processScannerInput(barcode) {
+      // Visual feedback
+      searchInput.style.backgroundColor = '#d1fae5';
+      setTimeout(() => {
+        searchInput.style.backgroundColor = '';
+      }, 300);
+
+      // Audio/haptic feedback
+      playBeep();
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      // Search the barcode
+      showLoading();
+      const product = await getProductByBarcode(barcode);
+      if (product) {
+        showProduct(product);
+      } else {
+        showNotFound(barcode);
+      }
+
+      // Clear input for next scan (after short delay so user sees what was scanned)
+      setTimeout(() => {
+        searchInput.value = '';
+        searchInput.focus();
+      }, 2000);
+    }
+
+    // ─── Event Listeners ───────────────────────────────────
+    searchInput.addEventListener('input', (e) => {
+      const now = Date.now();
+      const timeDiff = now - lastInputTime;
+      lastInputTime = now;
+
+      clearTimeout(searchTimeout);
+      clearTimeout(scannerDetectTimeout);
+
+      const value = e.target.value.trim();
+
+      // Detect hardware scanner (rapid input)
+      if (isHardwareScannerInput(timeDiff) && value.length > 1) {
+        // Wait a bit more to ensure scanner finished
+        scannerDetectTimeout = setTimeout(() => {
+          const finalValue = searchInput.value.trim();
+          // Barcode pattern: 8-13 digits (EAN-8, EAN-13, UPC) or alphanumeric (Code128, Code39)
+          if (/^[\d]{8,13}$/.test(finalValue) || /^[A-Z0-9]{6,20}$/i.test(finalValue)) {
+            console.log('[Scanner] Hardware barcode detected:', finalValue);
+            processScannerInput(finalValue);
+          }
+        }, SCANNER_COMPLETE_DELAY);
+        return;
+      }
+
+      // Normal keyboard input - use debounce
+      searchTimeout = setTimeout(() => {
+        // Check if it looks like a barcode (numeric, 8-13 digits)
+        if (/^\d{8,13}$/.test(value)) {
+          handleBarcodeSearch(value);
+        } else if (value.length >= 2) {
+          handleSearch(value);
+        } else if (value.length === 0) {
+          showEmpty();
+        }
+      }, 400);
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      // Handle Enter and Tab (common scanner suffixes)
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        clearTimeout(searchTimeout);
+        clearTimeout(scannerDetectTimeout);
+
+        const value = searchInput.value.trim();
+        if (!value) return;
+
+        // Check if this was rapid input (hardware scanner)
+        const now = Date.now();
+        const wasRapidInput = (now - lastInputTime) < 200;
+
+        if (/^\d{8,13}$/.test(value) || /^[A-Z0-9]{6,20}$/i.test(value)) {
+          if (wasRapidInput) {
+            // Hardware scanner completed
+            processScannerInput(value);
+          } else {
+            // Manual barcode entry
+            handleBarcodeSearch(value);
+          }
+        } else {
+          handleSearch(value);
+        }
+      }
+    });
+
+    // Keep focus on input for continuous scanning
+    searchInput.addEventListener('blur', () => {
+      searchInput.classList.remove('scanner-ready');
+      // Re-focus after short delay (allow settings modal to work)
+      setTimeout(() => {
+        if (!settingsModal.classList.contains('active') && !isScanning) {
+          searchInput.focus();
+        }
+      }, 100);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      searchInput.classList.add('scanner-ready');
+    });
+
+    scanBtn.addEventListener('click', () => {
+      if (isScanning) {
+        stopScanner();
+      } else {
+        startScanner();
+      }
+    });
+
+    closeScanner.addEventListener('click', stopScanner);
+
+    settingsBtn.addEventListener('click', () => {
+      serverUrlInput.value = config.serverUrl;
+      settingsModal.classList.add('active');
+    });
+
+    closeSettings.addEventListener('click', () => {
+      settingsModal.classList.remove('active');
+    });
+
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        settingsModal.classList.remove('active');
+      }
+    });
+
+    saveSettings.addEventListener('click', async () => {
+      const url = serverUrlInput.value.trim().replace(/\/$/, '');
+      if (!url) {
+        alert('Masukkan alamat server');
+        return;
+      }
+
+      config.serverUrl = url;
+      localStorage.setItem(CONFIG_KEY, url);
+
+      saveSettings.textContent = 'Mengetes...';
+      saveSettings.disabled = true;
+
+      const connected = await checkConnection();
+
+      saveSettings.textContent = 'Simpan & Test Koneksi';
+      saveSettings.disabled = false;
+
+      if (connected) {
+        settingsModal.classList.remove('active');
+        alert('Berhasil terhubung ke server!');
+      } else {
+        alert('Gagal terhubung. Pastikan:\n1. Komputer POS menyala\n2. Alamat IP benar\n3. Terhubung ke WiFi yang sama');
+      }
+    });
+
+    // ─── Initialize ────────────────────────────────────────
+    (async function init() {
+      // Check saved config
+      if (config.serverUrl) {
+        await checkConnection();
+      } else {
+        statusDot.classList.add('offline');
+        statusText.textContent = 'Belum dikonfigurasi';
+        // Show settings modal on first run
+        setTimeout(() => settingsModal.classList.add('active'), 500);
+      }
+
+      // Focus search input
+      searchInput.focus();
+
+      // Periodic connection check
+      setInterval(checkConnection, 30000);
+    })();
+
+    // ─── Service Worker Registration ───────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

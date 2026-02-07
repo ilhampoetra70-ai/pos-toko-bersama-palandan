@@ -1,0 +1,21 @@
+{
+  "name": "Cek Harga - Price Checker",
+  "short_name": "Cek Harga",
+  "description": "Aplikasi cek harga produk untuk pelanggan",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f4f6",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "shopping", "utilities"],
+  "lang": "id",
+  "prefer_related_applications": false
+}

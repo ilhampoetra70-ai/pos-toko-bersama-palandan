@@ -1,0 +1,84 @@
+{
+  "name": "pos-cashier",
+  "version": "1.0.0",
+  "description": "POS Cashier Desktop Application",
+  "main": "electron/main.js",
+  "author": "POS Cashier",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:renderer": "vite build",
+    "build": "npm run build:renderer && electron-builder",
+    "build:portable": "npm run build:renderer && electron-builder --win portable",
+    "build:dir": "npm run build:renderer && electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.poscashier.app",
+    "productName": "POS Cashier",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "dist-renderer/**/*",
+      "price-checker/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/README*",
+      "!node_modules/**/CHANGELOG*",
+      "!node_modules/**/test/**",
+      "!node_modules/**/docs/**",
+      "!node_modules/**/*.md"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Portable.${ext}",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}",
+      "requestExecutionLevel": "user"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "price-checker/**/*"
+    ],
+    "compression": "maximum"
+  },
+  "dependencies": {
+    "@ericblade/quagga2": "^1.8.4",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsbarcode": "^3.11.6",
+    "jsonwebtoken": "^9.0.2",
+    "recharts": "^3.7.0",
+    "sql.js": "^1.11.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.5",
+    "wait-on": "^8.0.1"
+  }
+}

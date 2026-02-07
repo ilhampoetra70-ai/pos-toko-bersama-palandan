@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm ls:*)",
+      "Bash(npm run build:portable:*)",
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:renderer:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(ls:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "Bash(git init:*)",
+      "Bash(git -C \"C:\\\\Users\\\\ACER\\\\Documents\\\\Proyek\\\\pos-app\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\ACER\\\\Documents\\\\Proyek\\\\pos-app\" add .gitignore CLAUDE.md electron-builder.yml index.html package.json package-lock.json postcss.config.js tailwind.config.js vite.config.js electron/ src/ price-checker/ .claude/)"
+    ]
+  }
+}
