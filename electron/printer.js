@@ -40,143 +40,72 @@ function getFontSize(size) {
   }
 }
 
+const receiptTemplates = require('./receipt_templates');
+
 function generateReceiptHTML(transaction, settings) {
   const width = settings.receipt_width || '58';
   const widthMm = parseInt(width);
   const widthPx = Math.round(widthMm * 3.78);
-  const template = parseTemplate(settings);
-  const fontSize = getFontSize(template.font_size);
-  const sec = template.sections;
-  const logo = settings.receipt_logo || '';
 
-  const items = transaction.items || [];
-  const itemsHTML = items.map(item => {
-    const discount = Number(item.discount) || 0;
-    const effectivePrice = item.price - discount;
-    let row = `
-    <tr>
-      <td style="text-align:left;padding:1px 0;">${item.product_name}</td>
-      <td style="text-align:center;padding:1px 0;">${item.quantity}</td>
-      <td style="text-align:right;padding:1px 0;">${formatCurrency(effectivePrice)}</td>
-      <td style="text-align:right;padding:1px 0;">${formatCurrency(item.subtotal)}</td>
-    </tr>`;
-    if (discount > 0) {
-      row += `
-    <tr>
-      <td colspan="4" style="text-align:left;padding:0 0 2px 4px;font-size:${parseInt(fontSize) - 1}px;color:#666;">
-        Disc: -${formatCurrency(discount)}/item (dari ${formatCurrency(item.price)})
-      </td>
-    </tr>`;
-    }
-    return row;
-  }).join('');
+  // Determine template ID. If saved template is just JSON, use default.
+  // We assume settings.receipt_template_id will be added.
+  // If not present, we can map width to a default.
+  let templateId = settings.receipt_template_id;
 
-  // Build sections conditionally
-  const logoHTML = sec.logo && logo
-    ? `<div class="center" style="margin-bottom:4px;"><img src="${logo}" style="max-width:80%;max-height:60px;" /></div>`
-    : '';
+  // Fallback if no specific ID selected but width is set
+  // Fallback if no specific ID selected but width is set
+  if (!templateId) {
+    templateId = width === '80' ? '80mm-1' : '58mm-1';
+  }
 
-  const storeNameHTML = sec.store_name
-    ? `<div class="center bold">${settings.store_name || 'My Store'}</div>`
-    : '';
+  const parsedTemplate = parseTemplate(settings);
 
-  const storeAddressHTML = sec.store_address
-    ? `<div class="center">${settings.store_address || ''}</div>`
-    : '';
+  // Data preparation for template
+  const data = {
+    widthPx,
+    fontSize: getFontSize(parsedTemplate.font_size),
+    sections: parsedTemplate.sections,
+    storeName: settings.store_name || 'My Store',
+    storeAddress: settings.store_address || '',
+    storePhone: settings.store_phone || '',
+    headerText: settings.receipt_header || '',
+    footerText: settings.receipt_footer || '',
+    invoiceNumber: transaction.invoice_number,
+    date: transaction.created_at || new Date().toLocaleString('id-ID'),
+    cashierName: transaction.cashier_name || '-',
+    notes: transaction.payment_notes || '', // Cashier notes
+    customerName: transaction.customer_name || '',
+    customerAddress: transaction.customer_address || '',
+    items: (transaction.items || []).map(item => ({
+      name: item.product_name,
+      qty: item.quantity,
+      price: item.price,
+      subtotal: item.subtotal
+    })),
+    subtotal: transaction.subtotal,
+    taxAmount: transaction.tax_amount,
+    discountAmount: transaction.discount_amount,
+    total: transaction.total,
+    amountPaid: transaction.amount_paid,
+    changeAmount: transaction.change_amount,
+    paymentMethod: transaction.payment_method,
+    formatCurrency: formatCurrency,
+    logoHTML: settings.doc_logo_html || (settings.receipt_logo ? `<div class="center" style="margin-bottom:4px;"><img src="${settings.receipt_logo}" style="max-width:80%;max-height:60px;" /></div>` : '')
+  };
 
-  const storePhoneHTML = sec.store_phone && settings.store_phone
-    ? `<div class="center">Telp: ${settings.store_phone}</div>`
-    : '';
-
-  const invoiceInfoHTML = sec.invoice_info
-    ? `<div class="line"></div>
-  <div>No: ${transaction.invoice_number}</div>
-  <div>Kasir: ${transaction.cashier_name || '-'}</div>
-  <div>${transaction.created_at || new Date().toLocaleString('id-ID')}</div>`
-    : '';
-
-  // Customer info (if provided)
-  const customerInfoHTML = (transaction.customer_name || transaction.customer_address)
-    ? `<div class="line"></div>
-  ${transaction.customer_name ? `<div><b>Pembeli:</b> ${transaction.customer_name}</div>` : ''}
-  ${transaction.customer_address ? `<div><b>Alamat:</b> ${transaction.customer_address}</div>` : ''}`
-    : '';
-
-  const taxHTML = sec.tax_line && transaction.tax_amount > 0
-    ? `<tr><td>Pajak</td><td class="right">${formatCurrency(transaction.tax_amount)}</td></tr>`
-    : '';
-
-  const discountHTML = sec.discount_line && transaction.discount_amount > 0
-    ? `<tr><td>Diskon</td><td class="right">-${formatCurrency(transaction.discount_amount)}</td></tr>`
-    : '';
-
-  const paymentInfoHTML = sec.payment_info
-    ? `<tr><td>${transaction.payment_method === 'cash' ? 'Tunai' : transaction.payment_method}</td><td class="right">${formatCurrency(transaction.amount_paid)}</td></tr>
-    ${transaction.change_amount > 0 ? `<tr><td>Kembali</td><td class="right">${formatCurrency(transaction.change_amount)}</td></tr>` : ''}`
-    : '';
-
-  const headerTextHTML = sec.header_text
-    ? `<div class="center">${settings.receipt_header || 'Terima Kasih'}</div>`
-    : '';
-
-  const footerTextHTML = sec.footer_text
-    ? `<div class="center" style="font-size:${parseInt(fontSize) - 2}px;margin-top:2px;">${settings.receipt_footer || ''}</div>`
-    : '';
-
+  const template = receiptTemplates.getTemplate(templateId);
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="only light">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      width: ${widthPx}px;
-      font-family: 'Courier New', monospace;
-      font-size: ${fontSize};
-      line-height: 1.3;
-      padding: 5px;
-    }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .line { border-top: 1px dashed #000; margin: 4px 0; }
-    table { width: 100%; border-collapse: collapse; }
-    .right { text-align: right; }
-    .summary td { padding: 1px 0; }
+    /* Force light mode — prevent Chromium auto-dark from inverting receipt colors */
+    html, body { background: white !important; color: black !important; }
   </style>
 </head>
 <body>
-  ${logoHTML}
-  ${storeNameHTML}
-  ${storeAddressHTML}
-  ${storePhoneHTML}
-  ${invoiceInfoHTML}
-  ${customerInfoHTML}
-  <div class="line"></div>
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:left">Item</th>
-        <th style="text-align:center">Qty</th>
-        <th style="text-align:right">Harga</th>
-        <th style="text-align:right">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsHTML}
-    </tbody>
-  </table>
-  <div class="line"></div>
-  <table class="summary">
-    <tr><td>Subtotal</td><td class="right">${formatCurrency(transaction.subtotal)}</td></tr>
-    ${taxHTML}
-    ${discountHTML}
-    <tr class="bold"><td>TOTAL</td><td class="right">${formatCurrency(transaction.total)}</td></tr>
-    ${paymentInfoHTML}
-  </table>
-  <div class="line"></div>
-  ${headerTextHTML}
-  ${footerTextHTML}
-  <div style="margin-bottom: 20px;"></div>
+  ${template.render(data)}
 </body>
 </html>`;
 }
@@ -349,4 +278,8 @@ function generateReportHTML(title, storeName, dateRange, bodyHTML) {
 </html>`;
 }
 
-module.exports = { generateReceiptHTML, generateReceiptHTMLWithSettings, generateReportHTML, printReceipt, getPrinters, openCashDrawer, formatCurrency };
+function getReceiptTemplates() {
+  return receiptTemplates.getAllTemplates();
+}
+
+module.exports = { generateReceiptHTML, generateReceiptHTMLWithSettings, generateReportHTML, printReceipt, getPrinters, openCashDrawer, formatCurrency, getReceiptTemplates };

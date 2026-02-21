@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const database = require('./database');
@@ -8,7 +8,9 @@ const apiServer = require('./api-server');
 
 // ─── Low-Spec Optimizations ─────────────────────────────
 // Reduce memory usage for low-spec devices
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
+const totalRamMB = Math.floor(require('os').totalmem() / 1024 / 1024);
+const v8HeapMB = totalRamMB >= 4096 ? 512 : 256;
+app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${v8HeapMB}`);
 app.commandLine.appendSwitch('disable-gpu-compositing');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
@@ -39,12 +41,26 @@ function createWindow() {
       spellcheck: false,
       v8CacheOptions: 'bypassHeatCheck',
     },
-    title: 'POS Cashier',
+    title: 'POS Kasir',
     autoHideMenuBar: true,
     show: false,
     // Performance optimizations
     backgroundColor: '#f3f4f6',
   });
+
+  // Apply branding
+  const settings = database.getSettings();
+  if (settings.app_logo) {
+    try {
+      const img = nativeImage.createFromDataURL(settings.app_logo);
+      mainWindow.setIcon(img);
+    } catch (e) {
+      console.error('Failed to set icon:', e);
+    }
+  }
+  if (settings.app_name) {
+    mainWindow.setTitle(settings.app_name);
+  }
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
@@ -113,25 +129,49 @@ function scheduleAuditCleanup() {
 }
 
 app.whenReady().then(async () => {
+  console.log('[POS] App ready, initializing...');
   await database.initDatabase();
+  console.log('[POS] Database initialized');
   auth.seedDefaultAdmin();
+  auth.seedMasterKey();
+  console.log('[POS] Auth seeded');
   registerIpcHandlers();
+  console.log('[POS] IPC handlers registered');
   createWindow();
+  console.log('[POS] Window created');
   scheduleAutoBackup();
   scheduleAuditCleanup();
+  console.log('[POS] Scheduled tasks set');
 
-  // Set window title from store name
+  // Set window title from store name or app name
   const settings = database.getSettings();
+  const baseTitle = settings.app_name || 'POS Kasir';
   if (settings.store_name) {
-    mainWindow.setTitle(settings.store_name + ' - POS Cashier');
+    mainWindow.setTitle(`${settings.store_name} - ${baseTitle}`);
+  } else {
+    mainWindow.setTitle(baseTitle);
   }
 
+  // Enforce Auto-Start if enabled in DB
+  if (settings.auto_start === 'true') {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      path: process.execPath,
+      args: ['--process-start-args', `"--hidden"`]
+    });
+    console.log('[POS] Enforced auto-start logic from DB');
+  }
+  console.log('[POS] Settings loaded');
+
   // Start API server for Price Checker
+  console.log('[POS] Starting API server...');
   try {
     const serverInfo = await apiServer.startServer(database, 3001);
     console.log('[POS] API server ready for Price Checker connections');
+    console.log('[POS] Server Info:', JSON.stringify(serverInfo));
   } catch (err) {
     console.error('[POS] Failed to start API server:', err.message);
+    console.error('[POS] Stack:', err.stack);
   }
 });
 
@@ -157,8 +197,16 @@ function registerIpcHandlers() {
     return { success: true, user: decoded };
   });
 
+  ipcMain.handle('auth:resetPasswordWithMasterKey', (_, username, masterKey, newPassword) => {
+    return auth.resetPasswordWithMasterKey(username, masterKey, newPassword);
+  });
+
+  ipcMain.handle('auth:changeMasterKey', (_, oldMasterKey, newMasterKey) => {
+    return auth.changeMasterKey(oldMasterKey, newMasterKey);
+  });
+
   // ─── Users ──────────────────────────────────────────
-  ipcMain.handle('users:getAll', () => JSON.parse(JSON.stringify(database.getUsers())));
+  ipcMain.handle('users:getAll', () => database.getUsers());
 
   ipcMain.handle('users:create', (_, data) => {
     data.password_hash = auth.hashPassword(data.password);
@@ -177,41 +225,61 @@ function registerIpcHandlers() {
   ipcMain.handle('users:delete', (_, id) => database.deleteUser(id));
 
   // ─── Categories ─────────────────────────────────────
-  ipcMain.handle('categories:getAll', () => JSON.parse(JSON.stringify(database.getCategories())));
-  ipcMain.handle('categories:create', (_, name, desc) => JSON.parse(JSON.stringify(database.createCategory(name, desc))));
-  ipcMain.handle('categories:update', (_, id, name, desc) => JSON.parse(JSON.stringify(database.updateCategory(id, name, desc))));
+  ipcMain.handle('categories:getAll', () => database.getCategories());
+  ipcMain.handle('categories:create', (_, name, desc) => database.createCategory(name, desc));
+  ipcMain.handle('categories:update', (_, id, name, desc) => database.updateCategory(id, name, desc));
   ipcMain.handle('categories:delete', (_, id) => database.deleteCategory(id));
 
   // ─── Products ───────────────────────────────────────
-  ipcMain.handle('products:getAll', (_, filters) => JSON.parse(JSON.stringify(database.getProducts(filters))));
-  ipcMain.handle('products:getById', (_, id) => JSON.parse(JSON.stringify(database.getProductById(id))));
+  ipcMain.handle('products:getAll', (_, filters) => database.getProducts(filters));
+  ipcMain.handle('products:getById', (_, id) => database.getProductById(id));
   ipcMain.handle('products:getByBarcode', (_, barcode) => {
     const result = database.getProductByBarcode(barcode);
-    return result ? JSON.parse(JSON.stringify(result)) : null;
+    return result ? result : null;
   });
-  ipcMain.handle('products:create', (_, data) => JSON.parse(JSON.stringify(database.createProduct(data))));
-  ipcMain.handle('products:update', (_, id, data) => JSON.parse(JSON.stringify(database.updateProduct(id, data))));
+  ipcMain.handle('products:create', (_, data) => database.createProduct(data));
+  ipcMain.handle('products:update', (_, id, data) => database.updateProduct(id, data));
   ipcMain.handle('products:delete', (_, id) => database.deleteProduct(id));
   ipcMain.handle('products:bulkUpsert', (_, products) => database.bulkUpsertProducts(products));
   ipcMain.handle('products:bulkDelete', (_, ids) => database.bulkDeleteProducts(ids));
   ipcMain.handle('products:bulkUpdateField', (_, ids, field, value) => database.bulkUpdateField(ids, field, value));
+  ipcMain.handle('products:getLowStock', (_, threshold) => database.getLowStockProducts(threshold));
 
   // Product update with audit
   ipcMain.handle('products:updateWithAudit', (_, id, data, auditInfo) => {
-    return JSON.parse(JSON.stringify(database.updateProduct(id, data, auditInfo)));
+    return database.updateProduct(id, data, auditInfo);
   });
 
   // ─── Stock Audit Log ─────────────────────────────────
   ipcMain.handle('stockAudit:getByProduct', (_, productId, limit) => {
-    return JSON.parse(JSON.stringify(database.getStockAuditLogByProduct(productId, limit)));
+    return database.getStockAuditLogByProduct(productId, limit);
   });
 
   ipcMain.handle('stockAudit:getAll', (_, filters) => {
-    return JSON.parse(JSON.stringify(database.getStockAuditLog(filters)));
+    return database.getStockAuditLog(filters);
   });
 
   ipcMain.handle('stockAudit:getSummary', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getStockAuditLogSummary(dateFrom, dateTo)));
+    return database.getStockAuditLogSummary(dateFrom, dateTo);
+  });
+
+  ipcMain.handle('stockAudit:create', (_, log) => {
+    database.createStockAuditLog(log);
+    return { success: true };
+  });
+
+  // ─── Stock Trail (New Audit System) ─────────────────────
+  ipcMain.handle('stockTrail:create', (_, data) => {
+    database.createStockTrail(data);
+    return { success: true };
+  });
+
+  ipcMain.handle('stockTrail:getByProduct', (_, productId, limit) => {
+    return database.getStockTrailByProduct(productId, limit);
+  });
+
+  ipcMain.handle('stockTrail:getAll', (_, filters) => {
+    return database.getStockTrailAll(filters);
   });
 
   // ─── Transactions ───────────────────────────────────
@@ -224,7 +292,7 @@ function registerIpcHandlers() {
       }
       const result = database.createTransaction(data);
       console.log('[IPC transactions:create] Result:', result ? `id=${result.id}, items=${result.items?.length ?? 0}` : 'null');
-      return JSON.parse(JSON.stringify(result));
+      return result;
     } catch (err) {
       console.error('[IPC transactions:create] ERROR:', err.message, err.stack);
       throw err;
@@ -232,69 +300,138 @@ function registerIpcHandlers() {
   });
   ipcMain.handle('transactions:getAll', (_, filters) => {
     const result = database.getTransactions(filters);
-    return JSON.parse(JSON.stringify(result));
+    return result;
   });
   ipcMain.handle('transactions:getById', (_, id) => {
     const result = database.getTransactionById(id);
     console.log('[transactions:getById] id:', id, 'result:', result ? `found, items: ${result.items?.length ?? 0}` : 'null');
-    return result ? JSON.parse(JSON.stringify(result)) : null;
+    return result ? result : null;
   });
   ipcMain.handle('transactions:void', (_, id) => {
     const result = database.voidTransaction(id);
-    return result ? JSON.parse(JSON.stringify(result)) : null;
+    return result ? result : null;
   });
 
   ipcMain.handle('transactions:addPayment', (_, txId, amount, method, userId, notes) => {
-    return JSON.parse(JSON.stringify(database.addPayment(txId, amount, method, userId, notes)));
+    return database.addPayment(txId, amount, method, userId, notes);
   });
 
   ipcMain.handle('transactions:getPaymentHistory', (_, txId) => {
-    return JSON.parse(JSON.stringify(database.getPaymentHistory(txId)));
+    return database.getPaymentHistory(txId);
   });
 
   // ─── Debt Management ──────────────────────────────────
   ipcMain.handle('debts:getOutstanding', (_, filters) => {
-    return JSON.parse(JSON.stringify(database.getOutstandingDebts(filters)));
+    return database.getOutstandingDebts(filters);
   });
 
   ipcMain.handle('debts:getSummary', () => {
-    return JSON.parse(JSON.stringify(database.getDebtSummary()));
+    return database.getDebtSummary();
   });
 
   ipcMain.handle('debts:getOverdue', () => {
-    return JSON.parse(JSON.stringify(database.getOverdueTransactions()));
+    return database.getOverdueTransactions();
   });
 
   // ─── Settings ───────────────────────────────────────
-  ipcMain.handle('settings:getAll', () => JSON.parse(JSON.stringify(database.getSettings())));
-  ipcMain.handle('settings:update', (_, settings) => JSON.parse(JSON.stringify(database.updateSettings(settings))));
+  ipcMain.handle('settings:getAll', () => database.getSettings());
+
+  ipcMain.handle('settings:update', (_, settings) => {
+    const result = database.updateSettings(settings);
+
+    // Live update window title/icon
+    if (mainWindow) {
+      if (settings.app_name || settings.store_name) {
+        const fullSettings = database.getSettings(); // Get merged settings
+        const baseTitle = fullSettings.app_name || 'POS Kasir';
+        if (fullSettings.store_name) {
+          mainWindow.setTitle(`${fullSettings.store_name} - ${baseTitle}`);
+        } else {
+          mainWindow.setTitle(baseTitle);
+        }
+      }
+
+      if (settings.app_logo) {
+        try {
+          const img = nativeImage.createFromDataURL(settings.app_logo);
+          mainWindow.setIcon(img);
+        } catch (e) { console.error('Failed to update icon:', e); }
+      }
+    }
+
+    return result;
+  });
+
+  ipcMain.handle('settings:uploadAppLogo', async () => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'ico'] }],
+        properties: ['openFile']
+      });
+      if (result.canceled || !result.filePaths.length) {
+        return { success: false, error: 'Cancelled' };
+      }
+      const filePath = result.filePaths[0];
+      const ext = path.extname(filePath).toLowerCase().replace('.', '');
+      const mime = ext === 'png' ? 'image/png' : (ext === 'ico' ? 'image/x-icon' : 'image/jpeg');
+      const fileData = fs.readFileSync(filePath);
+      const base64 = `data:${mime};base64,${fileData.toString('base64')}`;
+
+      database.updateSetting('app_logo', base64);
+
+      // Update icon immediately
+      if (mainWindow) {
+        const img = nativeImage.createFromDataURL(base64);
+        mainWindow.setIcon(img);
+      }
+
+      return { success: true, logo: base64 };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Margin Settings
+  ipcMain.handle('settings:getMarginStats', () => {
+    return database.getMarginImpactStats();
+  });
+
+  ipcMain.handle('settings:updateMargin', (_, percent, mode) => {
+    return database.updateMarginSettings(percent, mode);
+  });
 
   // ─── API Server (Price Checker) ────────────────────
   ipcMain.handle('api:getServerInfo', () => {
     return apiServer.getServerInfo();
   });
 
+  // ─── App Control ──────────────────────────────────────
+  ipcMain.handle('app:restart', () => {
+    app.relaunch();
+    app.exit(0);
+  });
+
   // ─── Dashboard ──────────────────────────────────────
   ipcMain.handle('dashboard:stats', () => {
     const result = database.getDashboardStats();
-    return JSON.parse(JSON.stringify(result));
+    return result;
   });
 
   ipcMain.handle('dashboard:enhancedStats', () => {
-    return JSON.parse(JSON.stringify(database.getEnhancedDashboardStats()));
+    return database.getEnhancedDashboardStats();
   });
 
   // ─── Reports ───────────────────────────────────────
   ipcMain.handle('reports:sales', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getSalesReport(dateFrom, dateTo)));
+    return database.getSalesReport(dateFrom, dateTo);
   });
 
   ipcMain.handle('reports:profit', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getProfitReport(dateFrom, dateTo)));
+    return database.getProfitReport(dateFrom, dateTo);
   });
 
   ipcMain.handle('reports:comparison', (_, df1, dt1, df2, dt2) => {
-    return JSON.parse(JSON.stringify(database.getPeriodComparison(df1, dt1, df2, dt2)));
+    return database.getPeriodComparison(df1, dt1, df2, dt2);
   });
 
   ipcMain.handle('reports:exportPdf', async (_, htmlContent) => {
@@ -365,27 +502,35 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('reports:hourly', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getHourlySalesPattern(dateFrom, dateTo)));
+    return database.getHourlySalesPattern(dateFrom, dateTo);
   });
 
   ipcMain.handle('reports:bottomProducts', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getBottomProducts(dateFrom, dateTo)));
+    return database.getBottomProducts(dateFrom, dateTo);
   });
 
   ipcMain.handle('reports:transactionLog', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getTransactionLog(dateFrom, dateTo)));
+    return database.getTransactionLog(dateFrom, dateTo);
   });
 
   ipcMain.handle('reports:comprehensive', (_, dateFrom, dateTo) => {
-    return JSON.parse(JSON.stringify(database.getComprehensiveReport(dateFrom, dateTo)));
+    try {
+      console.log('[IPC reports:comprehensive] Request received:', dateFrom, dateTo);
+      const result = database.getComprehensiveReport(dateFrom, dateTo);
+      console.log('[IPC reports:comprehensive] Result:', result ? 'Data returned' : 'NULL returned');
+      return result;
+    } catch (err) {
+      console.error('[IPC reports:comprehensive] Uncaught error:', err.message);
+      return null;
+    }
   });
 
   ipcMain.handle('reports:slowMoving', (_, inactiveDays, limit) => {
-    return JSON.parse(JSON.stringify(database.getSlowMovingProducts(inactiveDays, limit)));
+    return database.getSlowMovingProducts(inactiveDays, limit);
   });
 
   ipcMain.handle('reports:topProductsExpanded', (_, dateFrom, dateTo, limit) => {
-    return JSON.parse(JSON.stringify(database.getTopProductsExpanded(dateFrom, dateTo, limit)));
+    return database.getTopProductsExpanded(dateFrom, dateTo, limit);
   });
 
   ipcMain.handle('reports:printPlainText', async (_, text, options) => {
@@ -412,7 +557,7 @@ function registerIpcHandlers() {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:10mm}pre{font-family:'Courier New',monospace;font-size:10pt;line-height:1.4;white-space:pre;margin:0}
         @media print{body{padding:5mm}pre{font-size:9pt}}
-      </style></head><body><pre>${text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></body></html>`;
+      </style></head><body><pre>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`;
 
       await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
 
@@ -462,6 +607,10 @@ function registerIpcHandlers() {
     return printer.generateReceiptHTML(tx, settings);
   });
 
+  ipcMain.handle('print:getTemplates', () => {
+    return printer.getReceiptTemplates();
+  });
+
   ipcMain.handle('print:getPrinters', async () => {
     if (!mainWindow) return [];
     return await printer.getPrinters(mainWindow);
@@ -495,6 +644,32 @@ function registerIpcHandlers() {
 
   ipcMain.handle('print:previewWithSettings', (_, transaction, customSettings) => {
     return printer.generateReceiptHTMLWithSettings(transaction, customSettings);
+  });
+
+  // ─── Cloudflare Tunnel Automation ────────────────────
+  ipcMain.handle('cloudflared:install-service', async () => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execPromise = util.promisify(exec);
+
+      // Execute command to install service
+      const isPackaged = app.isPackaged;
+      const cloudflaredPath = isPackaged
+        ? path.join(process.resourcesPath, 'cloudflare', 'cloudflared.exe')
+        : path.join(app.getAppPath(), 'cloudflared.exe');
+
+      const command = `"${cloudflaredPath}" service install`;
+
+      const { stdout, stderr } = await execPromise(command);
+      console.log('[Cloudflare] Service install stdout:', stdout);
+      if (stderr) console.error('[Cloudflare] Service install stderr:', stderr);
+
+      return { success: true, message: stdout };
+    } catch (error) {
+      console.error('[Cloudflare] Service install error:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // ─── Excel Import/Export ────────────────────────────
@@ -555,7 +730,9 @@ function registerIpcHandlers() {
       const filePath = result.filePaths[0];
       const wb = XLSX.readFile(filePath);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws);
+      // Use raw: false to get formatted strings matches Excel view
+      // defval: '' ensures all columns appear in the object
+      const rows = XLSX.utils.sheet_to_json(ws, { raw: false, defval: '' });
 
       // Map categories
       const categories = database.getCategories();
@@ -572,14 +749,59 @@ function registerIpcHandlers() {
         invalidRows: []       // Rows with missing required data
       };
 
+      // Robust number parser
+      const parseNumber = (val) => {
+        if (typeof val === 'number') return Math.round(val);
+        if (typeof val === 'string') {
+          // Handle "10.000,00" (ID) vs "10,000.00" (US)
+          // Heuristic: if comma is present and near end (last 3 chars), assume it's decimal separator
+          let clean = val;
+          if (val.includes(',') && val.indexOf(',') > val.length - 4) {
+            clean = val.split(',')[0]; // Remove decimal part for ID format
+          } else if (val.includes('.') && val.indexOf('.') > val.length - 4 && !val.includes(',')) {
+            // Possible US decimal, but could be ID thousands separator if only 3 digits follow?
+            // Safest for integer prices: remove non-digits
+          }
+
+          // Simple approach: Remove non-digits
+          clean = clean.replace(/[^\d]/g, '');
+          return parseInt(clean) || 0;
+        }
+        return 0;
+      };
+
+      // Case-insensitive key finder
+      const getValue = (row, keys) => {
+        const rowKeys = Object.keys(row);
+        for (const key of keys) {
+          // Check exact match first
+          if (row[key] !== undefined) return row[key];
+          // Check case-insensitive
+          const found = rowKeys.find(k => k.toLowerCase().trim() === key.toLowerCase());
+          if (found) return row[found];
+        }
+        return undefined;
+      };
+
+      console.log('[excel] Previewing import. First row keys:', rows.length > 0 ? Object.keys(rows[0]) : 'empty');
+
       rows.forEach((row, index) => {
-        const barcode = String(row.Barcode || row.barcode || '').trim();
-        const name = (row.Nama || row.Name || row.name || '').trim();
-        const category = row.Kategori || row.Category || '';
-        const price = parseInt(row.Harga || row.Price || row.price || 0);
-        const cost = parseInt(row['Harga Modal'] || row.Cost || row.cost || 0);
-        const stock = parseInt(row.Stok || row.Stock || row.stock || 0);
-        const unit = row.Satuan || row.Unit || row.unit || 'pcs';
+        const barcode = String(getValue(row, ['Barcode', 'Kode', 'Code']) || '').trim();
+        const nomeCandidates = ['Nama', 'Name', 'Nama Produk', 'Product Name', 'Item Name', 'Description', 'Deskripsi'];
+        const name = (getValue(row, nomeCandidates) || '').trim();
+
+        const category = getValue(row, ['Kategori', 'Category', 'Kategori Produk', 'Group', 'Kelompok']) || '';
+
+        const priceVal = getValue(row, ['Harga', 'Price', 'Harga Jual', 'Jual', 'Sell Price', 'Sale Price']);
+        const price = parseNumber(priceVal);
+
+        const costVal = getValue(row, ['Harga Modal', 'Harga Beli', 'Modal', 'Cost', 'Buy Price', 'HPP', 'Harga Pokok', 'Purchase Price']);
+        const cost = parseNumber(costVal);
+
+        const stockVal = getValue(row, ['Stok', 'Stock', 'Qty', 'Quantity', 'Jumlah', 'Sisa']);
+        const stock = parseNumber(stockVal);
+
+        const unit = getValue(row, ['Satuan', 'Unit', 'UOM']) || 'pcs';
 
         // Skip header row or empty rows
         if (!name || name.toLowerCase() === 'nama' || name.toLowerCase() === 'name') {
@@ -1112,6 +1334,45 @@ function registerIpcHandlers() {
       return { success: true, path: saveResult.filePath };
     } catch (err) {
       return { success: false, error: err.message };
+    }
+  });
+
+  // ─── App Auto-Start ────────────────────────────────
+  ipcMain.handle('system:setAutoStart', async (_, enabled) => {
+    try {
+      // 1. Update System Registry
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        path: process.execPath,
+        args: [
+          '--process-start-args', `"--hidden"` // Optional: Start hidden
+        ]
+      });
+
+      // 2. Persist to Database
+      database.updateSetting('auto_start', enabled.toString());
+
+      return { success: true, enabled };
+    } catch (error) {
+      console.error('[System] Failed to set auto-start:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('system:getAutoStartStatus', async () => {
+    try {
+      // Prioritize DB setting for UI consistency
+      const dbSettings = database.getSettings();
+      const dbEnabled = dbSettings.auto_start === 'true';
+
+      // Fallback/Verify against System (Optional debug info)
+      const sysSettings = app.getLoginItemSettings();
+      // console.log('[System] AutoStart DB:', dbEnabled, 'System:', sysSettings.openAtLogin);
+
+      return { success: true, enabled: dbEnabled };
+    } catch (error) {
+      console.error('[System] Failed to get auto-start status:', error);
+      return { success: false, error: error.message };
     }
   });
 }

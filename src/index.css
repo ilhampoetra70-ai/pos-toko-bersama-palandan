@@ -74,10 +74,98 @@
   --color-primary-900: 127 29 29;
 }
 
+/* Emerald Metallic theme */
+:root[data-theme="emerald"] {
+  --color-primary-50: 232 255 248;
+  --color-primary-100: 197 252 230;
+  --color-primary-200: 148 247 210;
+  --color-primary-300: 79 238 184;
+  --color-primary-400: 25 218 160;
+  --color-primary-500: 0 196 126;
+  --color-primary-600: 0 159 101;
+  --color-primary-700: 0 127 81;
+  --color-primary-800: 0 100 64;
+  --color-primary-900: 0 80 51;
+}
+
 @layer base {
+  :root {
+    --background: 36 18% 95%;
+    /* #F6F4F1 HSL equivalent */
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --muted: 36 18% 92%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 215 28% 17%;         /* #1f2937 — konsisten dengan dark:bg-gray-800 yang dipakai di .card override */
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    font-family: var(--font-family, 'Roboto', 'Segoe UI', system-ui, sans-serif);
+  }
+
   body {
-    @apply bg-gray-100 text-gray-800 transition-colors duration-200;
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    @apply text-gray-800 transition-colors duration-300;
+    font-family: var(--font-family, 'Roboto', 'Segoe UI', system-ui, sans-serif);
+    --font-header: 'Roboto', 'Segoe UI', sans-serif;
+    background-color: #F6F4F1;
+    background-image: radial-gradient(at 0% 0%, #F6F4F1 0, transparent 50%),
+      radial-gradient(at 50% 0%, #EBE9E4 0, transparent 50%),
+      radial-gradient(at 100% 0%, #F6F4F1 0, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-header);
+    font-weight: 700;
+  }
+
+  /* Target all text elements to ensure inheritance if not specifically set */
+  p,
+  span,
+  label,
+  input,
+  textarea,
+  select,
+  button,
+  td,
+  th {
+    font-family: inherit;
   }
 
   /* Dark mode base styles - target html.dark */
@@ -88,7 +176,12 @@
   }
 
   /* Dark mode for common elements */
-  html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6 {
     @apply text-gray-100;
   }
 
@@ -117,14 +210,27 @@
     @apply border-gray-700;
   }
 
+  html.dark tbody tr:nth-child(even) {
+    background-color: rgba(31, 41, 55, 0.4);
+    /* Even more subtle zebra in dark */
+  }
+
   html.dark tbody tr:hover {
-    @apply bg-gray-800;
+    background-color: #1f2937 !important;
+  }
+
+  tbody tr {
+    @apply transition-colors duration-200;
   }
 
   /* Dark mode background overrides for main content areas */
   html.dark .bg-gray-50,
   html.dark .bg-gray-100 {
     background-color: #111827 !important;
+  }
+
+  html.dark {
+    background: #111827 !important;
   }
 
   html.dark .bg-white {
@@ -152,23 +258,28 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 active:scale-[0.97] transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed;
   }
+
   .btn-secondary {
-    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+    @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 active:scale-[0.97] transition-all font-medium dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
   }
+
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium;
+    @apply bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 active:scale-[0.97] transition-all font-medium;
   }
+
   .btn-success {
-    @apply bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium;
+    @apply bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 active:scale-[0.97] transition-all font-medium;
   }
+
   .input-field {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors;
+    @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all;
     @apply dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400;
   }
+
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-colors;
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all hover:shadow-md;
     @apply dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
   }
 
@@ -199,27 +310,90 @@
     border-color: #374151 !important;
   }
 
+  /* Adaptive Warning/Alert Styles */
+  .alert-adaptive-success {
+    @apply bg-green-50 border-green-100 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-error {
+    @apply bg-red-50 border-red-100 text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-info {
+    @apply bg-blue-50 border-blue-100 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-warning {
+    @apply bg-orange-50 border-orange-100 text-orange-700 dark:bg-orange-900/40 dark:border-orange-800 dark:text-orange-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
 
 /* Dark mode scrollbar */
-html.dark ::-webkit-scrollbar-track { background: #374151; }
-html.dark ::-webkit-scrollbar-thumb { background: #6b7280; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+html.dark ::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+}
+
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
 /* Receipt print styles */
 @media print {
-  body { margin: 0; padding: 0; }
+  body {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 /* Jspreadsheet custom styles */
 .jspreadsheet-container {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  font-family: var(--font-family, 'Roboto', 'Segoe UI', system-ui, sans-serif) !important;
 }
 
 .jspreadsheet-container .jexcel {
@@ -309,12 +483,12 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
   padding: 4px 0 !important;
 }
 
-.jspreadsheet-container .jcontextmenu > div {
+.jspreadsheet-container .jcontextmenu>div {
   padding: 8px 16px !important;
   font-size: 13px !important;
 }
 
-.jspreadsheet-container .jcontextmenu > div:hover {
+.jspreadsheet-container .jcontextmenu>div:hover {
   background-color: #f3f4f6 !important;
 }
 
@@ -368,11 +542,11 @@ html.dark .jspreadsheet-container .jcontextmenu {
   border-color: #374151 !important;
 }
 
-html.dark .jspreadsheet-container .jcontextmenu > div {
+html.dark .jspreadsheet-container .jcontextmenu>div {
   color: #f3f4f6 !important;
 }
 
-html.dark .jspreadsheet-container .jcontextmenu > div:hover {
+html.dark .jspreadsheet-container .jcontextmenu>div:hover {
   background-color: #374151 !important;
 }
 

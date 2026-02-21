@@ -1,0 +1,860 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import {
+    useProducts,
+    useCategories,
+    useSettings,
+    useCreateProduct,
+    useUpdateProduct,
+    useDeleteProduct,
+    useBulkDeleteProducts,
+    useStockTrailByProduct,
+    useCreateCategory,
+    useDeleteCategory
+} from '@/lib/queries';
+import { formatCurrency } from '../utils/format';
+import ExcelManager from '../components/ExcelManager';
+import BarcodePreviewModal from '../components/BarcodePreviewModal';
+import BatchBarcodeModal from '../components/BatchBarcodeModal';
+import {
+    Package,
+    Plus,
+    FileSpreadsheet,
+    Search,
+    Filter,
+    Download,
+    Trash2,
+    Edit,
+    Barcode,
+    ChevronDown,
+    ChevronLeft,
+    ChevronRight,
+    MoreVertical,
+    History,
+    AlertCircle,
+    RefreshCw,
+    LayoutGrid,
+    Settings2,
+    Check
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+
+// Format number with dot separator (1000 → 1.000)
+const formatNumberLocal = (value: any) => {
+    const num = String(value).replace(/\D/g, '');
+    if (!num) return '';
+    return parseInt(num).toLocaleString('id-ID');
+};
+
+// Parse formatted number back to raw digits
+const parseNumberLocal = (formatted: any) => {
+    return String(formatted).replace(/\D/g, '');
+};
+
+export default function ProductsPage() {
+    const { hasRole, user } = useAuth();
+    const [search, setSearch] = useState('');
+    const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [showForm, setShowForm] = useState(false);
+    const [showCatForm, setShowCatForm] = useState(false);
+    const [showExcel, setShowExcel] = useState(false);
+    const [editing, setEditing] = useState<any>(null);
+    const [form, setForm] = useState({ barcode: '', name: '', category_id: '', price: '', cost: '', stock: '', unit: 'pcs' });
+    const [catForm, setCatForm] = useState({ name: '', description: '' });
+    const [newCatName, setNewCatName] = useState('');
+    const [error, setError] = useState('');
+    const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+    const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
+    const [stockHistory, setStockHistory] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [barcodePreviewProduct, setBarcodePreviewProduct] = useState<any>(null);
+    const [showBatchBarcode, setShowBatchBarcode] = useState(false);
+
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+
+    // --- Queries ---
+    const { data: productsData, isLoading: loadingProducts } = useProducts({
+        search,
+        category_id: filterCategory === 'all' ? undefined : filterCategory,
+        active: 1,
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+        sortBy: sortConfig.key,
+        sortOrder: sortConfig.direction === 'ascending' ? 'asc' : 'desc'
+    });
+
+    const products = productsData?.data || (Array.isArray(productsData) ? productsData : []);
+    const totalProducts = productsData?.total || (Array.isArray(productsData) ? productsData.length : 0);
+
+    const { data: categories = [] } = useCategories();
+    const { data: settings } = useSettings();
+    const defaultMarginFromSettings = settings?.default_margin_percent ? parseFloat(settings.default_margin_percent) : 10.5;
+
+    // Clear selection when products change
+    useEffect(() => {
+        setSelectedProducts([]);
+    }, [products]);
+
+    // Reset page when search or filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [search, filterCategory]);
+
+    // --- Mutations ---
+    const createProductMutation = useCreateProduct();
+    const updateProductMutation = useUpdateProduct();
+    const deleteProductMutation = useDeleteProduct();
+    const bulkDeleteMutation = useBulkDeleteProducts();
+    const createCategoryMutation = useCreateCategory();
+    const deleteCategoryMutation = useDeleteCategory();
+
+    const requestSort = (key: string) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+        setPage(1);
+    };
+
+    const [isManualCost, setIsManualCost] = useState(false);
+    const [defaultMargin, setDefaultMargin] = useState(10.5);
+
+    useEffect(() => {
+        if (defaultMarginFromSettings) setDefaultMargin(defaultMarginFromSettings);
+    }, [defaultMarginFromSettings]);
+
+    const resetForm = () => {
+        setForm({ barcode: '', name: '', category_id: '', price: '', cost: '', stock: '', unit: 'pcs' });
+        setEditing(null);
+        setShowForm(false);
+        setIsManualCost(false);
+        setNewCatName('');
+        setError('');
+    };
+
+    const handleAddNew = async () => {
+        const barcode = await (window as any).api.generateBarcode();
+        setForm({ barcode, name: '', category_id: '', price: '', cost: '', stock: '', unit: 'pcs' });
+        setEditing(null);
+        setIsManualCost(false);
+        setNewCatName('');
+        setError('');
+        setShowForm(true);
+    };
+
+    const handleEdit = (product: any) => {
+        setEditing(product);
+        setForm({
+            barcode: product.barcode || '',
+            name: product.name,
+            category_id: product.category_id || '',
+            price: String(product.price),
+            cost: String(product.cost),
+            stock: String(product.stock),
+            unit: product.unit
+        });
+
+        if (product.margin_mode === 'manual') {
+            setIsManualCost(true);
+        } else if (product.margin_mode === 'auto') {
+            setIsManualCost(false);
+        } else {
+            const price = parseInt(product.price) || 0;
+            const currentCost = parseInt(product.cost) || 0;
+            const multiplier = 1 - (defaultMargin / 100);
+            const calculatedCost = Math.round(price * multiplier);
+            const isStandard = Math.abs(currentCost - calculatedCost) <= 100;
+            setIsManualCost(!isStandard);
+        }
+
+        const cat = categories.find(c => c.id === product.category_id);
+        setNewCatName(cat ? cat.name : '');
+        setShowForm(true);
+    };
+
+    const handleNumberChange = (field: string, value: string) => {
+        const raw = parseNumberLocal(value);
+
+        if (field === 'price') {
+            const priceVal = parseInt(raw) || 0;
+            const updates = { [field]: raw } as any;
+
+            if (!isManualCost) {
+                const multiplier = 1 - (defaultMargin / 100);
+                updates.cost = String(Math.round(priceVal * multiplier));
+            }
+
+            setForm(f => ({ ...f, ...updates }));
+        } else {
+            setForm(f => ({ ...f, [field]: raw }));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        try {
+            let categoryId = null;
+
+            if (newCatName.trim()) {
+                const existing = categories.find((c: any) => c.name.toLowerCase() === newCatName.trim().toLowerCase());
+                if (existing) {
+                    categoryId = existing.id;
+                } else {
+                    // We don't want to await here if we want optimistic updates, but for categories it's safer to just let the user save.
+                    // Actually, the original code awaited.
+                    const cat = await (window as any).api.createCategory(newCatName.trim(), '');
+                    categoryId = cat.id;
+                }
+            }
+
+            const data = {
+                ...form,
+                price: parseInt(form.price) || 0,
+                cost: parseInt(form.cost) || 0,
+                stock: parseInt(form.stock) || 0,
+                category_id: categoryId,
+                margin_mode: isManualCost ? 'manual' : 'auto',
+                userId: user?.id,
+                userName: user?.name || user?.username || 'System'
+            };
+
+            if (editing) {
+                const stockChanged = editing.stock !== data.stock;
+                // Standardize barcode: pad numeric codes < 12 digits
+                if (data.barcode && /^\d+$/.test(data.barcode) && data.barcode.length < 12) {
+                    data.barcode = data.barcode.padStart(12, '0');
+                }
+
+                if (stockChanged) {
+                    const auditUser = user || { id: null, name: 'System', username: 'system' };
+                    updateProductMutation.mutate({
+                        id: editing.id,
+                        data,
+                        auditInfo: {
+                            userId: auditUser.id,
+                            userName: auditUser.name || auditUser.username || 'System',
+                            source: 'manual'
+                        }
+                    }, {
+                        onSuccess: () => {
+                            resetForm();
+                        }
+                    });
+                } else {
+                    updateProductMutation.mutate({ id: editing.id, data }, {
+                        onSuccess: () => {
+                            resetForm();
+                        }
+                    });
+                }
+            } else {
+                // Standardize barcode for new product
+                if (data.barcode && /^\d+$/.test(data.barcode) && data.barcode.length < 12) {
+                    data.barcode = data.barcode.padStart(12, '0');
+                }
+                createProductMutation.mutate(data, {
+                    onSuccess: () => {
+                        resetForm();
+                    }
+                });
+            }
+        } catch (err: any) {
+            setError('Gagal menyimpan: ' + (err.message || 'Error'));
+        }
+    };
+
+    const handleDelete = async (product: any) => {
+        if (!confirm(`Hapus produk "${product.name}"?`)) return;
+        deleteProductMutation.mutate(product.id, {
+            onSuccess: () => {
+                if (expandedProduct === product.id) {
+                    setExpandedProduct(null);
+                }
+            }
+        });
+    };
+
+    const handleCatSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        createCategoryMutation.mutate(catForm.name, {
+            onSuccess: () => {
+                setCatForm({ name: '', description: '' });
+            },
+            onError: (err: any) => {
+                alert('Gagal: ' + err.message);
+            }
+        });
+    };
+
+    const handleDeleteCategory = async (cat: any) => {
+        if (!confirm(`Hapus kategori "${cat.name}"?`)) return;
+        deleteCategoryMutation.mutate(cat.id);
+    };
+
+    const handleRegenerateBarcode = async () => {
+        const barcode = await (window as any).api.generateBarcode();
+        setForm(f => ({ ...f, barcode }));
+    };
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedProducts(prev =>
+            prev.length === products.length ? [] : products.map(p => p.id)
+        );
+    }, [products]);
+
+    const toggleSelectProduct = useCallback((id: number) => {
+        setSelectedProducts(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    }, []);
+
+    const handleBulkDelete = async () => {
+        if (selectedProducts.length === 0) return;
+        if (!confirm(`Hapus ${selectedProducts.length} produk yang dipilih?`)) return;
+        bulkDeleteMutation.mutate(selectedProducts);
+    };
+
+    const toggleStockHistory = async (productId: number) => {
+        if (expandedProduct === productId) {
+            setExpandedProduct(null);
+        } else {
+            setExpandedProduct(productId);
+        }
+    };
+
+    const canEdit = hasRole('admin', 'supervisor', 'cashier', 'kasir');
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Produk</h2>
+                    <p className="text-sm text-gray-500 font-medium">Kelola inventaris dan katalog produk</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {canEdit && (
+                        <>
+                            <Button variant="outline" onClick={() => setShowExcel(true)} className="gap-2 h-11 px-4 shadow-sm">
+                                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                                <span className="hidden sm:inline">Excel</span>
+                            </Button>
+                            <Button variant="outline" onClick={() => setShowCatForm(true)} className="gap-2 h-11 px-4 shadow-sm">
+                                <LayoutGrid className="w-4 h-4 text-primary-600" />
+                                <span className="hidden sm:inline">Kategori</span>
+                            </Button>
+                            <Button onClick={handleAddNew} className="gap-2 h-11 px-4 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">
+                                <Plus className="w-5 h-5" />
+                                <span>Tambah Produk</span>
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <Card className="border-none shadow-sm">
+                <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
+                            <Input
+                                className="pl-10 h-11 bg-gray-50/50 border-none shadow-inner"
+                                placeholder="Cari produk berdasarkan nama atau barcode..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="w-full md:w-64">
+                            <Select value={filterCategory} onValueChange={setFilterCategory}>
+                                <SelectTrigger className="h-11 bg-gray-50/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="w-4 h-4 text-gray-400" />
+                                        <SelectValue placeholder="Semua Kategori" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Semua Kategori</SelectItem>
+                                    {categories.map(c => (
+                                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {selectedProducts.length > 0 && canEdit && (
+                <div className="bg-primary-600 text-white rounded-2xl p-4 shadow-lg shadow-primary-600/20 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-bold">
+                                {selectedProducts.length}
+                            </div>
+                            <p className="font-bold">Produk dipilih</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => setShowBatchBarcode(true)} className="font-bold gap-2">
+                                <Barcode className="w-4 h-4" />
+                                Print Labels
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="font-bold gap-2">
+                                <Trash2 className="w-4 h-4" />
+                                Hapus
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedProducts([])} className="text-white hover:bg-white/10 decoration-white">
+                                Batal
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <Card className="border-none shadow-sm overflow-hidden">
+                <div className="h-[calc(100vh-420px)] overflow-y-auto custom-scrollbar">
+                    <Table>
+                        <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+                            <TableRow className="border-b-2">
+                                {canEdit && (
+                                    <TableHead className="w-12 text-center">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded-md border-gray-300 text-primary-600 focus:ring-primary-500"
+                                            checked={products.length > 0 && selectedProducts.length === products.length}
+                                            onChange={toggleSelectAll}
+                                        />
+                                    </TableHead>
+                                )}
+                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
+                                    Barcode {sortConfig.key === 'barcode' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                </TableHead>
+                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
+                                    Nama Produk {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                </TableHead>
+                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
+                                    Kategori {sortConfig.key === 'category_name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                </TableHead>
+                                {hasRole('admin', 'supervisor') && (
+                                    <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
+                                        Modal {sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                    </TableHead>
+                                )}
+                                <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
+                                    Harga {sortConfig.key === 'price' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                </TableHead>
+                                <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
+                                    Stok {sortConfig.key === 'stock' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
+                                </TableHead>
+                                <TableHead className="text-center font-black text-[11px] uppercase tracking-widest">Unit</TableHead>
+                                {canEdit && <TableHead className="text-right font-black text-[11px] uppercase tracking-widest">Aksi</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y">
+                            {products.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={10} className="text-center py-20 text-gray-400">
+                                        <Package className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                                        <p className="font-bold text-lg">Tidak ada produk ditemukan</p>
+                                        <p className="text-sm">Silakan tambah produk baru atau sesuaikan filter</p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : products.map(p => (
+                                <React.Fragment key={p.id}>
+                                    <TableRow className={cn(
+                                        "hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors",
+                                        selectedProducts.includes(p.id) && "bg-primary-50 dark:bg-primary-900/10",
+                                        expandedProduct === p.id && "bg-blue-50/50 dark:bg-blue-900/10"
+                                    )}>
+                                        {canEdit && (
+                                            <TableCell className="text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded-md border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                    checked={selectedProducts.includes(p.id)}
+                                                    onChange={() => toggleSelectProduct(p.id)}
+                                                />
+                                            </TableCell>
+                                        )}
+                                        <TableCell className="font-sans text-xs text-gray-500">{p.barcode || '-'}</TableCell>
+                                        <TableCell className="font-bold text-gray-900 dark:text-gray-100">{p.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="font-bold text-[10px] uppercase">{p.category_name || 'Tanpa Kategori'}</Badge>
+                                        </TableCell>
+                                        {hasRole('admin', 'supervisor') && (
+                                            <TableCell className="text-right text-gray-500 font-medium">{formatCurrency(p.cost)}</TableCell>
+                                        )}
+                                        <TableCell className="text-right font-black text-primary-700 dark:text-primary-400">{formatCurrency(p.price)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => toggleStockHistory(p.id)}
+                                                className={cn("font-black gap-1.5 h-7", p.stock <= 5 ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-gray-900")}
+                                            >
+                                                {p.stock}
+                                                <History className={cn("w-3 h-3 transition-transform", expandedProduct === p.id && "rotate-180")} />
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="secondary" className="font-bold">{p.unit}</Badge>
+                                        </TableCell>
+                                        {canEdit && (
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-40">
+                                                        {p.barcode && (
+                                                            <DropdownMenuItem onClick={() => setBarcodePreviewProduct(p)} className="gap-2">
+                                                                <Barcode className="w-4 h-4" /> Labelling
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
+                                                            <Edit className="w-4 h-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50">
+                                                            <Trash2 className="w-4 h-4" /> Hapus
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        )}
+                                    </TableRow>
+                                    {expandedProduct === p.id && (
+                                        <TableRow className="bg-blue-50/30 dark:bg-blue-900/5">
+                                            <TableCell colSpan={10} className="p-0 border-b">
+                                                <StockHistoryPanelWrapper
+                                                    productId={p.id}
+                                                    productName={p.name}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-950 rounded-2xl shadow-sm border border-transparent">
+                <div className="text-sm font-bold text-gray-500">
+                    Showing <span className="text-gray-900">{Math.min(products.length, pageSize)}</span> of <span className="text-gray-900">{totalProducts}</span> items
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="h-10 w-10"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                        {(() => {
+                            const totalPages = Math.ceil(totalProducts / pageSize);
+                            if (totalPages <= 1) return null;
+
+                            const pages = [];
+                            let startPage = Math.max(1, page - 1);
+                            let endPage = Math.min(totalPages, startPage + 2);
+                            if (endPage - startPage < 2) startPage = Math.max(1, endPage - 2);
+
+                            for (let i = startPage; i <= endPage; i++) pages.push(i);
+
+                            return pages.map(pageNum => (
+                                <Button
+                                    key={pageNum}
+                                    variant={page === pageNum ? "default" : "ghost"}
+                                    size="sm"
+                                    onClick={() => setPage(pageNum)}
+                                    className={cn("h-10 w-10 font-black", page === pageNum && "shadow-lg shadow-primary-600/20")}
+                                >
+                                    {pageNum}
+                                </Button>
+                            ));
+                        })()}
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setPage(p => Math.min(Math.ceil(totalProducts / pageSize), p + 1))}
+                        disabled={page >= Math.ceil(totalProducts / pageSize) || totalProducts === 0}
+                        className="h-10 w-10"
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-500">Rows:</span>
+                    <Select value={String(pageSize)} onValueChange={val => { setPageSize(Number(val)); setPage(1); }}>
+                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-gray-100/50 data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <Dialog open={showForm} onOpenChange={resetForm}>
+                <DialogContent className="sm:max-w-lg h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
+                    <DialogHeader className="p-6 pb-4 border-b shrink-0">
+                        <DialogTitle className="text-xl font-black">{editing ? 'Edit Produk' : 'Produk Baru'}</DialogTitle>
+                        <DialogDescription>Isi detail produk dengan lengkap</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950">
+                        <form id="product-form" onSubmit={handleSubmit} className="p-6 space-y-5">
+                            {error && (
+                                <div className="alert-adaptive-error">
+                                    <AlertCircle className="w-4 h-4" /> {error}
+                                </div>
+                            )}
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="prod-name">Nama Produk <span className="text-red-500">*</span></Label>
+                                <Input id="prod-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required className="h-11" />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="prod-cat">Kategori</Label>
+                                <Input
+                                    id="prod-cat"
+                                    list="category-suggestions"
+                                    value={newCatName}
+                                    onChange={e => setNewCatName(e.target.value)}
+                                    placeholder="Ketik kategori..."
+                                    className="h-11 font-medium"
+                                />
+                                <datalist id="category-suggestions">
+                                    {categories.map(c => <option key={c.id} value={c.name} />)}
+                                </datalist>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {hasRole('admin', 'supervisor') && (
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between items-center">
+                                            <Label>Harga Modal</Label>
+                                            <label className="flex items-center gap-1.5 text-[10px] font-bold text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded-md cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded w-3 h-3 text-primary-600"
+                                                    checked={isManualCost}
+                                                    onChange={e => setIsManualCost(e.target.checked)}
+                                                />
+                                                MANUAL
+                                            </label>
+                                        </div>
+                                        <Input
+                                            type="text"
+                                            className={cn("h-11 font-bold", !isManualCost && "bg-gray-100 text-gray-500 cursor-not-allowed")}
+                                            value={formatNumberLocal(form.cost)}
+                                            onChange={e => handleNumberChange('cost', e.target.value)}
+                                            readOnly={!isManualCost}
+                                        />
+                                        {!isManualCost && <p className="text-[9px] font-bold text-gray-400">OTOMATIS (MARGIN {defaultMargin}%)</p>}
+                                    </div>
+                                )}
+                                <div className="space-y-1.5">
+                                    <Label>Harga Jual <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        type="text"
+                                        className="h-11 font-black text-primary-700"
+                                        value={formatNumberLocal(form.price)}
+                                        onChange={e => handleNumberChange('price', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label>Stok Awal</Label>
+                                    <Input
+                                        type="text"
+                                        className="h-11 font-bold"
+                                        value={formatNumberLocal(form.stock)}
+                                        onChange={e => handleNumberChange('stock', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Satuan</Label>
+                                    <Input className="h-11 font-medium" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} />
+                                </div>
+                            </div>
+                            <div className="h-4"></div> {/* Spacer */}
+                        </form>
+                    </div>
+
+                    <DialogFooter className="p-6 border-t bg-gray-50/50 shrink-0 gap-2">
+                        <Button type="button" variant="ghost" onClick={resetForm} className="h-12 font-bold flex-1">Batal</Button>
+                        <Button type="submit" form="product-form" className="h-12 font-bold flex-1 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">Simpan Produk</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showCatForm} onOpenChange={() => setShowCatForm(false)}>
+                <DialogContent className="sm:max-w-md p-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
+                    <DialogHeader className="p-6 border-b shrink-0">
+                        <DialogTitle className="text-xl font-black">Kelola Kategori</DialogTitle>
+                        <DialogDescription>Tambah atau hapus kategori produk</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+                        <form onSubmit={handleCatSubmit} className="flex gap-2">
+                            <Input className="flex-1 h-11" placeholder="Nama kategori baru..." value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} required />
+                            <Button type="submit" className="h-11 font-bold bg-primary-600 hover:bg-primary-700 shadow-md shadow-primary-600/10">
+                                <Plus className="w-4 h-4 mr-2" /> Tambah
+                            </Button>
+                        </form>
+
+                        <ScrollArea className="h-64 border rounded-2xl p-3 bg-gray-50/30">
+                            <div className="space-y-2">
+                                {categories.map(cat => (
+                                    <div key={cat.id} className="flex items-center justify-between p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm group">
+                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{cat.name}</span>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                {categories.length === 0 && (
+                                    <div className="text-center py-10 text-gray-400 italic text-sm font-medium">Belum ada kategori</div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+
+                    <DialogFooter className="p-4 border-t bg-gray-50/50 shrink-0">
+                        <Button variant="ghost" onClick={() => setShowCatForm(false)} className="w-full font-bold h-11">Tutup</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {showExcel && <ExcelManager onClose={() => setShowExcel(false)} />}
+            {barcodePreviewProduct && <BarcodePreviewModal product={barcodePreviewProduct} onClose={() => setBarcodePreviewProduct(null)} />}
+            {showBatchBarcode && <BatchBarcodeModal products={products.filter(p => selectedProducts.includes(p.id))} onClose={() => setShowBatchBarcode(false)} />}
+        </div>
+    );
+}
+
+function StockHistoryPanelWrapper({ productId, productName }: any) {
+    const { data: history = [], isLoading } = useStockTrailByProduct(productId, 20);
+    return <StockHistoryPanel history={history} loading={isLoading} productName={productName} />;
+}
+
+const StockHistoryPanel = React.memo(function StockHistoryPanel({ history, loading, productName }: any) {
+    const [showSales, setShowSales] = useState(false);
+    const displayedHistory = showSales ? history : history.filter((h: any) => h.event_type !== 'sale');
+
+    return (
+        <div className="p-6 bg-white dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-xl text-blue-600"><History className="w-5 h-5" /></div>
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">Riwayat Perubahan Stok</h4>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{productName}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs font-black text-gray-500 cursor-pointer bg-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors">
+                        <input type="checkbox" className="rounded w-3.5 h-3.5" checked={showSales} onChange={e => setShowSales(e.target.checked)} />
+                        TAMPILKAN PENJUALAN
+                    </label>
+                </div>
+            </div>
+
+            <div className="border rounded-2xl overflow-hidden shadow-sm">
+                <Table>
+                    <TableHeader className="bg-gray-50">
+                        <TableRow>
+                            <TableHead className="font-black text-[10px] h-10">WAKTU</TableHead>
+                            <TableHead className="font-black text-[10px] h-10">AKSI</TableHead>
+                            <TableHead className="text-right font-black text-[10px] h-10 text-blue-600">AWAL</TableHead>
+                            <TableHead className="text-right font-black text-[10px] h-10 text-orange-600">PERUBAHAN</TableHead>
+                            <TableHead className="text-right font-black text-[10px] h-10 text-green-600">AKHIR</TableHead>
+                            <TableHead className="font-black text-[10px] h-10">USER/SUMBER</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow><TableCell colSpan={6} className="text-center py-10"><RefreshCw className="w-5 h-5 animate-spin mx-auto opacity-20" /></TableCell></TableRow>
+                        ) : displayedHistory.length === 0 ? (
+                            <TableRow><TableCell colSpan={6} className="text-center py-10 text-gray-400 font-medium italic">Tidak ada catatan riwayat</TableCell></TableRow>
+                        ) : displayedHistory.map((h: any, i: number) => (
+                            <TableRow key={i} className="hover:bg-gray-50/50">
+                                <TableCell className="text-xs font-medium text-gray-500">{new Date(h.created_at).toLocaleString('id-ID')}</TableCell>
+                                <TableCell>
+                                    <Badge className={cn(
+                                        "font-bold text-[9px] uppercase tracking-tighter px-1.5 h-5",
+                                        h.event_type === 'sale' ? "bg-purple-100 text-purple-700 hover:bg-purple-100 shadow-none" : "bg-blue-100 text-blue-700 hover:bg-blue-100 shadow-none"
+                                    )}>
+                                        {h.event_type}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-bold text-xs text-gray-400">{h.quantity_before}</TableCell>
+                                <TableCell className={cn("text-right font-black text-xs", h.quantity_change > 0 ? "text-green-600" : "text-red-600")}>
+                                    {h.quantity_change > 0 ? `+${h.quantity_change}` : h.quantity_change}
+                                </TableCell>
+                                <TableCell className="text-right font-black text-xs text-gray-900 dark:text-gray-100">{h.quantity_after}</TableCell>
+                                <TableCell className="text-xs text-gray-500 font-medium">
+                                    {h.user_name || 'System'} <span className="opacity-50">— {h.reference_id || 'manual'}</span>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+});

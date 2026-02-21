@@ -15,6 +15,8 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
+          xlsx: ['xlsx'],
+          barcode: ['@ericblade/quagga2', 'jsbarcode'],
         }
       }
     },
@@ -22,7 +24,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    host: '127.0.0.1'
   },
   resolve: {
     alias: {

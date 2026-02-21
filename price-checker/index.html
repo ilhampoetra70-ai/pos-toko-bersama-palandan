@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,7 +12,9 @@
   <title>Cek Harga</title>
 
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 
   <style>
@@ -35,13 +38,42 @@
       --gray-500: #6b7280;
       --gray-700: #374151;
       --gray-900: #111827;
+      --bg-body: #F6F4F1;
+      --bg-card: white;
+      --text-main: var(--gray-900);
+      --text-muted: var(--gray-500);
+      --border-color: var(--gray-200);
+    }
+
+    /* Dark Mode Variables */
+    [data-theme="dark"] {
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --bg-body: #111827;
+      --bg-card: #1f2937;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --border-color: #374151;
+      --gray-50: #1f2937;
+      --gray-100: #111827;
+      --gray-200: #374151;
+      --gray-300: #4b5563;
+      --gray-500: #9ca3af;
+      --gray-700: #d1d5db;
+      --gray-900: #f9fafb;
     }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--gray-100);
+      background-color: #F6F4F1;
+      background-image: radial-gradient(at 0% 0%, #F6F4F1 0, transparent 50%),
+        radial-gradient(at 50% 0%, #EBE9E4 0, transparent 50%),
+        radial-gradient(at 100% 0%, #F6F4F1 0, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 0.3s, color 0.3s;
     }
 
     /* Header */
@@ -130,8 +162,15 @@
     }
 
     @keyframes pulse-border {
-      0%, 100% { border-color: var(--primary); }
-      50% { border-color: var(--success); }
+
+      0%,
+      100% {
+        border-color: var(--primary);
+      }
+
+      50% {
+        border-color: var(--success);
+      }
     }
 
     .search-input::placeholder {
@@ -219,6 +258,7 @@
         opacity: 0;
         transform: translateY(20px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -350,7 +390,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     /* Search Results */
@@ -421,8 +463,13 @@
     }
 
     @keyframes slideUpModal {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
+      from {
+        transform: translateY(100%);
+      }
+
+      to {
+        transform: translateY(0);
+      }
     }
 
     .modal-header {
@@ -528,17 +575,83 @@
       margin-bottom: 0.5rem;
     }
 
+    /* Recent Scans */
+    .recent-scans-container {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--gray-100);
+      padding-top: 1rem;
+    }
+
+    .recent-scans-header {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--gray-50);
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .recent-item:active {
+      transform: scale(0.98);
+      background: var(--gray-200);
+    }
+
+    .recent-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .recent-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .recent-price {
+      font-size: 0.8125rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
     /* Utilities */
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
 
     /* Responsive */
     @media (min-width: 768px) {
-      .header h1 { font-size: 1.75rem; }
-      .product-header .price { font-size: 3rem; }
-      .container { padding: 1.5rem; }
+      .header h1 {
+        font-size: 1.75rem;
+      }
+
+      .product-header .price {
+        font-size: 3rem;
+      }
+
+      .container {
+        padding: 1.5rem;
+      }
     }
   </style>
 </head>
+
 <body>
   <!-- Header -->
   <header class="header">
@@ -555,17 +668,12 @@
     <!-- Search Section -->
     <section class="search-section">
       <div class="search-box">
-        <input
-          type="text"
-          class="search-input"
-          id="searchInput"
-          placeholder="Ketik nama atau scan barcode..."
-          autocomplete="off"
-          inputmode="search"
-        >
-        <button class="scan-btn" id="scanBtn" title="Scan Barcode">
+        <input type="text" class="search-input" id="searchInput" placeholder="Ketik nama atau scan barcode..."
+          autocomplete="off" inputmode="search">
+        <button class="scan-btn" id="scanBtn" title="Pindai Barcode">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
           </svg>
         </button>
       </div>
@@ -576,10 +684,13 @@
         <div class="scanner-overlay"></div>
         <button class="close-scanner" id="closeScanner">
           <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
+
+      <!-- Recent Scans -->
+      <div id="recentScansContainer" class="recent-scans-container" style="display: none;"></div>
     </section>
 
     <!-- Result Container -->
@@ -587,7 +698,8 @@
       <!-- Empty State -->
       <div class="empty-state" id="emptyState">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <h3>Cari Produk</h3>
         <p>Ketik nama produk atau scan barcode untuk melihat harga</p>
@@ -598,8 +710,9 @@
   <!-- Settings Button -->
   <button class="settings-btn" id="settingsBtn">
     <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   </button>
 
@@ -610,7 +723,7 @@
         <h2>Pengaturan Koneksi</h2>
         <button class="modal-close" id="closeSettings">
           <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -618,22 +731,84 @@
         <label for="serverUrl">Alamat Server POS</label>
         <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3001">
       </div>
-      <p style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 1rem;">
+
+      <div class="form-group"
+        style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+        <label for="darkModeToggle" style="margin-bottom: 0;">Mode Gelap</label>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <style>
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          transition: .4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked+.slider {
+          background-color: var(--primary);
+        }
+
+        input:checked+.slider:before {
+          transform: translateX(20px);
+        }
+      </style>
+
+      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; margin-top: 1rem;">
         Masukkan alamat IP komputer POS Cashier. Contoh: http://192.168.1.100:3001
       </p>
       <button class="btn-primary" id="saveSettings">Simpan & Test Koneksi</button>
     </div>
   </div>
 
-  <!-- QuaggaJS for Barcode Scanning -->
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+  <!-- QuaggaJS for Barcode Scanning (Offline) -->
+  <script src="js/quagga.min.js"></script>
 
   <script>
     // ─── Configuration ─────────────────────────────────────
     const CONFIG_KEY = 'price_checker_config';
     let config = {
-      serverUrl: localStorage.getItem(CONFIG_KEY) || ''
+      serverUrl: localStorage.getItem(CONFIG_KEY) || window.location.origin,
+      darkMode: localStorage.getItem('price_checker_dark_mode') === 'true'
     };
+
+    // Apply theme immediately
+    if (config.darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
 
     // ─── DOM Elements ──────────────────────────────────────
     const searchInput = document.getElementById('searchInput');
@@ -650,6 +825,17 @@
     const closeSettings = document.getElementById('closeSettings');
     const serverUrlInput = document.getElementById('serverUrl');
     const saveSettings = document.getElementById('saveSettings');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+
+    // Init checkbox state
+    darkModeToggle.checked = config.darkMode;
+
+    darkModeToggle.addEventListener('change', (e) => {
+      const isDark = e.target.checked;
+      config.darkMode = isDark;
+      localStorage.setItem('price_checker_dark_mode', isDark);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    });
 
     let searchTimeout = null;
     let isScanning = false;
@@ -659,7 +845,70 @@
     let inputBuffer = '';
     let scannerDetectTimeout = null;
     const SCANNER_INPUT_THRESHOLD = 50; // ms between characters (scanner is very fast)
-    const SCANNER_COMPLETE_DELAY = 100; // ms to wait before processing scanner input
+    const SCANNER_COMPLETE_DELAY = 50; // ms to wait before processing scanner input (reduced from 100)
+
+    // ─── Recent Scans Logic ────────────────────────────────
+    let recentScans = JSON.parse(localStorage.getItem('recent_scans') || '[]');
+
+    function addToRecentScans(product) {
+      if (!product || !product.id) return;
+
+      // Remove if already exists
+      recentScans = recentScans.filter(p => p.id !== product.id);
+
+      // Add to front
+      recentScans.unshift({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        barcode: product.barcode,
+        unit: product.unit
+      });
+
+      // Keep only 3
+      recentScans = recentScans.slice(0, 3);
+      localStorage.setItem('recent_scans', JSON.stringify(recentScans));
+    }
+
+    function renderRecentScans() {
+      const container = document.getElementById('recentScansContainer');
+      if (!container) return;
+
+      if (recentScans.length === 0 || searchInput.value.length > 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+      }
+
+      const items = recentScans.map(p => `
+        <div class="recent-item" data-barcode="${p.barcode || ''}">
+          <div class="recent-info">
+            <span class="recent-name">${p.name}</span>
+            <span class="recent-price">${formatCurrency(p.price)}</span>
+          </div>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="recent-scans-header">Terakhir di-scan</div>
+        <div class="recent-list">${items}</div>
+      `;
+      container.style.display = 'block';
+
+      // Add click handlers
+      container.querySelectorAll('.recent-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const barcode = el.dataset.barcode;
+          if (barcode) {
+            searchInput.value = '';
+            handleBarcodeSearch(barcode);
+          }
+        });
+      });
+    }
 
     // ─── Utilities ─────────────────────────────────────────
     function formatCurrency(amount) {
@@ -815,6 +1064,7 @@
 
       if (products.length === 1) {
         showProduct(products[0]);
+        addToRecentScans(products[0]);
         return;
       }
 
@@ -848,6 +1098,7 @@
     async function handleSearch(query) {
       if (!query || query.length < 2) {
         showEmpty();
+        renderRecentScans();
         return;
       }
 
@@ -861,10 +1112,12 @@
       const product = await getProductByBarcode(barcode);
       if (product) {
         showProduct(product);
+        addToRecentScans(product);
         // Clear input after displaying product (for next scan)
         setTimeout(() => {
           searchInput.value = '';
           searchInput.focus();
+          renderRecentScans();
         }, 3000);
       } else {
         showNotFound(barcode);
@@ -903,7 +1156,7 @@
           halfSample: true,
           patchSize: "medium"
         }
-      }, function(err) {
+      }, function (err) {
         if (err) {
           console.error('Scanner init error:', err);
           alert('Tidak dapat mengakses kamera');
@@ -913,7 +1166,7 @@
         Quagga.start();
       });
 
-      Quagga.onDetected(function(result) {
+      Quagga.onDetected(function (result) {
         const code = result.codeResult.code;
         if (code) {
           stopScanner();
@@ -1022,8 +1275,9 @@
           handleSearch(value);
         } else if (value.length === 0) {
           showEmpty();
+          renderRecentScans();
         }
-      }, 400);
+      }, 250);
     });
 
     searchInput.addEventListener('keydown', (e) => {
@@ -1135,6 +1389,9 @@
       // Focus search input
       searchInput.focus();
 
+      // Initial render of recent scans
+      renderRecentScans();
+
       // Periodic connection check
       setInterval(checkConnection, 30000);
     })();
@@ -1149,4 +1406,5 @@
     }
   </script>
 </body>
+
 </html>

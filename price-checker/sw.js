@@ -1,10 +1,14 @@
 // Service Worker for Price Checker PWA
-const CACHE_NAME = 'price-checker-v1';
+const CACHE_NAME = 'price-checker-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icons/icon.svg',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/favicon-32x32.png',
   'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js'
 ];
 
@@ -95,7 +99,7 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/icons/icon.svg'
+      icon: '/icons/icon-192x192.png'
     });
   }
 });

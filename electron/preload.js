@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld('api', {
   // Auth
   login: (username, password) => ipcRenderer.invoke('auth:login', username, password),
   verifyToken: (token) => ipcRenderer.invoke('auth:verify', token),
+  resetPasswordWithMasterKey: (username, masterKey, newPassword) => ipcRenderer.invoke('auth:resetPasswordWithMasterKey', username, masterKey, newPassword),
+  changeMasterKey: (oldMasterKey, newMasterKey) => ipcRenderer.invoke('auth:changeMasterKey', oldMasterKey, newMasterKey),
 
   // Users
   getUsers: () => ipcRenderer.invoke('users:getAll'),
@@ -28,11 +30,19 @@ contextBridge.exposeInMainWorld('api', {
   bulkDeleteProducts: (ids) => ipcRenderer.invoke('products:bulkDelete', ids),
   bulkUpdateField: (ids, field, value) => ipcRenderer.invoke('products:bulkUpdateField', ids, field, value),
   updateProductWithAudit: (id, data, auditInfo) => ipcRenderer.invoke('products:updateWithAudit', id, data, auditInfo),
+  getLowStockProducts: (threshold) => ipcRenderer.invoke('products:getLowStock', threshold),
 
   // Stock Audit Log
   getStockAuditByProduct: (productId, limit) => ipcRenderer.invoke('stockAudit:getByProduct', productId, limit),
   getStockAuditLog: (filters) => ipcRenderer.invoke('stockAudit:getAll', filters),
   getStockAuditSummary: (dateFrom, dateTo) => ipcRenderer.invoke('stockAudit:getSummary', dateFrom, dateTo),
+  createStockAuditLog: (log) => ipcRenderer.invoke('stockAudit:create', log),
+
+  // Stock Trail (New Audit System)
+  createStockTrail: (data) => ipcRenderer.invoke('stockTrail:create', data),
+  getStockTrailByProduct: (productId, limit) => ipcRenderer.invoke('stockTrail:getByProduct', productId, limit),
+  getStockTrailAll: (filters) => ipcRenderer.invoke('stockTrail:getAll', filters),
+
 
   // Transactions
   createTransaction: (data) => ipcRenderer.invoke('transactions:create', data),
@@ -50,6 +60,8 @@ contextBridge.exposeInMainWorld('api', {
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:getAll'),
   updateSettings: (settings) => ipcRenderer.invoke('settings:update', settings),
+  getMarginStats: () => ipcRenderer.invoke('settings:getMarginStats'),
+  updateMargin: (percent, mode) => ipcRenderer.invoke('settings:updateMargin', percent, mode),
 
   // API Server (Price Checker)
   getApiServerInfo: () => ipcRenderer.invoke('api:getServerInfo'),
@@ -76,9 +88,11 @@ contextBridge.exposeInMainWorld('api', {
   printReceipt: (transaction) => ipcRenderer.invoke('print:receipt', transaction),
   getReceiptHTML: (transaction) => ipcRenderer.invoke('print:preview', transaction),
   getReceiptHTMLWithSettings: (transaction, settings) => ipcRenderer.invoke('print:previewWithSettings', transaction, settings),
+  getReceiptTemplates: () => ipcRenderer.invoke('print:getTemplates'),
   getPrinters: () => ipcRenderer.invoke('print:getPrinters'),
   openCashDrawer: () => ipcRenderer.invoke('print:openDrawer'),
   uploadLogo: () => ipcRenderer.invoke('settings:uploadLogo'),
+  uploadAppLogo: () => ipcRenderer.invoke('settings:uploadAppLogo'),
 
   // Excel
   exportProducts: () => ipcRenderer.invoke('excel:exportProducts'),
@@ -112,4 +126,14 @@ contextBridge.exposeInMainWorld('api', {
   dbSetBackupDir: () => ipcRenderer.invoke('db:setBackupDir'),
   dbExportTransactions: (filters) => ipcRenderer.invoke('db:exportTransactionsExcel', filters),
   dbExportSummaryPdf: () => ipcRenderer.invoke('db:exportSummaryPdf'),
+
+  // App Control
+  restartApp: () => ipcRenderer.invoke('app:restart'),
+
+  // Cloudflare
+  installCloudflareService: () => ipcRenderer.invoke('cloudflared:install-service'),
+
+  // Auto Start
+  setAutoStart: (enabled) => ipcRenderer.invoke('system:setAutoStart', enabled),
+  getAutoStartStatus: () => ipcRenderer.invoke('system:getAutoStartStatus'),
 });

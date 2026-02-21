@@ -1,0 +1,802 @@
+import { useState, useEffect, memo } from 'react';
+import ReceiptTemplateEditor from '../components/ReceiptTemplateEditor';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  Store,
+  Settings2,
+  Printer,
+  Paintbrush,
+  Database,
+  ShieldCheck,
+  Info,
+  Clock,
+  Phone,
+  MapPin,
+  Percent,
+  Monitor,
+  CheckCircle2,
+  Image as ImageIcon,
+  RotateCcw,
+  Cloud,
+  Server,
+  Zap,
+  Lock,
+  ChevronRight,
+  Sun,
+  Moon,
+  Type,
+  FileText,
+  AlertCircle
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+
+export default memo(function SettingsPage() {
+  const [settings, setSettings] = useState<any>({});
+  const [printers, setPrinters] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [apiServerInfo, setApiServerInfo] = useState<any>(null);
+
+  const { hasRole } = useAuth() as any;
+  const isCashier = !hasRole('admin', 'supervisor');
+
+  const {
+    appName, tagline, themeColor, darkMode, fontFamily,
+    THEME_COLORS, DARK_MODES, FONTS,
+    setBranding, setThemeColor, setDarkMode, setFontFamily, resetSettings: resetTheme
+  } = useTheme() as any;
+  const [localAppName, setLocalAppName] = useState(appName);
+  const [localTagline, setLocalTagline] = useState(tagline);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    setLocalAppName(appName);
+    setLocalTagline(tagline);
+  }, [appName, tagline]);
+
+  const loadData = async () => {
+    const promises: Promise<any>[] = [
+      (window as any).api.getSettings(),
+      (window as any).api.getPrinters(),
+    ];
+    if (!isCashier) promises.push((window as any).api.getApiServerInfo());
+    const [s, p, apiInfo] = await Promise.all(promises);
+    setSettings(s);
+    setPrinters(prev => {
+      if (JSON.stringify(prev) === JSON.stringify(p)) return prev;
+      return p;
+    });
+    if (!isCashier) setApiServerInfo(apiInfo);
+  };
+
+  const handleSaveBranding = async () => {
+    await (window as any).api.updateSettings({
+      app_name: localAppName,
+      tagline: localTagline
+    });
+    setBranding(localAppName, localTagline, settings.app_logo);
+    setMessage('Branding berhasil disimpan');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleUploadLogo = async () => {
+    const result = await (window as any).api.uploadAppLogo();
+    if (result.success) {
+      setSettings((prev: any) => ({ ...prev, app_logo: result.logo }));
+      setBranding(localAppName, localTagline, result.logo);
+      setMessage('Logo aplikasi berhasil diubah');
+    } else if (result.error !== 'Cancelled') {
+      alert('Gagal upload logo: ' + result.error);
+    }
+  };
+
+  const handleChange = (key: string, value: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage('');
+    await (window as any).api.updateSettings(settings);
+    setMessage('Pengaturan berhasil disimpan');
+    setSaving(false);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleTestPrint = async () => {
+    const testTx = {
+      invoice_number: 'TEST-001',
+      cashier_name: 'Test',
+      subtotal: 50000,
+      tax_amount: 5500,
+      discount_amount: 0,
+      total: 55500,
+      payment_method: 'cash',
+      amount_paid: 60000,
+      change_amount: 4500,
+      created_at: new Date().toLocaleString('id-ID'),
+      items: [
+        { product_name: 'Produk Test 1', quantity: 2, price: 15000, subtotal: 30000 },
+        { product_name: 'Produk Test 2', quantity: 1, price: 20000, subtotal: 20000 },
+      ]
+    };
+    const result = await (window as any).api.printReceipt(testTx);
+    if (result.success) {
+      setMessage('Test print berhasil');
+    } else {
+      setMessage('Test print gagal: ' + (result.error || 'Unknown'));
+    }
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Pengaturan</h2>
+          <p className="text-sm text-gray-500 font-medium">
+            {isCashier ? 'Konfigurasi printer dan tampilan aplikasi' : 'Konfigurasi toko, perangkat, dan tema aplikasi'}
+          </p>
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="h-11 px-8 bg-gray-900 hover:bg-black shadow-lg font-black transition-all">
+          {saving ? <RotateCcw className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
+          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </Button>
+      </div>
+
+      {message && (
+        <div className={cn(
+          "p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2",
+          message.includes('gagal') ? "bg-red-50 text-red-700 border border-red-100" : "bg-green-50 text-green-700 border border-green-100"
+        )}>
+          <CheckCircle2 className="w-5 h-5" />
+          <p className="text-sm font-bold">{message}</p>
+        </div>
+      )}
+
+      <Tabs defaultValue={isCashier ? 'printer' : 'store'} className="w-full">
+        <TabsList className={cn(
+          "bg-gray-100 dark:bg-gray-800 p-1 h-12 rounded-xl w-full grid",
+          isCashier ? "grid-cols-2 max-w-xs" : "grid-cols-2 lg:grid-cols-4 lg:max-w-2xl"
+        )}>
+          {!isCashier && (
+            <TabsTrigger value="store" className="rounded-lg font-bold text-xs gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm">
+              <Store className="w-4 h-4" /> Informasi Toko
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="printer" className="rounded-lg font-bold text-xs gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm">
+            <Printer className="w-4 h-4" /> Informasi Printer
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="rounded-lg font-bold text-xs gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm">
+            <Paintbrush className="w-4 h-4" /> Tampilan & Tema
+          </TabsTrigger>
+          {!isCashier && (
+            <TabsTrigger value="system" className="rounded-lg font-bold text-xs gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-sm">
+              <Database className="w-4 h-4" /> Sistem & API
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <div className="mt-6 space-y-6">
+          {!isCashier && <TabsContent value="store" className="m-0 focus-visible:outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Store className="w-5 h-5 text-primary-600" /> Identitas Toko
+                  </CardTitle>
+                  <CardDescription>Informasi ini akan muncul di struk dan laporan</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Toko</label>
+                    <div className="relative">
+                      <Store className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                      <Input className="pl-10 h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.store_name || ''} onChange={e => handleChange('store_name', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Alamat Lengkap</label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                      <Input className="pl-10 h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.store_address || ''} onChange={e => handleChange('store_address', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Telepon / WhatsApp</label>
+                      <div className="relative">
+                        <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                        <Input className="pl-10 h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.store_phone || ''} onChange={e => handleChange('store_phone', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Zona Waktu</label>
+                      <Select value={String(settings.timezone_offset || 'auto')} onValueChange={val => handleChange('timezone_offset', val)}>
+                        <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                          <SelectValue placeholder="Pilih WIT/WITA/WIB" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Otomatis (Ikuti Jam Komputer)</SelectItem>
+                          <SelectItem value="7">WIB (UTC+7)</SelectItem>
+                          <SelectItem value="8">WITA (UTC+8)</SelectItem>
+                          <SelectItem value="9">WIT (UTC+9)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Percent className="w-5 h-5 text-orange-600" /> Pengaturan Pajak
+                  </CardTitle>
+                  <CardDescription>Konfigurasi PPN untuk transaksi</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-black">Aktifkan PPN</Label>
+                      <p className="text-xs text-gray-500">Otomatis tambahkan pajak ke struk</p>
+                    </div>
+                    <Switch
+                      checked={settings.tax_enabled === 'true'}
+                      onCheckedChange={val => handleChange('tax_enabled', val ? 'true' : 'false')}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tarif Pajak (%)</label>
+                    <div className="relative">
+                      <Percent className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                      <Input
+                        type="number"
+                        className="pl-10 h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner"
+                        value={settings.tax_rate || '11'}
+                        onChange={e => handleChange('tax_rate', e.target.value)}
+                        min="0" max="100"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="lg:col-span-2">
+                <MarginSettingsCard
+                  defaultMargin={settings.default_margin_percent}
+                  onSave={() => { loadData(); setMessage('Margin berhasil diupdate'); setTimeout(() => setMessage(''), 3000); }}
+                />
+              </div>
+            </div>
+          </TabsContent>}
+
+          <TabsContent value="printer" className="m-0 focus-visible:outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Printer className="w-5 h-5 text-blue-600" /> Perangkat Printer
+                  </CardTitle>
+                  <CardDescription>Pilih printer thermal yang tersedia</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Printer</label>
+                    <Select value={settings.printer_name || ''} onValueChange={val => handleChange('printer_name', val)}>
+                      <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                        <SelectValue placeholder="Pilih Printer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {printers.map(p => (
+                          <SelectItem key={p.name} value={p.name}>{p.name} {p.isDefault ? '(Default)' : ''}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Lebar Kertas</label>
+                      <Select value={settings.receipt_width || '58'} onValueChange={val => handleChange('receipt_width', val)}>
+                        <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="58">58mm (Kecil)</SelectItem>
+                          <SelectItem value="80">80mm (Standar)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button variant="outline" onClick={handleTestPrint} className="w-full h-11 font-bold gap-2">
+                        <Zap className="w-4 h-4 text-orange-500" /> Test Print
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Perilaku Cetak Otomatis</label>
+                    <Select value={settings.print_after_transaction || 'preview'} onValueChange={val => handleChange('print_after_transaction', val)}>
+                      <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="preview">Tampilkan Preview (Manual)</SelectItem>
+                        <SelectItem value="auto_print">Langsung Cetak (Auto)</SelectItem>
+                        <SelectItem value="none">Jangan Cetak</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {!isCashier && (
+              <Card className="border-none shadow-sm h-full bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-primary-600" /> Konten Struk
+                  </CardTitle>
+                  <CardDescription>Header dan footer pada struk belanja</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Header (Atas)</label>
+                    <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_header || ''} onChange={e => handleChange('receipt_header', e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Footer (Bawah)</label>
+                    <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_footer || ''} onChange={e => handleChange('receipt_footer', e.target.value)} />
+                  </div>
+                  <Button onClick={() => setShowTemplateEditor(true)} className="w-full h-11 bg-primary-50 text-primary-700 hover:bg-primary-100 border-none shadow-none font-bold gap-2">
+                    <Paintbrush className="w-4 h-4" /> Buka Desainer Template
+                  </Button>
+                </CardContent>
+              </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="appearance" className="m-0 focus-visible:outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {!isCashier && (
+              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-black flex items-center gap-2">
+                      <Monitor className="w-5 h-5 text-primary-600" /> Branding Aplikasi
+                    </CardTitle>
+                    <CardDescription>Sesuaikan nama dan logo aplikasi</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => { resetTheme(); setLocalAppName('POS Kasir'); setLocalTagline('Sistem Kasir Modern'); }} className="text-gray-400 hover:text-red-500">
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200">
+                    <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center border-2 border-gray-100 overflow-hidden shadow-inner group relative">
+                      {settings.app_logo ? (
+                        <img src={settings.app_logo} alt="Logo" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <span className="text-3xl text-gray-300 font-black">{localAppName.charAt(0)}</span>
+                      )}
+                      <button onClick={handleUploadLogo} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <ImageIcon className="w-6 h-6 text-white" />
+                      </button>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-xs font-bold text-gray-500">Logo Aplikasi</p>
+                      <Button onClick={handleUploadLogo} size="sm" variant="outline" className="h-8 font-bold text-xs uppercase">Ganti Logo</Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Aplikasi</label>
+                      <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner font-bold" value={localAppName} onChange={e => setLocalAppName(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tagline</label>
+                      <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={localTagline} onChange={e => setLocalTagline(e.target.value)} />
+                    </div>
+                    <Button onClick={handleSaveBranding} className="w-full h-11 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-bold">
+                      Terapkan Branding
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              )}
+
+              <Card className={cn("border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden", isCashier && "lg:col-span-2")}>
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Paintbrush className="w-5 h-5 text-purple-600" /> Kustomisasi Tema
+                  </CardTitle>
+                  <CardDescription>Warna, mode, dan tipografi</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Warna Aksen</label>
+                    <div className="flex flex-wrap gap-3">
+                      {Object.entries(THEME_COLORS).map(([key, { name, color, gradient }]: any) => (
+                        <button
+                          key={key}
+                          onClick={() => setThemeColor(key)}
+                          className={cn(
+                            "w-10 h-10 rounded-2xl transition-all relative flex items-center justify-center",
+                            themeColor === key ? "ring-4 ring-gray-100 dark:ring-gray-800 scale-110 shadow-lg" : "hover:scale-105"
+                          )}
+                          style={gradient ? { background: gradient } : { backgroundColor: color }}
+                          title={name}
+                        >
+                          {themeColor === key && <CheckCircle2 className="w-5 h-5 text-white drop-shadow" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 text-gray-400">Mode Tampilan</label>
+                    <div className="grid grid-cols-3 gap-2 bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-2xl">
+                      {Object.entries(DARK_MODES).map(([key, label]: any) => (
+                        <button
+                          key={key}
+                          onClick={() => setDarkMode(key)}
+                          className={cn(
+                            "flex items-center justify-center gap-2 h-10 px-3 text-xs font-bold rounded-xl transition-all",
+                            darkMode === key ? "bg-white dark:bg-gray-700 text-primary-700 dark:text-primary-300 shadow-md translate-y-[-1px]" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          )}
+                        >
+                          {key === 'auto' && <Monitor className="w-4 h-4" />}
+                          {key === 'light' && <Sun className="w-4 h-4" />}
+                          {key === 'dark' && <Moon className="w-4 h-4" />}
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tipografi (Font)</label>
+                    <Select value={fontFamily || 'system'} onValueChange={setFontFamily}>
+                      <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner font-bold data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                        <Type className="w-4 h-4 mr-2 text-gray-400" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(FONTS).map(([key, { name, value }]: any) => (
+                          <SelectItem key={key} value={key} style={{ fontFamily: value }}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {!isCashier && <TabsContent value="system" className="m-0 focus-visible:outline-none">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Server className="w-5 h-5 text-green-600" /> Server Price Checker
+                  </CardTitle>
+                  <CardDescription>Cek harga mandiri via smartphone/tablet</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {apiServerInfo ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                        <p className="text-sm font-black text-green-700">API Server Aktif</p>
+                      </div>
+                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-400 font-bold uppercase text-[10px]">Local URL:</span>
+                          <code className="bg-white dark:bg-gray-800 px-3 py-1 rounded-lg font-sans text-xs">{apiServerInfo.localUrl}</code>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-400 font-bold uppercase text-[10px]">Network URL:</span>
+                          <code className="bg-primary-50 px-3 py-1 rounded-lg font-bold text-primary-700 text-xs">{apiServerInfo.networkUrl}</code>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                      <p className="text-sm font-bold text-yellow-700">Server Tidak Aktif</p>
+                    </div>
+                  )}
+
+                  <div className="p-4 bg-blue-50/50 rounded-2xl space-y-3">
+                    <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Langkah Setup:</p>
+                    <ul className="text-xs space-y-2 text-blue-900 font-medium">
+                      <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Connect HP/Tablet ke WiFi yang sama</li>
+                      <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Scan QR atau ketik URL Network di Browser</li>
+                      <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Install sebagai aplikasi (Add to Home Screen)</li>
+                    </ul>
+                  </div>
+                  <CloudflareSection />
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm h-full bg-white dark:bg-gray-900 overflow-hidden">
+                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-red-600" /> Master Key Security
+                  </CardTitle>
+                  <CardDescription>Pemulihan password admin & akses darurat</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MasterKeySection onMessage={setMessage} />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>}
+        </div>
+      </Tabs>
+
+      {showTemplateEditor && (
+        <ReceiptTemplateEditor
+          onClose={() => {
+            setShowTemplateEditor(false);
+            loadData();
+          }}
+        />
+      )}
+    </div>
+  );
+});
+
+// Internal Components
+function MarginSettingsCard({ defaultMargin, onSave }: any) {
+  const [margin, setMargin] = useState(defaultMargin || '10.5');
+  const [mode, setMode] = useState('new_only');
+  const [stats, setStats] = useState({ total: 0, auto: 0, manual: 0 });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setMargin(defaultMargin || '10.5');
+    loadStats();
+  }, [defaultMargin]);
+
+  const loadStats = async () => {
+    setLoading(true);
+    const data = await (window as any).api.getMarginStats();
+    setStats(data);
+    setLoading(false);
+  };
+
+  const handleApply = async () => {
+    if (!confirm('Terapkan aturan margin ini sekarang?')) return;
+    setSaving(true);
+    try {
+      const result = await (window as any).api.updateMargin(margin, mode);
+      if (result.success) {
+        onSave();
+        loadStats();
+      }
+    } catch (err: any) {
+      alert('Gagal: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+      <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
+        <CardTitle className="text-lg font-black flex items-center gap-2">
+          <Zap className="w-5 h-5 text-yellow-600" /> Otomatisasi Harga & Margin
+        </CardTitle>
+        <CardDescription>Gunakan harga jual untuk kalkulasi otomatis harga modal</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Global Margin (%)</label>
+              <Input
+                type="number"
+                className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner font-black"
+                value={margin}
+                onChange={e => setMargin(e.target.value)}
+              />
+              <p className="text-[9px] text-gray-500 font-medium px-1 uppercase tracking-tighter">Modal = Jual * (1 - Margin%)</p>
+            </div>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cakupan Data</p>
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-gray-500">Auto-Margin</span>
+                <span className="text-green-600">{stats.auto} Item</span>
+              </div>
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-gray-500">Manual-Mode</span>
+                <span className="text-orange-600">{stats.manual} Item</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="md:col-span-1 lg:col-span-2 space-y-3">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mode Penerapan</p>
+            <div className="grid grid-cols-1 gap-2">
+              <ModeButton
+                active={mode === 'new_only'}
+                onClick={() => setMode('new_only')}
+                title="Item Baru Saja"
+                desc="Berlaku hanya untuk input produk di masa depan"
+              />
+              <ModeButton
+                active={mode === 'auto_only'}
+                onClick={() => setMode('auto_only')}
+                title="Update Auto-Mode"
+                desc={`Update ${stats.auto} produk yang saat ini mode Auto`}
+              />
+              <ModeButton
+                active={mode === 'force_all'}
+                onClick={() => setMode('force_all')}
+                danger={true}
+                title="Timpa SEMUA Data"
+                desc={`Update ${stats.total} produk (Termasuk mode Manual)`}
+              />
+            </div>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="bg-gray-50 dark:bg-gray-800/50 p-6 border-t dark:border-gray-800">
+        <Button onClick={handleApply} disabled={saving} className={cn(
+          "w-full h-11 font-black shadow-lg",
+          mode === 'force_all' ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : "bg-primary-600 hover:bg-primary-700 shadow-primary-600/20"
+        )}>
+          {saving ? 'Melakukan Sinkronisasi...' : 'Terapkan Aturan Margin Keren Ini'}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function ModeButton({ active, onClick, title, desc, danger }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-start p-3 rounded-2xl border transition-all text-left",
+        active
+          ? (danger ? "bg-red-50 border-red-500 ring-2 ring-red-100" : "bg-primary-50 border-primary-500 ring-2 ring-primary-100")
+          : "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+      )}
+    >
+      <div className="flex items-center justify-between w-full">
+        <span className={cn("text-xs font-black", active ? (danger ? "text-red-700" : "text-primary-700") : "text-gray-900")}>{title}</span>
+        {active && <CheckCircle2 className={cn("w-4 h-4", danger ? "text-red-500" : "text-primary-600")} />}
+      </div>
+      <p className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">{desc}</p>
+    </button>
+  );
+}
+
+function MasterKeySection({ onMessage }: any) {
+  const [oldKey, setOldKey] = useState('');
+  const [newKey, setNewKey] = useState('');
+  const [confirmKey, setConfirmKey] = useState('');
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!oldKey || !newKey || !confirmKey) { setError('Semua kolom harus diisi'); return; }
+    if (newKey !== confirmKey) { setError('Master Key baru tidak cocok'); return; }
+    setSaving(true);
+    try {
+      const result = await (window as any).api.changeMasterKey(oldKey, newKey);
+      if (result.success) {
+        onMessage('Master Key berhasil diubah');
+        setOldKey(''); setNewKey(''); setConfirmKey('');
+      } else { setError(result.error || 'Gagal mengubah Master Key'); }
+    } catch (err) { setError('Terjadi kesalahan sistem'); } finally { setSaving(false); }
+  };
+
+  return (
+    <form onSubmit={handleChange} className="space-y-4">
+      {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold">{error}</div>}
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Master Key Lama</label>
+        <div className="relative">
+          <Input type={showOld ? 'text' : 'password'} className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner pr-10" value={oldKey} onChange={e => setOldKey(e.target.value)} />
+          <Button type="button" variant="ghost" size="icon" onClick={() => setShowOld(!showOld)} className="absolute right-1.5 top-1.5 h-8 w-8 text-gray-400"><Eye className="w-4 h-4" /></Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Key Baru</label>
+          <div className="relative">
+            <Input type={showNew ? 'text' : 'password'} className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner pr-10" value={newKey} onChange={e => setNewKey(e.target.value)} />
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowNew(!showNew)} className="absolute right-1.5 top-1.5 h-8 w-8 text-gray-400"><Eye className="w-4 h-4" /></Button>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Konfirmasi</label>
+          <Input type="password" className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={confirmKey} onChange={e => setConfirmKey(e.target.value)} />
+        </div>
+      </div>
+      <Button type="submit" disabled={saving} className="w-full h-11 bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-none font-bold">
+        Update Master Key Keamanan
+      </Button>
+    </form>
+  );
+}
+
+function CloudflareSection() {
+  const [installing, setInstalling] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const handleInstallService = async () => {
+    if (!confirm('Instal Cloudflare Tunnel sebagai Windows Service?')) return;
+    setInstalling(true); setResult(null);
+    try {
+      const res = await (window as any).api.installCloudflareService();
+      setResult({ success: res.success, message: res.success ? 'Service Berhasil Terinstal' : 'Gagal: ' + res.error });
+    } catch (err: any) { setResult({ success: false, message: err.message }); } finally { setInstalling(false); }
+  };
+
+  return (
+    <div className="pt-6 border-t border-dashed border-gray-200 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Cloud className="w-5 h-5 text-blue-500" />
+          <span className="text-sm font-black">Windows Service Automation</span>
+        </div>
+        {result && (
+          <Badge className={cn("font-bold text-[10px] shadow-none", result.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+            {result.message}
+          </Badge>
+        )}
+      </div>
+      <Button
+        onClick={handleInstallService}
+        disabled={installing}
+        className="w-full h-11 bg-gray-50 text-gray-700 border border-gray-100 hover:bg-white shadow-none font-bold gap-2"
+      >
+        {installing ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-primary-600" />}
+        {installing ? 'Memproses Instalasi...' : 'Instal Cloudflare Automation Service'}
+      </Button>
+    </div>
+  );
+}
+
+function Eye({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}

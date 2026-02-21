@@ -59,7 +59,71 @@ function buildStockAuditSection(stockAuditData) {
   return lines;
 }
 
-export function buildSalesPlainText(salesData, hourlyData, dateFrom, dateTo, stockAuditData) {
+function buildTransactionLogSection(txLog) {
+  if (!txLog || txLog.length === 0) return [];
+
+  const METHOD = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS', transfer: 'Transfer' };
+  const lines = [];
+  lines.push('');
+  lines.push(line('-'));
+  lines.push(center('LOG TRANSAKSI'));
+  lines.push(line('-'));
+
+  const txWidths = [14, 18, 10, 16, 14];
+  lines.push('  ' + tableSep(txWidths));
+  lines.push('  ' + tableRow(['Waktu', 'Invoice', 'Metode', 'Total', 'Kasir'], txWidths, ['left', 'left', 'left', 'right', 'left']));
+  lines.push('  ' + tableSep(txWidths));
+
+  const items = txLog.slice(0, 300);
+  for (const tx of items) {
+    const time = tx.created_at ? tx.created_at.slice(0, 16).replace('T', ' ') : '-';
+    const method = METHOD[tx.payment_method] || tx.payment_method || '-';
+    lines.push('  ' + tableRow([time, tx.invoice_number || '-', method, fmtCurrency(tx.total), tx.cashier_name || '-'], txWidths, ['left', 'left', 'left', 'right', 'left']));
+
+    // Item detail per transaksi (indented)
+    const txItems = tx.items || [];
+    if (txItems.length > 0) {
+      for (const item of txItems) {
+        const itemLine = `    ${item.product_name} x${item.quantity}  ${fmtCurrency(item.subtotal)}`;
+        lines.push(itemLine.slice(0, WIDTH));
+      }
+    }
+  }
+
+  lines.push('  ' + tableSep(txWidths));
+  if (txLog.length > 300) {
+    lines.push(`  * Ditampilkan 300 dari ${txLog.length} transaksi.`);
+  }
+  lines.push('');
+  return lines;
+}
+
+function buildStockTrailSection(stockTrailData) {
+  if (!stockTrailData || stockTrailData.length === 0) return [];
+
+  const lines = [];
+  lines.push('');
+  lines.push('  LOG MUTASI STOK (HISTORI PERGERAKAN)');
+  const trailWidths = [14, 20, 10, 16, 8];
+  lines.push('  ' + tableSep(trailWidths));
+  lines.push('  ' + tableRow(['Waktu', 'Produk', 'Event', 'Alur', 'Ubah'], trailWidths, ['left', 'left', 'left', 'right', 'right']));
+  lines.push('  ' + tableSep(trailWidths));
+  const items = stockTrailData.slice(0, 100);
+  for (const t of items) {
+    const time = t.created_at ? t.created_at.slice(5, 16).replace('T', ' ') : '';
+    const flow = `${t.quantity_before}->${t.quantity_after}`;
+    const change = t.quantity_change > 0 ? `+${fmtNum(t.quantity_change)}` : fmtNum(t.quantity_change);
+    lines.push('  ' + tableRow([time, t.product_name, t.event_type, flow, change], trailWidths, ['left', 'left', 'left', 'right', 'right']));
+  }
+  lines.push('  ' + tableSep(trailWidths));
+  if (stockTrailData.length > 100) {
+    lines.push(`  ... dan ${stockTrailData.length - 100} entri lainnya`);
+  }
+  lines.push('');
+  return lines;
+}
+
+export function buildSalesPlainText(salesData, hourlyData, dateFrom, dateTo, stockAuditData, stockTrailData) {
   const d = salesData;
   const lines = [];
 
@@ -127,8 +191,14 @@ export function buildSalesPlainText(salesData, hourlyData, dateFrom, dateTo, sto
   lines.push('  ' + tableSep(dayWidths));
   lines.push('');
 
+  // Transaction log
+  lines.push(...buildTransactionLogSection(d.transactionLog));
+
   // Stock audit log
   lines.push(...buildStockAuditSection(stockAuditData));
+
+  // Stock trail log
+  lines.push(...buildStockTrailSection(stockTrailData));
 
   lines.push(line('-'));
   lines.push(center(`Dicetak: ${new Date().toLocaleString('id-ID')}`));
@@ -137,7 +207,7 @@ export function buildSalesPlainText(salesData, hourlyData, dateFrom, dateTo, sto
   return lines.join('\n');
 }
 
-export function buildProfitPlainText(profitData, dateFrom, dateTo, stockAuditData) {
+export function buildProfitPlainText(profitData, dateFrom, dateTo, stockAuditData, stockTrailData) {
   const d = profitData;
   const lines = [];
 
@@ -177,6 +247,9 @@ export function buildProfitPlainText(profitData, dateFrom, dateTo, stockAuditDat
   // Stock audit log
   lines.push(...buildStockAuditSection(stockAuditData));
 
+  // Stock trail log
+  lines.push(...buildStockTrailSection(stockTrailData));
+
   lines.push(line('-'));
   lines.push(center(`Dicetak: ${new Date().toLocaleString('id-ID')}`));
   lines.push(line('-'));
@@ -184,7 +257,7 @@ export function buildProfitPlainText(profitData, dateFrom, dateTo, stockAuditDat
   return lines.join('\n');
 }
 
-export function buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateFrom2, dateTo2) {
+export function buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateFrom2, dateTo2, stockAuditData, stockTrailData) {
   const d = comparisonData;
   const lines = [];
 
@@ -207,6 +280,9 @@ export function buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateF
   lines.push('  ' + tableSep(colWidths));
   lines.push('');
 
+  lines.push(...buildStockAuditSection(stockAuditData));
+  lines.push(...buildStockTrailSection(stockTrailData));
+
   lines.push(line('-'));
   lines.push(center(`Dicetak: ${new Date().toLocaleString('id-ID')}`));
   lines.push(line('-'));
@@ -214,7 +290,7 @@ export function buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateF
   return lines.join('\n');
 }
 
-export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData) {
+export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData, stockTrailData) {
   const c = comprehensiveData;
   const lines = [];
 
@@ -353,6 +429,14 @@ export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo,
     lines.push(center('LOG PERUBAHAN STOK MANUAL'));
     lines.push(line('-'));
     lines.push(...buildStockAuditSection(stockAuditData));
+  }
+
+  // Stock trail log
+  if (stockTrailData && stockTrailData.length > 0) {
+    lines.push(line('-'));
+    lines.push(center('LOG MUTASI STOK (HISTORI PERGERAKAN)'));
+    lines.push(line('-'));
+    lines.push(...buildStockTrailSection(stockTrailData));
   }
 
   lines.push(line('='));
