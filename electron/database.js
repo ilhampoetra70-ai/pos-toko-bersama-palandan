@@ -1499,8 +1499,9 @@ function getSalesReport(dateFrom, dateTo) {
         );
 
         const transactionLog = getTransactionLog(dateFrom, dateTo, 300);
+        const hourlyBreakdown = getHourlySalesPattern(dateFrom, dateTo);
 
-        return { summary, paymentBreakdown, dailyBreakdown, topProducts, transactionLog };
+        return { summary, paymentBreakdown, dailyBreakdown, topProducts, transactionLog, hourlyBreakdown };
     } catch (err) {
         console.error('[Database] getSalesReport failed:', err.message);
         throw err;
