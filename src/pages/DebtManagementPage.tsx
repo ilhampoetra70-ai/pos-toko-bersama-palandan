@@ -75,7 +75,7 @@ export default function DebtManagementPage() {
 
     const handleAddPayment = async (tx: any) => {
         // Load fresh transaction data
-        const detail = await (window as any).api.getTransactionById(tx.id);
+        const detail = await window.api.getTransactionById(tx.id);
         setSelectedTx(detail);
         setShowAddPayment(true);
     };
@@ -161,7 +161,7 @@ export default function DebtManagementPage() {
             )}
 
             {/* Filters */}
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm bg-white dark:bg-gray-900">
                 <CardContent className="p-6">
                     <div className="flex flex-wrap items-end gap-6">
                         <div className="space-y-1.5 flex-1 min-w-[250px]">
@@ -172,7 +172,7 @@ export default function DebtManagementPage() {
                                     placeholder="Nama atau alamat..."
                                     value={filters.customer_search}
                                     onChange={e => setFilters(f => ({ ...f, customer_search: e.target.value }))}
-                                    className="pl-10 h-11 bg-gray-50/50 border-none shadow-inner font-bold"
+                                    className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 dark:text-gray-100 border-none shadow-inner font-bold"
                                 />
                             </div>
                         </div>
@@ -180,7 +180,7 @@ export default function DebtManagementPage() {
                         <div className="space-y-1.5 w-48">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Pembayaran</label>
                             <Select value={filters.payment_status || 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_status: v === 'all' ? '' : v }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 border-none shadow-inner font-bold">
+                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 dark:text-gray-100 border-none shadow-inner font-bold">
                                     <SelectValue placeholder="Semua" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -192,16 +192,16 @@ export default function DebtManagementPage() {
                             </Select>
                         </div>
 
-                        <div className="flex items-center gap-3 h-11 px-4 bg-gray-50/50 rounded-xl">
+                        <div className="flex items-center gap-3 h-11 px-4 bg-gray-50/50 dark:bg-gray-800/50 rounded-xl">
                             <Checkbox
                                 id="overdue_only"
                                 checked={filters.overdue_only}
                                 onCheckedChange={(checked) => setFilters(f => ({ ...f, overdue_only: !!checked }))}
                             />
-                            <label htmlFor="overdue_only" className="text-sm font-bold text-gray-600 cursor-pointer">Jatuh tempo saja</label>
+                            <label htmlFor="overdue_only" className="text-sm font-bold text-gray-600 dark:text-gray-300 cursor-pointer">Jatuh tempo saja</label>
                         </div>
 
-                        <Button onClick={handleFilter} disabled={loading} size="lg" className="h-11 px-8 font-black bg-gray-900 hover:bg-black shadow-lg">
+                        <Button onClick={handleFilter} disabled={loading} size="lg" className="h-11 px-8 font-black bg-gray-900 dark:bg-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 shadow-lg">
                             Tampilkan Piutang
                         </Button>
                     </div>

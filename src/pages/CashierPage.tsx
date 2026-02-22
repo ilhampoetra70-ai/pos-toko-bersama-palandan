@@ -12,6 +12,7 @@ import {
   User as UserIcon,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   CreditCard,
   Printer,
   Check,
@@ -19,6 +20,7 @@ import {
   Package,
   ShoppingCart,
   ShoppingBag,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +47,7 @@ interface Product {
   price: number;
   cost?: number;
   stock: number;
-  unit: string;
+  unit?: string;
   category_id?: number;
 }
 
@@ -68,14 +70,18 @@ export default function CashierPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
 
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts({
+  const { data: productsData = [], isLoading: isLoadingProducts } = useProducts({
     search: search || undefined,
     category_id: filterCat || undefined,
-    active: 1
+    active: 1,
+    limit: 80
   });
-  const { data: categories = [] } = useCategories();
+  const { data: categoriesData = [] } = useCategories();
   const { data: settings = {} } = useSettings();
   const createTxMutation = useCreateTransaction();
+
+  const products: Product[] = Array.isArray(productsData) ? productsData : (productsData as any).data || [];
+  const categories: any[] = Array.isArray(categoriesData) ? categoriesData : (categoriesData as any).data || [];
 
   const [showPayment, setShowPayment] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -159,11 +165,30 @@ export default function CashierPage() {
   const total = subtotal + taxAmount - discount;
   const totalQty = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setShowScanner(true);
+      }
+      if (e.key === ' ' && document.activeElement === document.body) {
+        e.preventDefault();
+        if (cart.length > 0 && total > 0) setShowPayment(true);
+      }
+      if (e.key === 'k' && e.ctrlKey) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [cart.length, total]);
+
   const handleBarcodeDetected = async (code: string) => {
     setShowScanner(false);
-    const product = await (window as any).api.getProductByBarcode(code);
-    if (product) {
-      addToCart(product);
+    const result = await window.api.getProductByBarcode(code);
+    if (result.success && result.data) {
+      addToCart(result.data);
     } else {
       alert(`Produk dengan barcode "${code}" tidak ditemukan`);
     }
@@ -172,9 +197,9 @@ export default function CashierPage() {
 
   const handleSearchKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && search.trim()) {
-      const product = await (window as any).api.getProductByBarcode(search.trim());
-      if (product) {
-        addToCart(product);
+      const result = await window.api.getProductByBarcode(search.trim());
+      if (result.success && result.data) {
+        addToCart(result.data);
         setSearch('');
         return;
       }
@@ -186,13 +211,13 @@ export default function CashierPage() {
   };
 
   const loadReceiptPreview = async (tx: any) => {
-    const html = await (window as any).api.getReceiptHTML(tx);
+    const html = await window.api.getReceiptHTML(tx);
     setReceiptHtml(html);
   };
 
   const doPrint = async (tx: any) => {
     setPrinting(true);
-    const result = await (window as any).api.printReceipt(tx);
+    const result = await window.api.printReceipt(tx);
     setPrinting(false);
     if (!result.success) {
       alert('Print gagal: ' + (result.error || 'Unknown error'));
@@ -281,80 +306,76 @@ export default function CashierPage() {
   const printMode = settings.print_after_transaction || 'preview';
 
   return (
-    <div className="flex gap-3 h-[calc(100vh-3rem)]">
+    <div className="flex h-[calc(100vh-3rem)] gap-0">
 
       {/* ── Left: Product Grid ── */}
-      <div className="flex-1 flex flex-col min-w-0 gap-2">
+      <section className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-950">
 
-        {/* Search + Scan bar */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <Input
-              ref={searchRef}
-              className="pl-9 h-10 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm focus:shadow-md transition-shadow"
-              placeholder="Cari produk atau scan barcode..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              autoFocus
-            />
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => setShowScanner(true)}
-            className="h-10 shrink-0 flex items-center gap-1.5 px-3 shadow-sm"
-            title="Scan Barcode"
-          >
-            <Scan className="w-4 h-4" />
-            <span className="text-xs font-medium">Scan</span>
-          </Button>
-        </div>
-
-        {/* Category filter pills */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => setFilterCat('')}
-            className={cn(
-              "px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 border",
-              !filterCat
-                ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white border-transparent shadow-sm shadow-primary-500/30"
-                : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary-300 dark:hover:border-primary-700 hover:text-primary-600 dark:hover:text-primary-400"
-            )}
-          >
-            Semua
-          </button>
-          {categories.map(cat => (
+        {/* Search + controls area */}
+        <div className="p-4 border-b border-gray-200/50 dark:border-gray-800/50 flex flex-col gap-3 bg-white/80 dark:bg-gray-900/30 shrink-0">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                ref={searchRef}
+                className="w-full h-12 pl-10 pr-24 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-medium focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
+                placeholder="Cari nama produk atau scan barcode..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                autoFocus
+              />
+              {!isLoadingProducts && products.length > 0 && (
+                <div className="absolute right-[4.5rem] top-1/2 -translate-y-1/2">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-600 font-bold tabular-nums">
+                    {products.length}
+                  </span>
+                </div>
+              )}
+            </div>
             <button
-              key={cat.id}
-              onClick={() => setFilterCat(filterCat === String(cat.id) ? '' : String(cat.id))}
+              onClick={() => setShowScanner(true)}
+              className="h-12 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-600 transition-all shrink-0 font-medium text-sm"
+              title="Scan Barcode (F2)"
+            >
+              <Scan className="w-4 h-4" />
+              <span className="hidden sm:inline">Scan</span>
+            </button>
+          </div>
+
+          {/* Category pills */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button
+              onClick={() => setFilterCat('')}
               className={cn(
-                "px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-150 border",
-                filterCat === String(cat.id)
-                  ? "bg-gradient-to-r from-primary-500 to-primary-600 text-white border-transparent shadow-sm shadow-primary-500/30"
-                  : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary-300 dark:hover:border-primary-700 hover:text-primary-600 dark:hover:text-primary-400"
+                "px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors",
+                !filterCat
+                  ? "bg-primary-600 text-white shadow-lg shadow-primary-600/20"
+                  : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-700"
               )}
             >
-              {cat.name}
+              Semua
             </button>
-          ))}
+            {Array.isArray(categories) && categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setFilterCat(filterCat === String(cat.id) ? '' : String(cat.id))}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors",
+                  filterCat === String(cat.id)
+                    ? "bg-primary-600 text-white shadow-lg shadow-primary-600/20"
+                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-700"
+                )}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Product count row */}
-        {!isLoadingProducts && products.length > 0 && (
-          <div className="flex items-center gap-1.5 px-0.5">
-            <Package className="w-3.5 h-3.5 text-gray-400 dark:text-gray-600" />
-            <span className="text-[11px] font-medium text-gray-400 dark:text-gray-600">
-              {products.length} produk
-              {filterCat && ' dalam kategori ini'}
-              {search && ` untuk "${search}"`}
-            </span>
-          </div>
-        )}
-
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-0.5">
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {isLoadingProducts ? (
               <div className="col-span-full py-20 text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto opacity-20" />
@@ -363,136 +384,152 @@ export default function CashierPage() {
               <ProductCard key={product.id} product={product} onClick={addToCart} />
             ))}
             {!isLoadingProducts && products.length === 0 && (
-              <div className="col-span-full text-center py-20 text-gray-400">
+              <div className="col-span-full text-center py-20 text-gray-400 dark:text-gray-600">
                 <Package className="w-14 h-14 mx-auto mb-3 opacity-15" />
                 <p className="font-semibold text-sm">Tidak ada produk ditemukan</p>
-                {search && <p className="text-xs mt-1 text-gray-300 dark:text-gray-600">Coba kata kunci lain</p>}
+                {search && <p className="text-xs mt-1">Coba kata kunci lain</p>}
               </div>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── Right: Cart Panel ── */}
-      <div className="w-[340px] bg-white dark:bg-gray-900 rounded-xl shadow-md border border-gray-200 dark:border-gray-800 flex flex-col shrink-0 overflow-hidden">
+      <aside className="w-[360px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shrink-0 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.15)] dark:shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.5)]">
 
-        {/* Cart Header — dark gradient */}
-        <div className="px-4 py-3 bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-800 dark:to-primary-900 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-primary-400" />
-              <span className="text-sm font-bold text-white">Keranjang</span>
+        {/* Cart Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-primary-500 dark:text-primary-400">
+              <ShoppingCart className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-bold text-sm text-gray-900 dark:text-gray-100">Pesanan Baru</h2>
               {totalQty > 0 && (
-                <span className="bg-primary-500 text-white text-[9px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-black tabular-nums">
-                  {totalQty}
-                </span>
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium tabular-nums">
+                  {totalQty} unit &middot; {cart.length} item
+                </div>
               )}
             </div>
-            {cart.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-gray-500 hover:text-red-400 text-[11px] font-medium transition-colors"
-              >
-                Hapus Semua
-              </button>
-            )}
           </div>
+          {cart.length > 0 && (
+            <button
+              onClick={clearCart}
+              className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center transition-colors"
+              title="Kosongkan keranjang"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        <Cart items={cart} onUpdateQty={updateCartQty} onRemove={removeFromCart} onUpdateDiscount={updateCartDiscount} />
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <Cart items={cart} onUpdateQty={updateCartQty} onRemove={removeFromCart} onUpdateDiscount={updateCartDiscount} />
+        </div>
 
         {/* Customer Info */}
-        <div className="border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 shrink-0">
-          <button
-            onClick={() => setShowCustomerInfo(!showCustomerInfo)}
-            className="w-full px-4 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <UserIcon className="w-3.5 h-3.5" />
-              Info Pembeli
-              {(customerName || customerAddress) && (
-                <Badge variant="secondary" className="text-[9px] h-4 px-1.5 font-bold">Terisi</Badge>
-              )}
+        <button
+          onClick={() => setShowCustomerInfo(!showCustomerInfo)}
+          className="w-full px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex justify-between items-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+        >
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+            <UserIcon className="w-4 h-4" />
+            <span className="text-xs font-semibold">
+              {customerName ? customerName : 'Tambah Data Pelanggan'}
             </span>
-            {showCustomerInfo ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-          {showCustomerInfo && (
-            <div className="px-4 pb-3 space-y-2 animate-in slide-in-from-top-1 duration-200">
-              <Input
-                className="h-8 text-xs"
-                placeholder="Nama Pembeli (opsional)"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value.slice(0, 50))}
-                maxLength={50}
-              />
-              <textarea
-                className="w-full border dark:border-gray-700 dark:bg-gray-900 rounded-md px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none dark:text-gray-200"
-                placeholder="Alamat Tujuan (opsional)"
-                value={customerAddress}
-                onChange={e => setCustomerAddress(e.target.value.slice(0, 100))}
-                maxLength={100}
-                rows={2}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Summary */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-4 space-y-2 bg-white dark:bg-gray-900 shrink-0">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
-            <span className="font-medium dark:text-gray-200 tabular-nums">{formatCurrency(subtotal)}</span>
-          </div>
-          {taxEnabled && (
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-500 dark:text-gray-400">PPN ({taxRate}%)</span>
-              <span className="font-medium dark:text-gray-200 tabular-nums">{formatCurrency(taxAmount)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Diskon</span>
-            <Input
-              type="number"
-              className="h-7 text-right text-xs font-medium max-w-[100px] tabular-nums"
-              value={discount || ''}
-              onChange={e => setDiscount(parseInt(e.target.value) || 0)}
-              min="0"
-              placeholder="0"
-            />
-          </div>
-
-          {/* Total */}
-          <div className="flex justify-between items-end pt-2 border-t-2 border-dashed border-gray-200 dark:border-gray-700">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Total</div>
-              <div className="text-2xl font-black text-primary-600 dark:text-primary-400 tabular-nums leading-none">
-                {formatCurrency(total)}
-              </div>
-            </div>
-            {cart.length > 0 && (
-              <div className="text-right">
-                <div className="text-[10px] text-gray-400 dark:text-gray-500">{cart.length} item</div>
-                <div className="text-[10px] text-gray-400 dark:text-gray-500">{totalQty} unit</div>
-              </div>
+            {(customerName || customerAddress) && (
+              <span className="text-[9px] font-black text-primary-500 dark:text-primary-400 uppercase tracking-wider">Terisi</span>
             )}
           </div>
+          {showCustomerInfo
+            ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            : <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          }
+        </button>
+        {showCustomerInfo && (
+          <div className="px-4 pb-3 space-y-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shrink-0 animate-in slide-in-from-top-1 duration-200">
+            <input
+              className="w-full h-9 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-1 focus:ring-primary-500 transition-all"
+              placeholder="Nama Pembeli (opsional)"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value.slice(0, 50))}
+            />
+            <textarea
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none"
+              placeholder="Alamat (opsional)"
+              value={customerAddress}
+              onChange={e => setCustomerAddress(e.target.value.slice(0, 100))}
+              rows={2}
+            />
+          </div>
+        )}
 
-          {/* Pay button */}
-          <Button
+        {/* Checkout Box */}
+        <div className="p-5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col gap-3 shrink-0 rounded-t-2xl shadow-[0_-8px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.4)] relative z-20">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Subtotal ({totalQty} Item)</span>
+            <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200 tabular-nums">{formatCurrency(subtotal)}</span>
+          </div>
+
+          {taxEnabled && (
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">PPN ({taxRate}%)</span>
+              <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200 tabular-nums">{formatCurrency(taxAmount)}</span>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Diskon Global</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400 dark:text-gray-500">-Rp</span>
+              <input
+                type="number"
+                className="w-24 text-right bg-transparent text-sm font-bold text-primary-600 dark:text-primary-400 border-b border-dashed border-primary-400/40 outline-none focus:border-primary-500 transition-colors tabular-nums"
+                value={discount || ''}
+                onChange={e => setDiscount(parseInt(e.target.value) || 0)}
+                placeholder="0"
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-gray-100 dark:bg-gray-800 my-1" />
+
+          <div className="flex justify-between items-end mb-2">
+            <span className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Total Tagihan</span>
+            <span className="text-3xl font-black text-primary-600 dark:text-primary-400 tracking-tighter leading-none tabular-nums">
+              {formatCurrency(total)}
+            </span>
+          </div>
+
+          <button
             onClick={() => setShowPayment(true)}
             disabled={cart.length === 0 || total <= 0}
             className={cn(
-              "w-full h-11 text-sm font-bold mt-1 border-0 transition-all",
+              "w-full h-14 rounded-2xl flex items-center justify-center gap-3",
+              "font-black text-base transition-all active:scale-[0.98]",
               cart.length === 0 || total <= 0
-                ? "bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-600/25 active:scale-[0.98]"
+                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                : "bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/20"
             )}
           >
-            <CreditCard className="w-4 h-4 mr-2" />
-            Bayar
-          </Button>
+            <CreditCard className="w-5 h-5" />
+            BAYAR SEKARANG
+          </button>
+
+          <div className="grid grid-cols-3 text-center">
+            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
+              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">Ctrl+K</kbd> Cari
+            </span>
+            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
+              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">F2</kbd> Scan
+            </span>
+            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
+              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">Space</kbd> Bayar
+            </span>
+          </div>
         </div>
-      </div>
+      </aside>
 
       {/* ── Modals ── */}
       {showPayment && (

@@ -949,10 +949,55 @@ function getStockTrailAll(filters = {}) {
     if (filters.limit) {
         query += ` LIMIT ? `;
         params.push(filters.limit);
+        if (filters.offset) {
+            query += ` OFFSET ? `;
+            params.push(filters.offset);
+        }
     }
 
     return all(query, params);
 }
+
+function getStockTrailCount(filters = {}) {
+    let query = `SELECT COUNT(*) as total
+                 FROM stock_trail st
+                 LEFT JOIN users u ON st.user_id = u.id
+                 WHERE 1 = 1`;
+    const params = [];
+
+    if (filters.product_id) {
+        query += ` AND st.product_id = ? `;
+        params.push(filters.product_id);
+    }
+    if (filters.event_type) {
+        query += ` AND st.event_type = ? `;
+        params.push(filters.event_type);
+    }
+    if (filters.exclude_sale) {
+        query += ` AND st.event_type != 'sale' `;
+    }
+    if (filters.user_id) {
+        query += ` AND st.user_id = ? `;
+        params.push(filters.user_id);
+    }
+    if (filters.date_from) {
+        query += ` AND st.created_at >= ? `;
+        params.push(filters.date_from + ' 00:00:00');
+    }
+    if (filters.date_to) {
+        query += ` AND st.created_at <= ? `;
+        params.push(filters.date_to + ' 23:59:59');
+    }
+    if (filters.search) {
+        const term = `%${filters.search}%`;
+        query += ` AND (st.product_name LIKE ? OR st.notes LIKE ?)`;
+        params.push(term, term);
+    }
+
+    const result = get(query, params);
+    return result ? result.total : 0;
+}
+
 
 function getStockAuditLog(filters = {}) {
     let query = `SELECT l.*, COALESCE(l.user_name, u.name) as user_name FROM stock_audit_log l LEFT JOIN users u ON l.user_id = u.id WHERE 1 = 1`;
@@ -1714,8 +1759,9 @@ function getComprehensiveReport(dateFrom, dateTo) {
         const stockAudit = getStockAuditLogSummary(dateFrom, dateTo);
         log(`[getComprehensiveReport] StockAudit: ${stockAudit ? `OK (${stockAudit.length})` : 'NULL'}`);
 
-        const stockTrail = getStockTrailAll({ date_from: dateFrom, date_to: dateTo });
+        const stockTrail = getStockTrailAll({ date_from: dateFrom, date_to: dateTo, limit: 2000 });
         log(`[getComprehensiveReport] StockTrail: ${stockTrail ? `OK (${stockTrail.length})` : 'NULL'}`);
+
 
         const result = {
             sales,
@@ -2121,7 +2167,7 @@ module.exports = {
     createProduct, updateProduct, deleteProduct, bulkUpsertProducts, bulkDeleteProducts, bulkUpdateField,
     generateProductBarcode, generateMultipleBarcodes,
     createStockAuditLog, getStockAuditLogByProduct, getStockAuditLog, getStockAuditLogSummary, cleanupOldAuditLogs,
-    createStockTrail, getStockTrailByProduct, getStockTrailAll,
+    createStockTrail, getStockTrailByProduct, getStockTrailAll, getStockTrailCount,
     createTransaction, getTransactionById, getTransactions, voidTransaction, generateInvoiceNumber,
     getPaymentHistory, addPayment, getOutstandingDebts, getDebtSummary, getOverdueTransactions,
     getSettings, updateSetting, updateSettings, resetSettings,

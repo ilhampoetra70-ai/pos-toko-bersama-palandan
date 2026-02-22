@@ -63,10 +63,10 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 const PAYMENT_STATUS_CONFIG = {
-    lunas: { label: 'Lunas', color: 'bg-green-100 text-green-700 hover:bg-green-100 shadow-none' },
-    pending: { label: 'Pending', color: 'bg-blue-100 text-blue-700 hover:bg-blue-100 shadow-none' },
-    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-700 hover:bg-orange-100 shadow-none' },
-    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-700 hover:bg-purple-100 shadow-none' },
+    lunas: { label: 'Lunas', color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-none' },
+    pending: { label: 'Pending', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 shadow-none' },
+    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400 shadow-none' },
+    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 shadow-none' },
 } as any;
 
 function PaymentStatusBadge({ status }: { status: string }) {
@@ -160,11 +160,11 @@ export default memo(function TransactionsPage() {
     };
 
     const handleVoid = async (tx: any) => {
-        if (!confirm(`Void transaksi ${tx.invoice_number}?`)) return;
+        if (!confirm(`Void transaksi ${tx.invoice_number || tx.id}? Stok produk akan dikembalikan.`)) return;
         voidMutation.mutate(tx.id, {
             onSuccess: () => {
                 handleCloseDetail();
-            }
+            },
         });
     };
 
@@ -189,8 +189,6 @@ export default memo(function TransactionsPage() {
 
     const handlePaymentAdded = async () => {
         setShowAddPayment(false);
-        // RQ will handle invalidation if we add it to a mutation. 
-        // But AddPaymentModal probably has its own mutation.
     };
 
     const paymentMethodConfig = {
@@ -222,7 +220,7 @@ export default memo(function TransactionsPage() {
                             <div className="relative">
                                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
                                 <Input
-                                    className="pl-10 h-11 bg-gray-50/50 border-none shadow-inner"
+                                    className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
                                     placeholder="Ketik nama atau alamat..."
                                     value={filters.customer_search}
                                     onChange={e => setFilters(f => ({ ...f, customer_search: e.target.value }))}
@@ -233,7 +231,7 @@ export default memo(function TransactionsPage() {
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Dari</label>
                             <Input
                                 type="date"
-                                className="h-11 bg-gray-50/50 border-none shadow-inner"
+                                className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
                                 value={filters.date_from}
                                 onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
                             />
@@ -242,7 +240,7 @@ export default memo(function TransactionsPage() {
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Sampai</label>
                             <Input
                                 type="date"
-                                className="h-11 bg-gray-50/50 border-none shadow-inner"
+                                className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
                                 value={filters.date_to}
                                 onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
                             />
@@ -257,12 +255,12 @@ export default memo(function TransactionsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Transaksi</label>
-                            <Select value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                            <Select value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val === '__all__' ? '' : val }))}>
+                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
                                     <SelectValue placeholder="Semua Status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value=" ">Semua Status</SelectItem>
+                                    <SelectItem value="__all__">Semua Status</SelectItem>
                                     <SelectItem value="completed">Selesai (Completed)</SelectItem>
                                     <SelectItem value="voided">Dibatalkan (Voided)</SelectItem>
                                 </SelectContent>
@@ -270,12 +268,12 @@ export default memo(function TransactionsPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Pembayaran</label>
-                            <Select value={filters.payment_status} onValueChange={val => setFilters(f => ({ ...f, payment_status: val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                            <Select value={filters.payment_status} onValueChange={val => setFilters(f => ({ ...f, payment_status: val === '__all__' ? '' : val }))}>
+                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
                                     <SelectValue placeholder="Semua Pembayaran" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value=" ">Semua Pembayaran</SelectItem>
+                                    <SelectItem value="__all__">Semua Pembayaran</SelectItem>
                                     <SelectItem value="lunas">Lunas</SelectItem>
                                     <SelectItem value="pending">Pending</SelectItem>
                                     <SelectItem value="hutang">Hutang</SelectItem>
@@ -293,7 +291,7 @@ export default memo(function TransactionsPage() {
                     className="h-[calc(100vh-420px)] overflow-auto bg-white dark:bg-gray-950"
                 >
                     <Table className="relative border-separate border-spacing-0">
-                        <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+                        <TableHeader className="bg-gray-50/80 dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10 backdrop-blur-sm">
                             <TableRow className="border-b flex items-center w-full">
                                 <TableHead className="font-black text-[11px] uppercase tracking-widest py-4 w-[15%]">Invoice</TableHead>
                                 <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Waktu</TableHead>
@@ -328,13 +326,17 @@ export default memo(function TransactionsPage() {
                             ) : (
                                 rowVirtualizer.getVirtualItems().map((virtualRow) => {
                                     const tx = transactions[virtualRow.index];
+                                    const isEven = virtualRow.index % 2 === 0;
                                     if (!tx) return null;
                                     return (
                                         <TableRow
                                             key={virtualRow.key}
                                             data-index={virtualRow.index}
                                             ref={rowVirtualizer.measureElement}
-                                            className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 cursor-pointer transition-colors absolute w-full flex items-center border-b"
+                                            className={cn(
+                                                "hover:bg-[var(--table-hover)] cursor-pointer transition-colors absolute w-full flex items-center border-b",
+                                                !isEven && "bg-[var(--table-zebra)]"
+                                            )}
                                             style={{
                                                 transform: `translateY(${virtualRow.start}px)`,
                                             }}
@@ -364,7 +366,9 @@ export default memo(function TransactionsPage() {
                                             <TableCell className="text-center w-[10%]">
                                                 <Badge className={cn(
                                                     "font-black text-[10px] uppercase h-5",
-                                                    tx.status === 'completed' ? "bg-green-100 text-green-700 shadow-none" : "bg-red-100 text-red-700 shadow-none"
+                                                    tx.status === 'completed'
+                                                        ? "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-none"
+                                                        : "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 shadow-none"
                                                 )}>
                                                     {tx.status === 'completed' ? 'Selesai' : 'Void'}
                                                 </Badge>
@@ -393,7 +397,7 @@ export default memo(function TransactionsPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                                                             onClick={(e) => handleVoidFromTable(e, tx)}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -410,10 +414,9 @@ export default memo(function TransactionsPage() {
                 </div>
             </Card>
 
-            {/* Pagination Controls */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-950 rounded-2xl shadow-sm border border-transparent">
                 <div className="text-sm font-bold text-gray-500">
-                    Memperlihatkan <span className="text-gray-900">{Math.min(transactions.length, pageSize)}</span> dari <span className="text-gray-900">{totalTransactions}</span> transaksi
+                    Memperlihatkan <span className="text-gray-900 dark:text-gray-100">{Math.min(transactions.length, pageSize)}</span> dari <span className="text-gray-900 dark:text-gray-100">{totalTransactions}</span> transaksi
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -500,11 +503,11 @@ export default memo(function TransactionsPage() {
                         </div>
                     ) : !selectedTx ? null : (
                         <>
-                            <DialogHeader className="p-6 bg-gray-50/50 border-b shrink-0">
+                            <DialogHeader className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-b dark:border-gray-800 shrink-0">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
                                         <DialogTitle className="text-2xl font-black text-gray-900 dark:text-gray-100">Detail Transaksi</DialogTitle>
-                                        <DialogDescription className="font-sans text-primary-700 font-bold bg-primary-50 px-2 py-0.5 rounded-md inline-block">
+                                        <DialogDescription className="font-sans text-primary-700 dark:text-primary-400 font-bold bg-primary-50 dark:bg-primary-950/30 px-2 py-0.5 rounded-md inline-block">
                                             {selectedTx.invoice_number}
                                         </DialogDescription>
                                     </div>
@@ -557,30 +560,30 @@ export default memo(function TransactionsPage() {
 
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Daftar Item</label>
-                                        <div className="border rounded-2xl overflow-hidden shadow-sm">
+                                        <div className="border dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
                                             <Table className="text-sm">
-                                                <TableHeader className="bg-gray-50">
-                                                    <TableRow>
+                                                <TableHeader className="bg-gray-50 dark:bg-gray-900">
+                                                    <TableRow className="dark:border-gray-800">
                                                         <TableHead className="font-black text-[10px] h-10">PRODUK</TableHead>
                                                         <TableHead className="text-center font-black text-[10px] h-10">QTY</TableHead>
                                                         <TableHead className="text-right font-black text-[10px] h-10">HARGA</TableHead>
                                                         <TableHead className="text-right font-black text-[10px] h-10">SUBTOTAL</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
-                                                <TableBody className="divide-y">
+                                                <TableBody className="divide-y dark:divide-gray-800">
                                                     {selectedTx.items?.map((item: any, i: number) => (
-                                                        <TableRow key={i}>
+                                                        <TableRow key={i} className="dark:border-gray-800 hover:bg-transparent">
                                                             <TableCell>
-                                                                <div className="font-bold text-gray-900">{item.product_name}</div>
+                                                                <div className="font-bold text-gray-900 dark:text-gray-100">{item.product_name}</div>
                                                                 {item.discount > 0 && (
-                                                                    <div className="text-[10px] font-black text-orange-500 uppercase px-1.5 bg-orange-50 inline-block rounded mt-1">
+                                                                    <div className="text-[10px] font-black text-orange-500 dark:text-orange-400 uppercase px-1.5 bg-orange-50 dark:bg-orange-950/30 inline-block rounded mt-1">
                                                                         Disc: -{formatCurrency(item.discount)}/item
                                                                     </div>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="text-center font-black text-gray-500">{item.quantity}</TableCell>
-                                                            <TableCell className="text-right text-gray-500">{formatCurrency(item.price)}</TableCell>
-                                                            <TableCell className="text-right font-black text-gray-900">{formatCurrency(item.subtotal)}</TableCell>
+                                                            <TableCell className="text-center font-black text-gray-500 dark:text-gray-400">{item.quantity}</TableCell>
+                                                            <TableCell className="text-right text-gray-500 dark:text-gray-400">{formatCurrency(item.price)}</TableCell>
+                                                            <TableCell className="text-right font-black text-gray-900 dark:text-gray-100">{formatCurrency(item.subtotal)}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -593,19 +596,19 @@ export default memo(function TransactionsPage() {
                                             {selectedTx.payment_history && selectedTx.payment_history.length > 0 && (
                                                 <div className="space-y-3">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Riwayat Cicilan</label>
-                                                    <div className="max-h-40 overflow-y-auto border rounded-2xl p-4 bg-gray-50/50">
+                                                    <div className="max-h-40 overflow-y-auto border dark:border-gray-800 rounded-2xl p-4 bg-gray-50/50 dark:bg-gray-900/50">
                                                         <div className="space-y-4">
                                                             {selectedTx.payment_history.map((ph: any, i: number) => (
                                                                 <div key={i} className="flex justify-between items-start gap-3">
                                                                     <div className="space-y-0.5">
-                                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                                                                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
                                                                             {new Date(ph.payment_date).toLocaleDateString('id-ID')}
                                                                         </p>
-                                                                        <p className="text-xs font-bold text-gray-700">{paymentLabel(ph.payment_method)}</p>
+                                                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{paymentLabel(ph.payment_method)}</p>
                                                                     </div>
                                                                     <div className="text-right">
-                                                                        <p className="text-sm font-black text-green-600">{formatCurrency(ph.amount)}</p>
-                                                                        <p className="text-[9px] font-medium text-gray-400 italic">{ph.notes || '-'}</p>
+                                                                        <p className="text-sm font-black text-green-600 dark:text-green-400">{formatCurrency(ph.amount)}</p>
+                                                                        <p className="text-[9px] font-medium text-gray-400 dark:text-gray-500 italic">{ph.notes || '-'}</p>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -614,43 +617,43 @@ export default memo(function TransactionsPage() {
                                                 </div>
                                             )}
                                             {selectedTx.payment_notes && (
-                                                <Card className="bg-yellow-50/50 border-yellow-100 shadow-none">
+                                                <Card className="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-100 dark:border-yellow-900/30 shadow-none">
                                                     <CardContent className="p-4 space-y-1">
                                                         <label className="text-[10px] font-black text-yellow-600 uppercase tracking-widest">Catatan</label>
-                                                        <p className="text-sm text-gray-600 leading-relaxed font-medium">{selectedTx.payment_notes}</p>
+                                                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">{selectedTx.payment_notes}</p>
                                                     </CardContent>
                                                 </Card>
                                             )}
                                         </div>
 
-                                        <div className="bg-gray-50/80 rounded-3xl p-6 space-y-4 border border-gray-100">
+                                        <div className="bg-gray-50/80 dark:bg-gray-900/80 rounded-3xl p-6 space-y-4 border border-gray-100 dark:border-gray-800">
                                             <div className="space-y-2">
                                                 <TotalRow label="Subtotal" value={formatCurrency(selectedTx.subtotal)} />
                                                 {selectedTx.tax_amount > 0 && (
                                                     <TotalRow label="Pajak" value={formatCurrency(selectedTx.tax_amount)} />
                                                 )}
                                                 {selectedTx.discount_amount > 0 && (
-                                                    <TotalRow label="Diskon Total" value={`-${formatCurrency(selectedTx.discount_amount)}`} color="text-orange-500" />
+                                                    <TotalRow label="Diskon Total" value={`-${formatCurrency(selectedTx.discount_amount)}`} color="text-orange-500 dark:text-orange-400" />
                                                 )}
                                             </div>
-                                            <Separator className="bg-gray-200" />
+                                            <Separator className="bg-gray-200 dark:bg-gray-800" />
                                             <div className="flex justify-between items-center py-2">
-                                                <span className="text-base font-black text-gray-400 uppercase tracking-widest">TOTAL</span>
+                                                <span className="text-base font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">TOTAL</span>
                                                 <span className={cn(
                                                     "text-3xl font-black tracking-tight",
-                                                    selectedTx.status === 'voided' ? "text-red-400 line-through" : "text-gray-900"
+                                                    selectedTx.status === 'voided' ? "text-red-400 line-through" : "text-gray-900 dark:text-gray-100"
                                                 )}>
                                                     {formatCurrency(selectedTx.total)}
                                                 </span>
                                             </div>
-                                            <Separator className="bg-gray-200" />
+                                            <Separator className="bg-gray-200 dark:bg-gray-800" />
                                             <div className="space-y-2 pt-2">
-                                                <TotalRow label="Terbayar" value={formatCurrency(selectedTx.total_paid || selectedTx.amount_paid)} color="text-green-600" />
+                                                <TotalRow label="Terbayar" value={formatCurrency(selectedTx.total_paid || selectedTx.amount_paid)} color="text-green-600 dark:text-green-400" />
                                                 {selectedTx.remaining_balance > 0 && (
-                                                    <TotalRow label="Sisa Tagihan" value={formatCurrency(selectedTx.remaining_balance)} color="text-orange-600" />
+                                                    <TotalRow label="Sisa Tagihan" value={formatCurrency(selectedTx.remaining_balance)} color="text-orange-600 dark:text-orange-400" />
                                                 )}
                                                 {selectedTx.change_amount > 0 && selectedTx.payment_status === 'lunas' && (
-                                                    <TotalRow label="Kembali" value={formatCurrency(selectedTx.change_amount)} color="text-blue-600" />
+                                                    <TotalRow label="Kembali" value={formatCurrency(selectedTx.change_amount)} color="text-blue-600 dark:text-blue-400" />
                                                 )}
                                             </div>
                                         </div>
@@ -659,13 +662,13 @@ export default memo(function TransactionsPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter className="p-6 bg-gray-50/50 border-t flex items-center justify-between gap-4 shrink-0">
+                            <DialogFooter className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-t dark:border-gray-800 flex items-center justify-between gap-4 shrink-0">
                                 <div className="flex gap-2 mr-auto">
                                     {hasRole('admin', 'supervisor') && selectedTx.status === 'completed' && (
                                         <Button
                                             variant="ghost"
                                             onClick={() => handleVoid(selectedTx)}
-                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 font-bold"
+                                            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold"
                                         >
                                             <X className="w-4 h-4 mr-2" /> Void Transaksi
                                         </Button>
@@ -677,7 +680,7 @@ export default memo(function TransactionsPage() {
                                             <Plus className="w-5 h-5" /> Cicilan Baru
                                         </Button>
                                     )}
-                                    <Button variant="outline" onClick={handleCloseDetail} className="h-11 px-6 font-bold">Tutup</Button>
+                                    <Button variant="outline" onClick={handleCloseDetail} className="h-11 px-6 font-bold dark:border-gray-800">Tutup</Button>
                                     <Button onClick={handlePrintFromDetail} className="h-11 px-6 font-bold gap-2 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">
                                         <Printer className="w-5 h-5" /> Cetak Struk
                                     </Button>
@@ -690,7 +693,7 @@ export default memo(function TransactionsPage() {
 
             {
                 showReceipt && selectedTx && (
-                    <ReceiptPreview transaction={selectedTx} onClose={() => setShowReceipt(false)} />
+                    <ReceiptPreview transaction={selectedTx as any} onClose={() => setShowReceipt(false)} />
                 )
             }
 
@@ -710,10 +713,10 @@ export default memo(function TransactionsPage() {
 function InfoItem({ icon: Icon, label, value, className }: any) {
     return (
         <div className={cn("space-y-1", className)}>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5 px-0.5">
+            <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-1.5 px-0.5">
                 <Icon className="w-3 h-3" /> {label}
             </label>
-            <p className="text-[13px] font-black text-gray-900">{value}</p>
+            <p className="text-[13px] font-black text-gray-900 dark:text-gray-100">{value}</p>
         </div>
     );
 }
@@ -721,7 +724,7 @@ function InfoItem({ icon: Icon, label, value, className }: any) {
 function TotalRow({ label, value, color = "text-gray-900" }: any) {
     return (
         <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400 font-bold uppercase tracking-tighter text-xs">{label}</span>
+            <span className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-tighter text-xs">{label}</span>
             <span className={cn("font-black", color)}>{value}</span>
         </div>
     );

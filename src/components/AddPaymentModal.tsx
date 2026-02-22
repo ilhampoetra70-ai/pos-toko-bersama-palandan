@@ -79,7 +79,7 @@ export default function AddPaymentModal({ transaction, onClose, onPaymentAdded }
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 text-gray-400 hover:text-red-500 transition-all"
                     >
                         <span className="text-2xl leading-none">&times;</span>
                     </button>
@@ -87,16 +87,16 @@ export default function AddPaymentModal({ transaction, onClose, onPaymentAdded }
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {/* Transaction Info */}
-                    <div className="bg-primary-50 dark:bg-primary-900 rounded-2xl p-4 border border-primary-100 dark:border-primary-800 flex items-center justify-between">
+                    <div className="bg-primary-50 dark:bg-primary-950/30 rounded-2xl p-4 border border-primary-100 dark:border-primary-900/50 flex items-center justify-between">
                         <div>
-                            <div className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-0.5">Invoice</div>
+                            <div className="text-[10px] font-black text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-0.5">Invoice</div>
                             <div className="font-sans text-primary-700 dark:text-primary-300 font-black">{transaction.invoice_number}</div>
                             {transaction.customer_name && (
                                 <div className="text-sm text-gray-600 dark:text-gray-400 font-bold mt-0.5">{transaction.customer_name}</div>
                             )}
                         </div>
                         <div className="text-right">
-                            <div className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-0.5">Sisa Tagihan</div>
+                            <div className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-0.5">Sisa Tagihan</div>
                             <div className="text-xl font-black text-orange-700 dark:text-orange-400">{formatCurrency(remainingBalance)}</div>
                         </div>
                     </div>
@@ -111,7 +111,7 @@ export default function AddPaymentModal({ transaction, onClose, onPaymentAdded }
                                     onClick={() => setPaymentMethod(method)}
                                     className={`flex-1 py-3 rounded-2xl text-xs font-black uppercase tracking-tight border-2 transition-all ${paymentMethod === method
                                         ? 'border-primary-500 bg-primary-600 text-white shadow-lg shadow-primary-600/20'
-                                        : 'border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                                        : 'border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-700 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
                                         }`}
                                 >
                                     {method === 'cash' ? 'Tunai' : method === 'debit' ? 'Debit' : 'QRIS'}
@@ -168,15 +168,15 @@ export default function AddPaymentModal({ transaction, onClose, onPaymentAdded }
 
                     {/* Payment Summary */}
                     {paymentAmount > 0 && (
-                        <div className={`rounded-2xl p-4 transition-colors ${isFullPayment ? 'bg-green-50 dark:bg-green-950 border border-green-100 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-800'}`}>
+                        <div className={`rounded-2xl p-4 transition-colors ${isFullPayment ? 'bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30' : 'bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30'}`}>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center text-xs">
-                                    <span className={isFullPayment ? 'text-green-600' : 'text-blue-600'}>Pembayaran Masuk</span>
-                                    <span className="font-black">{formatCurrency(paymentAmount)}</span>
+                                    <span className={isFullPayment ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}>Pembayaran Masuk</span>
+                                    <span className="font-black text-gray-900 dark:text-gray-100">{formatCurrency(paymentAmount)}</span>
                                 </div>
                                 <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-gray-800">
-                                    <span className={isFullPayment ? 'text-green-700' : 'text-blue-700'}>Sisa Piutang Akhir</span>
-                                    <span className="font-black text-lg">{formatCurrency(remainingBalance - paymentAmount)}</span>
+                                    <span className={isFullPayment ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300'}>Sisa Piutang Akhir</span>
+                                    <span className="font-black text-lg text-gray-900 dark:text-gray-100">{formatCurrency(remainingBalance - paymentAmount)}</span>
                                 </div>
                             </div>
                             {isFullPayment && (
@@ -189,14 +189,14 @@ export default function AddPaymentModal({ transaction, onClose, onPaymentAdded }
 
                     {/* Error */}
                     {error && (
-                        <div className="p-4 bg-red-50 dark:bg-red-900 border border-red-100 dark:border-red-800 rounded-2xl text-xs font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                        <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/20 rounded-2xl text-xs font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
                             <span className="text-lg">!</span> {error}
                         </div>
                     )}
                 </div>
 
                 <div className="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex gap-4">
-                    <button onClick={onClose} className="flex-1 h-12 rounded-2xl font-bold text-gray-500 hover:bg-gray-100 transition-colors">
+                    <button onClick={onClose} className="flex-1 h-12 rounded-2xl font-bold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                         Tutup
                     </button>
                     <button

@@ -66,7 +66,10 @@ export const productApi = {
 };
 
 export const categoryApi = {
-    getAll: () => window.api.getCategories(),
+    getAll: async () => {
+        const res = await window.api.getCategories();
+        return res.success ? (res.data || []) : [];
+    },
     create: (name: string) => window.api.createCategory(name),
     delete: (id: number) => window.api.deleteCategory(id),
 };
@@ -93,7 +96,14 @@ export const settingsApi = {
 
 // Products
 export const useProducts = (filters?: any) =>
-    useQuery({ queryKey: productKeys.list(filters), queryFn: () => productApi.getAll(filters) });
+    useQuery({
+        queryKey: productKeys.list(filters),
+        queryFn: async () => {
+            const res = await productApi.getAll(filters);
+            if (Array.isArray(res)) return { data: res, total: res.length };
+            return { data: res.data || [], total: res.total || 0 };
+        }
+    });
 
 export const useProductByBarcode = (code: string) =>
     useQuery({ queryKey: productKeys.byBarcode(code), queryFn: () => productApi.getByBarcode(code), enabled: !!code });
@@ -129,7 +139,13 @@ export const useUpdateProductWithAudit = () => {
 };
 
 export const useLowStockProducts = (threshold: number) =>
-    useQuery({ queryKey: productKeys.lowStock(threshold), queryFn: () => window.api.getLowStockProducts(threshold) });
+    useQuery({
+        queryKey: productKeys.lowStock(threshold),
+        queryFn: async () => {
+            const res = await window.api.getLowStockProducts(threshold);
+            return res.success ? (res.data || []) : [];
+        }
+    });
 
 export const useDeleteProduct = () => {
     const queryClient = useQueryClient();
@@ -172,19 +188,45 @@ export const useDashboardStats = () =>
     useQuery({ queryKey: dashboardKeys.enhancedStats(), queryFn: dashboardApi.getStats, refetchInterval: 30000 });
 
 export const useSlowMovingProducts = (days: number, limit: number) =>
-    useQuery({ queryKey: dashboardKeys.slowMoving(days, limit), queryFn: () => dashboardApi.getSlowMoving(days, limit), staleTime: 60000 });
+    useQuery({
+        queryKey: dashboardKeys.slowMoving(days, limit),
+        queryFn: async () => {
+            const res = await dashboardApi.getSlowMoving(days, limit);
+            return res.success ? (res.data || []) : [];
+        },
+        staleTime: 60000
+    });
 
 // Transactions
 export const useTransactions = (filters: any) => {
     return useQuery({
         queryKey: transactionKeys.list(filters),
-        queryFn: async () => {
+        queryFn: async (): Promise<{ data: any[]; total: number }> => {
             const response = await transactionApi.getAll(filters);
-            // Ensure compatibility if backend ever returns just an array (though we updated it)
+
+            // 1. If response itself is an array (Legacy)
             if (Array.isArray(response)) {
                 return { data: response, total: response.length };
             }
-            return response;
+
+            // 2. If response is { data, total } (actual backend format)
+            if (response && Array.isArray(response.data)) {
+                return { data: response.data, total: response.total ?? response.data.length };
+            }
+
+            // 3. If response is { success, data, total } (wrapped format)
+            if (response && response.success) {
+                const data = response.data;
+                if (Array.isArray(data)) {
+                    return { data, total: response.total || data.length };
+                }
+                if (data && typeof data === 'object' && 'transactions' in data) {
+                    const d = data as { transactions: any[], total: number };
+                    return { data: d.transactions, total: d.total || response.total || d.transactions.length };
+                }
+            }
+
+            return { data: [], total: 0 };
         },
     });
 };
@@ -247,7 +289,10 @@ export const useStockTrailReport = (filters: any) => {
 export const useTransactionDetail = (id: number | null) => {
     return useQuery({
         queryKey: transactionKeys.detail(id!),
-        queryFn: () => transactionApi.getById(id!),
+        queryFn: async () => {
+            const res = await transactionApi.getById(id!);
+            return res.success ? res.data : null;
+        },
         enabled: !!id,
     });
 };
@@ -332,7 +377,13 @@ export const useDatabaseMutation = () => {
 
 // Debts
 export const useOutstandingDebts = (filters: any) =>
-    useQuery({ queryKey: debtKeys.outstanding(filters), queryFn: () => window.api.getOutstandingDebts(filters) });
+    useQuery({
+        queryKey: debtKeys.outstanding(filters),
+        queryFn: async () => {
+            const res = await window.api.getOutstandingDebts(filters);
+            return res.success ? (res.data || []) : [];
+        }
+    });
 
 export const useDebtSummary = () =>
     useQuery({ queryKey: debtKeys.summary(), queryFn: () => window.api.getDebtSummary() });
@@ -350,4 +401,4 @@ export const useAddTransactionPayment = () => {
 
 // Stock Trail
 export const useStockTrailByProduct = (id: number, limit: number) =>
-    useQuery({ queryKey: stockTrailKeys.byProduct(id, limit), queryFn: () => window.api.getStockTrail({ product_id: id, limit }), enabled: !!id });
+    useQuery({ queryKey: stockTrailKeys.byProduct(id, limit), queryFn: () => window.api.getStockTrailAll({ product_id: id, limit }), enabled: !!id });

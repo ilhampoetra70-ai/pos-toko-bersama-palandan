@@ -27,8 +27,13 @@ import {
   Moon,
   Type,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Shield,
+  Layout,
+  Activity,
+  Save
 } from 'lucide-react';
+import { Transaction } from '@/types/api';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,11 +86,17 @@ export default memo(function SettingsPage() {
 
   const loadData = async () => {
     const promises: Promise<any>[] = [
-      (window as any).api.getSettings(),
-      (window as any).api.getPrinters(),
+      window.api.getSettings(),
+      window.api.getPrinters(),
     ];
-    if (!isCashier) promises.push((window as any).api.getApiServerInfo());
-    const [s, p, apiInfo] = await Promise.all(promises);
+    if (!isCashier) promises.push(window.api.getApiServerInfo());
+    const [sRes, pRes, apiInfoRes] = await Promise.all(promises);
+
+    // Extract data handling both wrapped and raw responses
+    const s = sRes?.data || sRes || {};
+    const p = pRes?.data || (Array.isArray(pRes) ? pRes : []);
+    const apiInfo = apiInfoRes?.data || apiInfoRes || null;
+
     setSettings(s);
     setPrinters(prev => {
       if (JSON.stringify(prev) === JSON.stringify(p)) return prev;
@@ -95,7 +106,7 @@ export default memo(function SettingsPage() {
   };
 
   const handleSaveBranding = async () => {
-    await (window as any).api.updateSettings({
+    await window.api.updateSettings({
       app_name: localAppName,
       tagline: localTagline
     });
@@ -105,7 +116,7 @@ export default memo(function SettingsPage() {
   };
 
   const handleUploadLogo = async () => {
-    const result = await (window as any).api.uploadAppLogo();
+    const result = await window.api.uploadAppLogo();
     if (result.success) {
       setSettings((prev: any) => ({ ...prev, app_logo: result.logo }));
       setBranding(localAppName, localTagline, result.logo);
@@ -122,30 +133,34 @@ export default memo(function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
-    await (window as any).api.updateSettings(settings);
+    await window.api.updateSettings(settings);
     setMessage('Pengaturan berhasil disimpan');
     setSaving(false);
     setTimeout(() => setMessage(''), 3000);
   };
 
   const handleTestPrint = async () => {
-    const testTx = {
-      invoice_number: 'TEST-001',
-      cashier_name: 'Test',
-      subtotal: 50000,
-      tax_amount: 5500,
+    const testTransaction: Transaction = {
+      id: 0,
+      invoice_number: 'INV-TEST-001',
+      cashier_name: 'Kasir Test',
+      subtotal: 100000,
+      tax_amount: 11000,
       discount_amount: 0,
-      total: 55500,
+      total: 111000,
       payment_method: 'cash',
-      amount_paid: 60000,
-      change_amount: 4500,
-      created_at: new Date().toLocaleString('id-ID'),
+      amount_paid: 150000,
+      change_amount: 39000,
+      created_at: new Date().toISOString(),
+      status: 'completed',
+      payment_status: 'paid',
+      remaining_balance: 0,
       items: [
-        { product_name: 'Produk Test 1', quantity: 2, price: 15000, subtotal: 30000 },
-        { product_name: 'Produk Test 2', quantity: 1, price: 20000, subtotal: 20000 },
+        { id: 1, transaction_id: 0, product_id: 1, product_name: 'Produk Test 1', quantity: 2, price: 25000, subtotal: 50000 },
+        { id: 2, transaction_id: 0, product_id: 2, product_name: 'Produk Test 2', quantity: 1, price: 50000, subtotal: 50000 }
       ]
     };
-    const result = await (window as any).api.printReceipt(testTx);
+    const result = await window.api.printReceipt(testTransaction);
     if (result.success) {
       setMessage('Test print berhasil');
     } else {
@@ -172,7 +187,9 @@ export default memo(function SettingsPage() {
       {message && (
         <div className={cn(
           "p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2",
-          message.includes('gagal') ? "bg-red-50 text-red-700 border border-red-100" : "bg-green-50 text-green-700 border border-green-100"
+          message.includes('gagal')
+            ? "bg-red-50 text-red-700 border border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/20"
+            : "bg-green-50 text-green-700 border border-green-100 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900/20"
         )}>
           <CheckCircle2 className="w-5 h-5" />
           <p className="text-sm font-bold">{message}</p>
@@ -208,7 +225,7 @@ export default memo(function SettingsPage() {
               <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
                 <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <Store className="w-5 h-5 text-primary-600" /> Identitas Toko
+                    <Store className="w-5 h-5 text-primary-600 dark:text-primary-400" /> Identitas Toko
                   </CardTitle>
                   <CardDescription>Informasi ini akan muncul di struk dan laporan</CardDescription>
                 </CardHeader>
@@ -256,7 +273,7 @@ export default memo(function SettingsPage() {
               <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
                 <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <Percent className="w-5 h-5 text-orange-600" /> Pengaturan Pajak
+                    <Percent className="w-5 h-5 text-orange-600 dark:text-orange-400" /> Pengaturan Pajak
                   </CardTitle>
                   <CardDescription>Konfigurasi PPN untuk transaksi</CardDescription>
                 </CardHeader>
@@ -301,7 +318,7 @@ export default memo(function SettingsPage() {
               <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
                 <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <Printer className="w-5 h-5 text-blue-600" /> Perangkat Printer
+                    <Printer className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Perangkat Printer
                   </CardTitle>
                   <CardDescription>Pilih printer thermal yang tersedia</CardDescription>
                 </CardHeader>
@@ -354,80 +371,82 @@ export default memo(function SettingsPage() {
                 </CardContent>
               </Card>
 
-              {!isCashier && (
               <Card className="border-none shadow-sm h-full bg-white dark:bg-gray-900 overflow-hidden">
                 <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-primary-600" /> Konten Struk
+                    <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400" /> Konten Struk
                   </CardTitle>
-                  <CardDescription>Header dan footer pada struk belanja</CardDescription>
+                  <CardDescription>Header, footer, dan desain template struk belanja</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Header (Atas)</label>
-                    <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_header || ''} onChange={e => handleChange('receipt_header', e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Footer (Bawah)</label>
-                    <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_footer || ''} onChange={e => handleChange('receipt_footer', e.target.value)} />
-                  </div>
-                  <Button onClick={() => setShowTemplateEditor(true)} className="w-full h-11 bg-primary-50 text-primary-700 hover:bg-primary-100 border-none shadow-none font-bold gap-2">
+                  {!isCashier && (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Header (Atas)</label>
+                        <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_header || ''} onChange={e => handleChange('receipt_header', e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Footer (Bawah)</label>
+                        <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={settings.receipt_footer || ''} onChange={e => handleChange('receipt_footer', e.target.value)} />
+                      </div>
+                    </>
+                  )}
+                  <Button onClick={() => setShowTemplateEditor(true)} className="w-full h-11 bg-primary-50 dark:bg-primary-950/30 text-primary-700 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900 border-none shadow-none font-bold gap-2">
                     <Paintbrush className="w-4 h-4" /> Buka Desainer Template
                   </Button>
                 </CardContent>
               </Card>
-              )}
             </div>
           </TabsContent>
 
           <TabsContent value="appearance" className="m-0 focus-visible:outline-none">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {!isCashier && (
-              <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
-                <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-black flex items-center gap-2">
-                      <Monitor className="w-5 h-5 text-primary-600" /> Branding Aplikasi
-                    </CardTitle>
-                    <CardDescription>Sesuaikan nama dan logo aplikasi</CardDescription>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => { resetTheme(); setLocalAppName('POS Kasir'); setLocalTagline('Sistem Kasir Modern'); }} className="text-gray-400 hover:text-red-500">
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200">
-                    <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center border-2 border-gray-100 overflow-hidden shadow-inner group relative">
-                      {settings.app_logo ? (
-                        <img src={settings.app_logo} alt="Logo" className="w-full h-full object-contain p-2" />
-                      ) : (
-                        <span className="text-3xl text-gray-300 font-black">{localAppName.charAt(0)}</span>
-                      )}
-                      <button onClick={handleUploadLogo} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <ImageIcon className="w-6 h-6 text-white" />
-                      </button>
+                <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
+                  <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800 flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg font-black flex items-center gap-2">
+                        <Monitor className="w-5 h-5 text-primary-600 dark:text-primary-400" /> Branding Aplikasi
+                      </CardTitle>
+                      <CardDescription>Sesuaikan nama dan logo aplikasi</CardDescription>
                     </div>
-                    <div className="flex-1 space-y-2">
-                      <p className="text-xs font-bold text-gray-500">Logo Aplikasi</p>
-                      <Button onClick={handleUploadLogo} size="sm" variant="outline" className="h-8 font-bold text-xs uppercase">Ganti Logo</Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Aplikasi</label>
-                      <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner font-bold" value={localAppName} onChange={e => setLocalAppName(e.target.value)} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tagline</label>
-                      <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={localTagline} onChange={e => setLocalTagline(e.target.value)} />
-                    </div>
-                    <Button onClick={handleSaveBranding} className="w-full h-11 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-bold">
-                      Terapkan Branding
+                    <Button variant="ghost" size="icon" onClick={() => { resetTheme(); setLocalAppName('POS Kasir'); setLocalTagline('Sistem Kasir Modern'); }} className="text-gray-400 hover:text-red-500">
+                      <RotateCcw className="w-4 h-4" />
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center gap-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
+                      <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center border-2 border-gray-100 dark:border-gray-700 overflow-hidden shadow-inner group relative">
+                        {settings.app_logo ? (
+                          <img src={settings.app_logo} alt="Logo" className="w-full h-full object-contain p-2" />
+                        ) : (
+                          <span className="text-3xl text-gray-300 dark:text-gray-600 font-black">{localAppName.charAt(0)}</span>
+                        )}
+                        <button onClick={handleUploadLogo} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <ImageIcon className="w-6 h-6 text-white" />
+                        </button>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <p className="text-xs font-bold text-gray-500">Logo Aplikasi</p>
+                        <Button onClick={handleUploadLogo} size="sm" variant="outline" className="h-8 font-bold text-xs uppercase">Ganti Logo</Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Aplikasi</label>
+                        <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner font-bold" value={localAppName} onChange={e => setLocalAppName(e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tagline</label>
+                        <Input className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={localTagline} onChange={e => setLocalTagline(e.target.value)} />
+                      </div>
+                      <Button onClick={handleSaveBranding} className="w-full h-11 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-bold">
+                        Terapkan Branding
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               <Card className={cn("border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden", isCashier && "lg:col-span-2")}>
@@ -510,31 +529,31 @@ export default memo(function SettingsPage() {
                 <CardContent className="space-y-6">
                   {apiServerInfo ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl border border-green-100">
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                        <p className="text-sm font-black text-green-700">API Server Aktif</p>
+                      <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-2xl border border-green-100 dark:border-green-900/20">
+                        <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
+                        <p className="text-sm font-black text-green-700 dark:text-green-400">API Server Aktif</p>
                       </div>
-                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100">
+                      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-400 font-bold uppercase text-[10px]">Local URL:</span>
-                          <code className="bg-white dark:bg-gray-800 px-3 py-1 rounded-lg font-sans text-xs">{apiServerInfo.localUrl}</code>
+                          <code className="bg-white dark:bg-gray-900 px-3 py-1 rounded-lg font-sans text-xs">{apiServerInfo.localUrl}</code>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-400 font-bold uppercase text-[10px]">Network URL:</span>
-                          <code className="bg-primary-50 px-3 py-1 rounded-lg font-bold text-primary-700 text-xs">{apiServerInfo.networkUrl}</code>
+                          <code className="bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-lg font-bold text-primary-700 dark:text-primary-400 text-xs">{apiServerInfo.networkUrl}</code>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 bg-yellow-50 rounded-2xl border border-yellow-100 flex items-center gap-3">
-                      <AlertCircle className="w-5 h-5 text-yellow-600" />
-                      <p className="text-sm font-bold text-yellow-700">Server Tidak Aktif</p>
+                    <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 rounded-2xl border border-yellow-100 dark:border-yellow-900/20 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                      <p className="text-sm font-bold text-yellow-700 dark:text-yellow-400">Server Tidak Aktif</p>
                     </div>
                   )}
 
-                  <div className="p-4 bg-blue-50/50 rounded-2xl space-y-3">
-                    <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Langkah Setup:</p>
-                    <ul className="text-xs space-y-2 text-blue-900 font-medium">
+                  <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl space-y-3">
+                    <p className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Langkah Setup:</p>
+                    <ul className="text-xs space-y-2 text-blue-900 dark:text-blue-300 font-medium">
                       <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Connect HP/Tablet ke WiFi yang sama</li>
                       <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Scan QR atau ketik URL Network di Browser</li>
                       <li className="flex items-center gap-2"><ChevronRight className="w-3 h-3" /> Install sebagai aplikasi (Add to Home Screen)</li>
@@ -587,7 +606,7 @@ function MarginSettingsCard({ defaultMargin, onSave }: any) {
 
   const loadStats = async () => {
     setLoading(true);
-    const data = await (window as any).api.getMarginStats();
+    const data = await window.api.getMarginStats();
     setStats(data);
     setLoading(false);
   };
@@ -596,7 +615,7 @@ function MarginSettingsCard({ defaultMargin, onSave }: any) {
     if (!confirm('Terapkan aturan margin ini sekarang?')) return;
     setSaving(true);
     try {
-      const result = await (window as any).api.updateMargin(margin, mode);
+      const result = await window.api.updateMargin(margin, mode);
       if (result.success) {
         onSave();
         loadStats();
@@ -612,7 +631,7 @@ function MarginSettingsCard({ defaultMargin, onSave }: any) {
     <Card className="border-none shadow-sm bg-white dark:bg-gray-900 overflow-hidden">
       <CardHeader className="bg-gray-50/50 dark:bg-gray-800/50 border-b dark:border-gray-800">
         <CardTitle className="text-lg font-black flex items-center gap-2">
-          <Zap className="w-5 h-5 text-yellow-600" /> Otomatisasi Harga & Margin
+          <Zap className="w-5 h-5 text-yellow-600 dark:text-yellow-400" /> Otomatisasi Harga & Margin
         </CardTitle>
         <CardDescription>Gunakan harga jual untuk kalkulasi otomatis harga modal</CardDescription>
       </CardHeader>
@@ -629,15 +648,15 @@ function MarginSettingsCard({ defaultMargin, onSave }: any) {
               />
               <p className="text-[9px] text-gray-500 font-medium px-1 uppercase tracking-tighter">Modal = Jual * (1 - Margin%)</p>
             </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 space-y-2">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cakupan Data</p>
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-gray-500">Auto-Margin</span>
-                <span className="text-green-600">{stats.auto} Item</span>
+                <span className="text-green-600 dark:text-green-400">{stats.auto} Item</span>
               </div>
               <div className="flex justify-between text-xs font-bold">
                 <span className="text-gray-500">Manual-Mode</span>
-                <span className="text-orange-600">{stats.manual} Item</span>
+                <span className="text-orange-600 dark:text-orange-400">{stats.manual} Item</span>
               </div>
             </div>
           </div>
@@ -687,13 +706,15 @@ function ModeButton({ active, onClick, title, desc, danger }: any) {
       className={cn(
         "flex flex-col items-start p-3 rounded-2xl border transition-all text-left",
         active
-          ? (danger ? "bg-red-50 border-red-500 ring-2 ring-red-100" : "bg-primary-50 border-primary-500 ring-2 ring-primary-100")
+          ? (danger
+            ? "bg-red-50 border-red-500 ring-2 ring-red-100 dark:bg-red-950/30 dark:border-red-600 dark:ring-red-900/20"
+            : "bg-primary-50 border-primary-500 ring-2 ring-primary-100 dark:bg-primary-950/30 dark:border-primary-600 dark:ring-primary-900/20")
           : "bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
       )}
     >
       <div className="flex items-center justify-between w-full">
-        <span className={cn("text-xs font-black", active ? (danger ? "text-red-700" : "text-primary-700") : "text-gray-900")}>{title}</span>
-        {active && <CheckCircle2 className={cn("w-4 h-4", danger ? "text-red-500" : "text-primary-600")} />}
+        <span className={cn("text-xs font-black", active ? (danger ? "text-red-700 dark:text-red-400" : "text-primary-700 dark:text-primary-400") : "text-gray-900 dark:text-gray-100")}>{title}</span>
+        {active && <CheckCircle2 className={cn("w-4 h-4", danger ? "text-red-500" : "text-primary-600 dark:text-primary-400")} />}
       </div>
       <p className="text-[10px] text-gray-500 font-medium leading-tight mt-0.5">{desc}</p>
     </button>
@@ -716,7 +737,7 @@ function MasterKeySection({ onMessage }: any) {
     if (newKey !== confirmKey) { setError('Master Key baru tidak cocok'); return; }
     setSaving(true);
     try {
-      const result = await (window as any).api.changeMasterKey(oldKey, newKey);
+      const result = await window.api.changeMasterKey(oldKey, newKey);
       if (result.success) {
         onMessage('Master Key berhasil diubah');
         setOldKey(''); setNewKey(''); setConfirmKey('');
@@ -726,7 +747,7 @@ function MasterKeySection({ onMessage }: any) {
 
   return (
     <form onSubmit={handleChange} className="space-y-4">
-      {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-bold">{error}</div>}
+      {error && <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/20">{error}</div>}
       <div className="space-y-1.5">
         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Master Key Lama</label>
         <div className="relative">
@@ -747,7 +768,7 @@ function MasterKeySection({ onMessage }: any) {
           <Input type="password" className="h-11 bg-gray-50 dark:bg-gray-800/50 border-none shadow-inner" value={confirmKey} onChange={e => setConfirmKey(e.target.value)} />
         </div>
       </div>
-      <Button type="submit" disabled={saving} className="w-full h-11 bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-none font-bold">
+      <Button type="submit" disabled={saving} className="w-full h-11 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 shadow-none font-bold">
         Update Master Key Keamanan
       </Button>
     </form>
@@ -762,20 +783,20 @@ function CloudflareSection() {
     if (!confirm('Instal Cloudflare Tunnel sebagai Windows Service?')) return;
     setInstalling(true); setResult(null);
     try {
-      const res = await (window as any).api.installCloudflareService();
+      const res = await window.api.installCloudflareService();
       setResult({ success: res.success, message: res.success ? 'Service Berhasil Terinstal' : 'Gagal: ' + res.error });
     } catch (err: any) { setResult({ success: false, message: err.message }); } finally { setInstalling(false); }
   };
 
   return (
-    <div className="pt-6 border-t border-dashed border-gray-200 space-y-4">
+    <div className="pt-6 border-t border-dashed border-gray-200 dark:border-gray-700 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Cloud className="w-5 h-5 text-blue-500" />
           <span className="text-sm font-black">Windows Service Automation</span>
         </div>
         {result && (
-          <Badge className={cn("font-bold text-[10px] shadow-none", result.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+          <Badge className={cn("font-bold text-[10px] shadow-none", result.success ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400")}>
             {result.message}
           </Badge>
         )}
@@ -783,7 +804,7 @@ function CloudflareSection() {
       <Button
         onClick={handleInstallService}
         disabled={installing}
-        className="w-full h-11 bg-gray-50 text-gray-700 border border-gray-100 hover:bg-white shadow-none font-bold gap-2"
+        className="w-full h-11 bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800 shadow-none font-bold gap-2"
       >
         {installing ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-primary-600" />}
         {installing ? 'Memproses Instalasi...' : 'Instal Cloudflare Automation Service'}

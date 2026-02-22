@@ -38,11 +38,10 @@ export default function HourlySalesChart({ data }: HourlySalesChartProps) {
             <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={data} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.03)" />
+                        <CartesianGrid vertical={false} strokeWidth={1.5} className="stroke-gray-300 dark:stroke-gray-600" />
                         <XAxis
                             dataKey="hour"
                             axisLine={false}
-                            tickLine={false}
                             tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                             tickFormatter={(v) => `${String(v).padStart(2, '0')}:00`}
                         />
@@ -52,7 +51,7 @@ export default function HourlySalesChart({ data }: HourlySalesChartProps) {
                             tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                             tickFormatter={(v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}jt` : v >= 1000 ? `${(v / 1000).toFixed(0)}rb` : v}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.05)', radius: [8, 8, 8, 8] }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(59, 130, 246, 0.05)', radius: 8 }} />
                         <Bar dataKey="total" radius={[6, 6, 6, 6]} barSize={24}>
                             {data.map((entry, i) => (
                                 <Cell

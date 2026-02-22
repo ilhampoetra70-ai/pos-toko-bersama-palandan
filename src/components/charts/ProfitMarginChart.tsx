@@ -62,13 +62,15 @@ export default function ProfitMarginChart({ data }: ProfitMarginChartProps) {
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.03)" />
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                        <CartesianGrid vertical={false} strokeWidth={1.5} className="stroke-gray-300 dark:stroke-gray-600" />
                         <XAxis
                             dataKey="product_name"
                             axisLine={false}
                             tickLine={false}
-                            tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8', angle: -35, textAnchor: 'end' }}
+                            tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
+                            angle={-35}
+                            textAnchor="end"
                             interval={0}
                             height={80}
                         />
@@ -78,7 +80,7 @@ export default function ProfitMarginChart({ data }: ProfitMarginChartProps) {
                             tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                             tickFormatter={(v) => `${v}%`}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)', radius: [6, 6, 6, 6] }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)', radius: 6 }} />
                         <ReferenceLine y={0} stroke="#e2e8f0" strokeWidth={2} />
                         <Bar dataKey="margin" radius={[4, 4, 4, 4]} barSize={20}>
                             {chartData.map((entry, i) => (

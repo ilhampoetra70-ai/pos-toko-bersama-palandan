@@ -15,7 +15,7 @@ interface SalesTrendChartProps {
 const formatYAxis = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}jt`;
     if (value >= 1000) return `${(value / 1000).toFixed(0)}rb`;
-    return value;
+    return value.toString();
 };
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -62,10 +62,9 @@ export default function SalesTrendChart({ data, hideCard = false }: SalesTrendCh
         <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data} margin={{ top: 10, right: 4, left: 4, bottom: 0 }} barCategoryGap="30%">
                 <CartesianGrid
-                    strokeDasharray="3 3"
                     vertical={false}
-                    stroke="rgba(0,0,0,0.05)"
-                    strokeWidth={1}
+                    strokeWidth={1.5}
+                    className="stroke-gray-300 dark:stroke-gray-600"
                 />
                 <XAxis
                     dataKey="date"

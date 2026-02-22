@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('api', {
   createStockTrail: (data) => ipcRenderer.invoke('stockTrail:create', data),
   getStockTrailByProduct: (productId, limit) => ipcRenderer.invoke('stockTrail:getByProduct', productId, limit),
   getStockTrailAll: (filters) => ipcRenderer.invoke('stockTrail:getAll', filters),
+  getStockTrailCount: (filters) => ipcRenderer.invoke('stockTrail:count', filters),
 
 
   // Transactions

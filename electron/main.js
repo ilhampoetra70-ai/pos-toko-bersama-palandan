@@ -282,6 +282,10 @@ function registerIpcHandlers() {
     return database.getStockTrailAll(filters);
   });
 
+  ipcMain.handle('stockTrail:count', (_, filters) => {
+    return database.getStockTrailCount(filters);
+  });
+
   // ─── Transactions ───────────────────────────────────
   ipcMain.handle('transactions:create', (_, data) => {
     try {

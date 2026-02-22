@@ -21,23 +21,23 @@ export default function SalesReportTab({ data, hourlyData, stockAuditData, trans
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-lg font-bold">Tren Penjualan</CardTitle></CardHeader>
+                <Card className="bg-card border border-border rounded-xl shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-bold text-card-foreground">Tren Penjualan</CardTitle></CardHeader>
                     <CardContent><SalesTrendChart data={data.dailyBreakdown} hideCard={true} /></CardContent>
                 </Card>
-                <Card className="border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-lg font-bold">Distribusi Pembayaran</CardTitle></CardHeader>
+                <Card className="bg-card border border-border rounded-xl shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-bold text-card-foreground">Distribusi Pembayaran</CardTitle></CardHeader>
                     <CardContent><PaymentPieChart data={data.paymentBreakdown} /></CardContent>
                 </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-lg font-bold">Pola Penjualan Per Jam</CardTitle></CardHeader>
+                <Card className="lg:col-span-2 bg-card border border-border rounded-xl shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-bold text-card-foreground">Pola Penjualan Per Jam</CardTitle></CardHeader>
                     <CardContent><HourlySalesChart data={hourlyData} /></CardContent>
                 </Card>
-                <Card className="border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-lg font-bold">Produk Terlaris</CardTitle></CardHeader>
+                <Card className="bg-card border border-border rounded-xl shadow-sm">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-bold text-card-foreground">Produk Terlaris</CardTitle></CardHeader>
                     <CardContent><TopProductsChart data={data.topProducts} profitData={null} /></CardContent>
                 </Card>
             </div>

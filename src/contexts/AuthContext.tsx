@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { User, UserRole } from '@/lib/types';
+import { User, UserRole } from '@/types/api';
 
 interface AuthContextType {
     user: User | null;
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (token) {
-            (window as any).api.verifyToken(token).then((result: any) => {
+            window.api.verifyToken(token).then((result: any) => {
                 if (result.success) {
                     setUser(result.user);
                 } else {
@@ -39,11 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [token]);
 
     const login = async (username: string, password: string) => {
-        const result = await (window as any).api.login(username, password);
-        if (result.success) {
+        const result = await window.api.login(username, password);
+        if (result.success && result.token && result.user) {
             localStorage.setItem('pos_token', result.token);
             setToken(result.token);
-            setUser(result.user);
+            // The API returns UserInfo which lacks 'active' and 'created_at'.
+            // We supplement it to match the standard User interface expected by the state.
+            setUser({ ...result.user, active: true } as User);
             lastActivityRef.current = Date.now(); // Reset timer on login
         }
         return result;

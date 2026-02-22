@@ -39,7 +39,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
     const handleExport = async () => {
         setExporting(true);
         setResult(null);
-        const res = await (window as any).api.exportProducts();
+        const res = await window.api.exportProducts();
         if (res.success) {
             setResult({ type: 'success', message: `Berhasil export ke: ${res.path}` });
         } else if (res.error !== 'Cancelled') {
@@ -53,7 +53,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
         setResult(null);
         setPreview(null);
 
-        const res = await (window as any).api.previewImport();
+        const res = await window.api.previewImport();
         setImporting(false);
 
         if (res.error === 'Cancelled') return;
@@ -70,7 +70,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
         if (!preview) return;
 
         setConfirming(true);
-        const res = await (window as any).api.confirmImport({
+        const res = await window.api.confirmImport({
             newProducts: preview.newProducts,
             needBarcode: preview.needBarcode
         });
@@ -93,7 +93,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
     const handleDownloadTemplate = async () => {
         setDownloadingTemplate(true);
         setResult(null);
-        const res = await (window as any).api.exportTemplate();
+        const res = await window.api.exportTemplate();
         if (res.success) {
             setResult({ type: 'success', message: `Template disimpan: ${res.path}` });
         } else if (res.error !== 'Cancelled') {

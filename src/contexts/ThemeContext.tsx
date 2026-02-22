@@ -111,8 +111,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const loadDbSettings = async () => {
             try {
-                if ((window as any).api) {
-                    const dbSettings = await (window as any).api.getSettings();
+                if (window.api) {
+                    const dbSettings = await window.api.getSettings();
                     setSettings(prev => ({
                         ...prev,
                         appName: dbSettings.app_name || prev.appName,

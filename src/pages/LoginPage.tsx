@@ -39,7 +39,7 @@ export default function LoginPage() {
     const [storeName, setStoreName] = useState('POS Cashier');
 
     useEffect(() => {
-        (window as any).api.getSettings().then((s: any) => {
+        window.api.getSettings().then((s: any) => {
             if (s.store_name) setStoreName(s.store_name);
         });
     }, []);
@@ -75,7 +75,7 @@ export default function LoginPage() {
         }
 
         try {
-            const result = await (window as any).api.resetPasswordWithMasterKey(resetUsername, masterKey, newPassword);
+            const result = await window.api.resetPasswordWithMasterKey(resetUsername, masterKey, newPassword);
             if (result.success) {
                 setResetSuccess('Password berhasil direset. Silakan login dengan password baru.');
                 setMasterKey('');

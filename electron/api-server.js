@@ -231,9 +231,10 @@ function createAPIServer(database, port = 3001) {
         return res.send(img);
       }
 
-      // Try to serve default icon.svg if it exists
+      // When no custom logo, serve SVG
       const defaultIcon = path.join(posAdminPath, 'icons', 'icon.svg');
       if (fs.existsSync(defaultIcon)) {
+        res.setHeader('Content-Type', 'image/svg+xml');
         res.set('Cache-Control', 'public, max-age=86400');
         return res.sendFile(defaultIcon);
       }
@@ -246,6 +247,16 @@ function createAPIServer(database, port = 3001) {
 
   app.get('/favicon.ico', handleFavicon);
   app.get('/admin/favicon.ico', handleFavicon);
+
+  app.get('/icons/icon.svg', (req, res) => {
+    const defaultIcon = path.join(posAdminPath, 'icons', 'icon.svg');
+    if (fs.existsSync(defaultIcon)) {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.sendFile(defaultIcon);
+    }
+    res.status(404).end();
+  });
 
   app.use('/admin', express.static(posAdminPath, { index: false })); // Disable default index.html serving
 

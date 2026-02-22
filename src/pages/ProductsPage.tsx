@@ -74,6 +74,15 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
+const CATEGORY_COLORS = [
+    { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-400/10' },
+    { text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-400/10' },
+    { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10' },
+    { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-400/10' },
+    { text: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-400/10' },
+    { text: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-400/10' },
+];
+
 // Format number with dot separator (1000 → 1.000)
 const formatNumberLocal = (value: any) => {
     const num = String(value).replace(/\D/g, '');
@@ -171,7 +180,7 @@ export default function ProductsPage() {
     };
 
     const handleAddNew = async () => {
-        const barcode = await (window as any).api.generateBarcode();
+        const barcode = await window.api.generateBarcode();
         setForm({ barcode, name: '', category_id: '', price: '', cost: '', stock: '', unit: 'pcs' });
         setEditing(null);
         setIsManualCost(false);
@@ -241,8 +250,8 @@ export default function ProductsPage() {
                 } else {
                     // We don't want to await here if we want optimistic updates, but for categories it's safer to just let the user save.
                     // Actually, the original code awaited.
-                    const cat = await (window as any).api.createCategory(newCatName.trim(), '');
-                    categoryId = cat.id;
+                    const cat = await window.api.createCategory(newCatName.trim(), '');
+                    categoryId = cat.data ? cat.data.id : null;
                 }
             }
 
@@ -331,7 +340,7 @@ export default function ProductsPage() {
     };
 
     const handleRegenerateBarcode = async () => {
-        const barcode = await (window as any).api.generateBarcode();
+        const barcode = await window.api.generateBarcode();
         setForm(f => ({ ...f, barcode }));
     };
 
@@ -361,7 +370,7 @@ export default function ProductsPage() {
         }
     };
 
-    const canEdit = hasRole('admin', 'supervisor', 'cashier', 'kasir');
+    const canEdit = hasRole('admin', 'supervisor', 'cashier');
 
     return (
         <div className="space-y-6">
@@ -450,7 +459,7 @@ export default function ProductsPage() {
 
             <Card className="border-none shadow-sm overflow-hidden">
                 <div className="h-[calc(100vh-420px)] overflow-y-auto custom-scrollbar">
-                    <Table>
+                    <Table className="zebra-rows">
                         <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
                             <TableRow className="border-b-2">
                                 {canEdit && (
@@ -516,7 +525,13 @@ export default function ProductsPage() {
                                         <TableCell className="font-sans text-xs text-gray-500">{p.barcode || '-'}</TableCell>
                                         <TableCell className="font-bold text-gray-900 dark:text-gray-100">{p.name}</TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="font-bold text-[10px] uppercase">{p.category_name || 'Tanpa Kategori'}</Badge>
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                                                CATEGORY_COLORS[(p.category_id || 0) % CATEGORY_COLORS.length].bg,
+                                                CATEGORY_COLORS[(p.category_id || 0) % CATEGORY_COLORS.length].text
+                                            )}>
+                                                {p.category_name || 'Tanpa Kategori'}
+                                            </span>
                                         </TableCell>
                                         {hasRole('admin', 'supervisor') && (
                                             <TableCell className="text-right text-gray-500 font-medium">{formatCurrency(p.cost)}</TableCell>

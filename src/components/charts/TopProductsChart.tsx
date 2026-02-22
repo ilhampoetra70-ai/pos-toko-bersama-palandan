@@ -65,7 +65,7 @@ export default function TopProductsChart({ data, profitData }: TopProductsChartP
             <CardContent>
                 <ResponsiveContainer width="100%" height={Math.max(250, data.length * 40)}>
                     <BarChart data={chartData} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.03)" />
+                        <CartesianGrid horizontal={false} strokeWidth={1.5} className="stroke-gray-300 dark:stroke-gray-600" />
                         <XAxis
                             type="number"
                             axisLine={false}
@@ -81,7 +81,7 @@ export default function TopProductsChart({ data, profitData }: TopProductsChartP
                             tick={{ fontSize: 9, fontWeight: 700, fill: '#64748b' }}
                             width={140}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)', radius: [0, 6, 6, 0] }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)', radius: 6 }} />
                         <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={20}>
                             {chartData.map((entry, i) => (
                                 <Cell key={i} fill={getBarColor(entry.margin)} fillOpacity={0.85} />

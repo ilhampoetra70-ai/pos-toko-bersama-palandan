@@ -105,9 +105,9 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
     const chartData = chartPeriod === 7 ? stats.last_7_days : stats.last_30_days;
 
     const methodMap: Record<string, { label: string; color: string }> = {
-        cash:     { label: 'Tunai',    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-        debit:    { label: 'Debit',    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-        qris:     { label: 'QRIS',     color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+        cash: { label: 'Tunai', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+        debit: { label: 'Debit', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+        qris: { label: 'QRIS', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
         transfer: { label: 'Transfer', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
     };
 
@@ -169,7 +169,7 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                                 {salesGrowth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownLeft className="w-3 h-3" />}
                                 {Math.abs(salesGrowth).toFixed(1)}%
                             </span>
-                            <span className="text-gray-400">vs kemarin</span>
+                            <span className="text-gray-400 dark:text-gray-500">vs kemarin</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -213,7 +213,7 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                         </div>
                     </div>
                     <div className="pr-6 relative z-10 shrink-0">
-                        <div className="h-8 w-8 bg-white text-gray-900 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform shadow-md">
+                        <div className="h-8 w-8 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform shadow-md border border-transparent dark:border-white/10">
                             <ChevronRight className="w-4 h-4" />
                         </div>
                     </div>
@@ -465,7 +465,7 @@ function DashboardHeader() {
     return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-0.5">
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Dashboard</h2>
+                <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h2>
                 <div className="flex items-center gap-2 text-gray-500">
                     <Calendar className="w-4 h-4" />
                     <p className="text-sm font-medium">{today}</p>
@@ -722,7 +722,7 @@ function AlertsSection({ stats, navigate }: any) {
             message: `${stats.debt_overdue_count} transaksi (${formatCurrency(stats.debt_overdue_total)})`,
             action: () => navigate('/debts'),
             icon: Clock,
-            color: "bg-red-50 text-red-700 border-red-100"
+            color: "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/20"
         });
     }
 
@@ -733,7 +733,7 @@ function AlertsSection({ stats, navigate }: any) {
             message: `${stats.debt_total_count} transaksi (${formatCurrency(stats.debt_total_outstanding)})`,
             action: () => navigate('/debts'),
             icon: DollarSign,
-            color: "bg-blue-50 text-blue-700 border-blue-100"
+            color: "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/20"
         });
     }
 
@@ -744,7 +744,7 @@ function AlertsSection({ stats, navigate }: any) {
             message: `${stats.low_stock_count} produk perlu restok`,
             action: () => navigate('/low-stock'),
             icon: Package,
-            color: "bg-orange-50 text-orange-700 border-orange-100"
+            color: "bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/20"
         });
     }
 
@@ -760,7 +760,7 @@ function AlertsSection({ stats, navigate }: any) {
             message: daysSinceBackup === null ? 'Belum pernah backup' : `Backup terakhir ${daysSinceBackup} hari lalu`,
             action: () => navigate('/database'),
             icon: Database,
-            color: daysSinceBackup === null ? "bg-red-50 text-red-700 border-red-100" : "bg-orange-50 text-orange-700 border-orange-100"
+            color: daysSinceBackup === null ? "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/20" : "bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900/20"
         });
     }
 
@@ -772,10 +772,10 @@ function AlertsSection({ stats, navigate }: any) {
             <CardContent>
                 {alerts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                        <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
-                            <CheckCircle2 className="w-6 h-6 text-green-500" />
+                        <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="w-6 h-6 text-green-500 dark:text-green-400" />
                         </div>
-                        <p className="text-green-600 font-bold">Semua Aman!</p>
+                        <p className="text-green-600 dark:text-green-400 font-bold">Semua Aman!</p>
                     </div>
                 ) : (
                     <ScrollArea className="h-[240px]">
@@ -784,9 +784,9 @@ function AlertsSection({ stats, navigate }: any) {
                                 <div
                                     key={index}
                                     onClick={alert.action}
-                                    className={cn("p-3 rounded-lg border flex items-center gap-3 cursor-pointer hover:bg-gray-50/50 transition-colors", alert.color)}
+                                    className={cn("p-3 rounded-lg border flex items-center gap-3 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors", alert.color)}
                                 >
-                                    <div className="p-1.5 bg-white/80 rounded-md shrink-0">
+                                    <div className="p-1.5 bg-white/80 dark:bg-gray-800/80 rounded-md shrink-0">
                                         <alert.icon className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -833,8 +833,8 @@ function SlowMovingDashboardSection({ navigate }: any) {
                     <div className="p-12 flex justify-center text-center"><Loader2 className="w-8 h-8 animate-spin text-orange-200" /></div>
                 ) : products.length === 0 ? (
                     <div className="p-12 text-center space-y-3">
-                        <CheckCircle2 className="w-12 h-12 mx-auto text-green-200" />
-                        <p className="text-green-600 font-bold">Semua produk bergerak lancar!</p>
+                        <CheckCircle2 className="w-12 h-12 mx-auto text-green-200 dark:text-green-900/50" />
+                        <p className="text-green-600 dark:text-green-400 font-bold">Semua produk bergerak lancar!</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -885,10 +885,10 @@ function SlowMovingDashboardSection({ navigate }: any) {
 
 function RecentTransactionsSection({ transactions, navigate }: any) {
     const methodMap = {
-        cash: { label: 'Tunai', icon: Wallet, color: 'bg-green-100 text-green-700' },
-        debit: { label: 'Debit', icon: CreditCard, color: 'bg-blue-100 text-blue-700' },
-        qris: { label: 'QRIS', icon: QrCode, color: 'bg-purple-100 text-purple-700' },
-        transfer: { label: 'Transfer', icon: FileText, color: 'bg-orange-100 text-orange-700' }
+        cash: { label: 'Tunai', icon: Wallet, color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' },
+        debit: { label: 'Debit', icon: CreditCard, color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
+        qris: { label: 'QRIS', icon: QrCode, color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400' },
+        transfer: { label: 'Transfer', icon: FileText, color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400' }
     } as any;
 
     return (

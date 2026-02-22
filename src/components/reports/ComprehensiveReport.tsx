@@ -20,24 +20,24 @@ interface CollapsibleSectionProps {
 function CollapsibleSection({ id, title, icon: Icon, children }: CollapsibleSectionProps) {
     const [open, setOpen] = useState(true);
     return (
-        <Card id={id} className="border-none shadow-sm bg-white dark:bg-gray-950 rounded-[2.5rem] overflow-hidden transition-all duration-300">
+        <Card id={id} className="bg-card border-border rounded-[2.5rem] overflow-hidden shadow-sm transition-all duration-300">
             <button
                 onClick={() => setOpen(!open)}
                 className="w-full flex items-center justify-between p-8 text-left group"
             >
                 <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-50 dark:bg-gray-900 rounded-2xl flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white transition-all">
+                    <div className="w-10 h-10 bg-muted rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                         <Icon className="w-5 h-5" />
                     </div>
-                    <span className="font-black text-lg uppercase tracking-tight text-gray-900 dark:text-gray-100">{title}</span>
+                    <span className="font-black text-lg uppercase tracking-tight text-foreground">{title}</span>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-gray-400">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                     {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
             </button>
             {open && (
                 <CardContent className="px-8 pb-8 pt-0 animate-in slide-in-from-top-2 duration-300">
-                    <div className="pt-4 border-t dark:border-gray-900">
+                    <div className="pt-4 border-t border-border">
                         {children}
                     </div>
                 </CardContent>
@@ -107,12 +107,12 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
     return (
         <div ref={containerRef} className="space-y-8 pb-20">
             {/* Quick navigation */}
-            <div className="sticky top-0 z-20 bg-gray-50/80 dark:bg-gray-950/80 backdrop-blur-md py-4 -mx-4 px-4 border-b dark:border-gray-900">
+            <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 border-b border-border">
                 <div className="flex flex-wrap gap-2">
                     {navItems.map(n => (
                         <button key={n.id} onClick={() => scrollTo(n.id)}
-                            className="px-5 py-2 text-[10px] font-black uppercase tracking-widest bg-white dark:bg-gray-900 border dark:border-gray-800 hover:bg-primary-600 hover:text-white dark:hover:bg-primary-600 hover:border-primary-600 transition-all rounded-full border-gray-100 shadow-sm flex items-center gap-2 group">
-                            <n.icon className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors" />
+                            className="px-5 py-2 text-[10px] font-black uppercase tracking-widest bg-card border border-border hover:bg-primary hover:text-primary-foreground transition-all rounded-full shadow-sm flex items-center gap-2 group">
+                            <n.icon className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
                             {n.label}
                         </button>
                     ))}
@@ -146,14 +146,14 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             {/* Product performance */}
             <CollapsibleSection id="sec-products" title="Performa Produk Detail" icon={Package}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center gap-2">
+                    <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Top 5 Produk Terlaris
                         </h4>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <table className="w-full text-xs zebra-rows">
+                                <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                     <th className="text-left py-4 px-2">#</th>
                                     <th className="text-left py-4">Nama Produk</th>
                                     <th className="text-center py-4">Qty</th>
@@ -161,30 +161,30 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                 </tr></thead>
                                 <tbody>
                                     {sales.topProducts.slice(0, 5).map((p: any, i: number) => (
-                                        <tr key={p.product_name} className="border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-white dark:hover:bg-black/20 transition-colors">
-                                            <td className="py-4 px-2 text-gray-400 font-bold">{i + 1}</td>
-                                            <td className="py-4 font-bold text-gray-700 dark:text-gray-300">{p.product_name}</td>
+                                        <tr key={p.product_name} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                            <td className="py-4 px-2 text-muted-foreground font-bold">{i + 1}</td>
+                                            <td className="py-4 font-bold text-foreground">{p.product_name}</td>
                                             <td className="py-4 text-center">
-                                                <Badge variant="secondary" className="font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border-none">{formatNumber(p.qty)}</Badge>
+                                                <Badge variant="secondary" className="font-black bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-none">{formatNumber(p.qty)}</Badge>
                                             </td>
-                                            <td className="py-4 text-right font-black text-gray-900 dark:text-gray-100 px-2">{formatCurrency(p.total)}</td>
+                                            <td className="py-4 text-right font-black text-foreground px-2">{formatCurrency(p.total)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center gap-2">
+                    <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
                             Bottom 5 Produk Terendah
                         </h4>
                         {bottomProducts.length === 0 ? (
-                            <div className="h-48 flex items-center justify-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">Tidak ada data terdeteksi</div>
+                            <div className="h-48 flex items-center justify-center text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Tidak ada data terdeteksi</div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                    <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                <table className="w-full text-xs zebra-rows">
+                                    <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                         <th className="text-left py-4 px-2">#</th>
                                         <th className="text-left py-4">Nama Produk</th>
                                         <th className="text-center py-4">Qty</th>
@@ -192,13 +192,13 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                     </tr></thead>
                                     <tbody>
                                         {bottomProducts.map((p: any, i: number) => (
-                                            <tr key={p.product_name} className="border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-white dark:hover:bg-black/20 transition-colors">
-                                                <td className="py-4 px-2 text-gray-400 font-bold">{i + 1}</td>
-                                                <td className="py-4 font-bold text-gray-700 dark:text-gray-300">{p.product_name}</td>
+                                            <tr key={p.product_name} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                                <td className="py-4 px-2 text-muted-foreground font-bold">{i + 1}</td>
+                                                <td className="py-4 font-bold text-foreground">{p.product_name}</td>
                                                 <td className="py-4 text-center">
-                                                    <Badge variant="secondary" className="font-black bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400 border-none">{formatNumber(p.qty)}</Badge>
+                                                    <Badge variant="secondary" className="font-black bg-red-100/50 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-none">{formatNumber(p.qty)}</Badge>
                                                 </td>
-                                                <td className="py-4 text-right font-black text-gray-900 dark:text-gray-100 px-2">{formatCurrency(p.total)}</td>
+                                                <td className="py-4 text-right font-black text-foreground px-2">{formatCurrency(p.total)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -214,9 +214,9 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             <CollapsibleSection id="sec-payment" title="Analisis Pembayaran" icon={CreditCard}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                     <PaymentPieChart data={sales.paymentBreakdown} />
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                        <table className="w-full text-xs">
-                            <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
+                        <table className="w-full text-xs zebra-rows">
+                            <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 <th className="text-left py-4 px-2">Metode</th>
                                 <th className="text-center py-4">Vol</th>
                                 <th className="text-right py-4">Nilai Total</th>
@@ -226,14 +226,14 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                 {sales.paymentBreakdown.map((p: any) => {
                                     const pct = sales.summary.revenue > 0 ? ((p.total / sales.summary.revenue) * 100).toFixed(1) : '0.0';
                                     return (
-                                        <tr key={p.payment_method} className="border-b border-gray-100/50 dark:border-gray-800/50">
-                                            <td className="py-4 px-2 font-black text-gray-700 dark:text-gray-300 uppercase tracking-tight">
+                                        <tr key={p.payment_method} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                            <td className="py-4 px-2 font-black text-foreground uppercase tracking-tight">
                                                 {p.payment_method === 'cash' ? 'Tunai' : p.payment_method}
                                             </td>
-                                            <td className="py-4 text-center font-bold text-gray-500">{p.count} tx</td>
-                                            <td className="py-4 text-right font-black text-gray-900 dark:text-gray-100">{formatCurrency(p.total)}</td>
+                                            <td className="py-4 text-center font-bold text-muted-foreground">{p.count} tx</td>
+                                            <td className="py-4 text-right font-black text-foreground">{formatCurrency(p.total)}</td>
                                             <td className="py-4 text-right px-2">
-                                                <span className="text-[10px] font-black text-primary-500 bg-primary-50 dark:bg-primary-950/30 px-2 py-1 rounded-lg">{pct}%</span>
+                                                <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-1 rounded-lg">{pct}%</span>
                                             </td>
                                         </tr>
                                     );
@@ -247,14 +247,14 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             {/* Transaction log */}
             <CollapsibleSection id="sec-txlog" title="Log Transaksi Terakhir" icon={History}>
                 {transactionLog.length === 0 ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-gray-400 gap-4">
+                    <div className="py-20 flex flex-col items-center justify-center text-muted-foreground gap-4">
                         <History className="w-12 h-12 opacity-20" />
                         <p className="font-bold uppercase tracking-widest text-xs">Tidak ada riwayat transaksi</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto -mx-2">
-                        <table className="w-full text-xs">
-                            <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        <table className="w-full text-xs zebra-rows">
+                            <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 <th className="text-left py-4 px-4">Nomor Invoice</th>
                                 <th className="text-left py-4">Waktu</th>
                                 <th className="text-left py-4 max-w-[250px]">Produk & Qty</th>
@@ -264,26 +264,26 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                             </tr></thead>
                             <tbody>
                                 {transactionLog.slice(0, 100).map((tx: any) => (
-                                    <tr key={tx.id} className="border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
-                                        <td className="py-4 px-4 font-mono text-[10px] font-bold text-primary-600">{tx.invoice_number}</td>
-                                        <td className="py-4 text-[10px] text-gray-500 font-medium">{tx.created_at?.slice(0, 19).replace('T', ' ')}</td>
-                                        <td className="py-4 text-[10px] leading-relaxed max-w-[250px] truncate" title={tx.items?.map((it: any) => `${it.product_name} x${it.quantity}`).join(', ')}>
+                                    <tr key={tx.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                                        <td className="py-4 px-4 font-mono text-[10px] font-bold text-primary">{tx.invoice_number}</td>
+                                        <td className="py-4 text-[10px] text-muted-foreground font-medium">{tx.created_at?.slice(0, 19).replace('T', ' ')}</td>
+                                        <td className="py-4 text-[10px] leading-relaxed max-w-[250px] truncate text-muted-foreground" title={tx.items?.map((it: any) => `${it.product_name} x${it.quantity}`).join(', ')}>
                                             {tx.items?.map((it: any) => `${it.product_name} x${it.quantity}`).join(', ')}
                                         </td>
-                                        <td className="py-4 text-right font-black text-gray-900 dark:text-gray-100">{formatCurrency(tx.total || 0)}</td>
+                                        <td className="py-4 text-right font-black tabular-nums text-foreground">{formatCurrency(tx.total || 0)}</td>
                                         <td className="py-4 text-center">
-                                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md text-gray-500">
+                                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 bg-muted rounded-md text-muted-foreground">
                                                 {tx.payment_method === 'cash' ? 'Tunai' : (tx.payment_method || '-')}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-4 text-gray-500 font-bold">{tx.cashier_name || '-'}</td>
+                                        <td className="py-4 px-4 text-muted-foreground font-bold">{tx.cashier_name || '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                         {transactionLog.length > 100 && (
-                            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl text-center">
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            <div className="mt-6 p-4 bg-muted/50 rounded-2xl text-center">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                                     Hanya menampilkan 100 dari total {transactionLog.length} transaksi dalam periode ini
                                 </p>
                             </div>
@@ -295,41 +295,41 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             {/* Profit detail */}
             <CollapsibleSection id="sec-profit" title="Kalkulasi Laba & Margin" icon={Calculator}>
                 <ProfitMarginChart data={profit.products} />
-                <div className="mt-8 overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                    <table className="w-full text-xs">
-                        <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                <div className="mt-8 overflow-x-auto bg-muted/30 rounded-[2rem] p-8 border border-border">
+                    <table className="w-full text-xs zebra-rows">
+                        <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                             <th className="text-left py-4 px-2">Nama Barang</th>
                             <th className="text-center py-4">Laku</th>
                             <th className="text-right py-4">Revenue</th>
                             <th className="text-right py-4">Cost Basis</th>
-                            <th className="text-right py-4 text-emerald-600 border-l dark:border-gray-800">Laba Bersih</th>
+                            <th className="text-right py-4 text-emerald-600 border-l border-border">Laba Bersih</th>
                             <th className="text-right py-4 px-2">Margin</th>
                         </tr></thead>
                         <tbody>
                             {profit.products.map((p: any) => {
                                 const margin = p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : '0.0';
                                 return (
-                                    <tr key={p.product_name} className="border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-white dark:hover:bg-black/20 transition-all">
-                                        <td className="py-4 px-2 font-bold text-gray-700 dark:text-gray-300">{p.product_name}</td>
-                                        <td className="py-4 text-center font-bold text-gray-500">{formatNumber(p.qty)}</td>
-                                        <td className="py-4 text-right font-bold">{formatCurrency(p.revenue)}</td>
-                                        <td className="py-4 text-right font-medium text-gray-400">{formatCurrency(p.total_cost)}</td>
-                                        <td className="py-4 text-right font-black text-emerald-600 dark:text-emerald-400 border-l dark:border-gray-800">{formatCurrency(p.profit)}</td>
+                                    <tr key={p.product_name} className="border-b border-border hover:bg-muted/50 transition-all">
+                                        <td className="py-4 px-2 font-bold text-foreground">{p.product_name}</td>
+                                        <td className="py-4 text-center font-bold text-muted-foreground">{formatNumber(p.qty)}</td>
+                                        <td className="py-4 text-right font-bold tabular-nums text-foreground">{formatCurrency(p.revenue)}</td>
+                                        <td className="py-4 text-right font-medium tabular-nums text-muted-foreground">{formatCurrency(p.total_cost)}</td>
+                                        <td className="py-4 text-right font-black tabular-nums text-emerald-600 dark:text-emerald-400 border-l border-border">{formatCurrency(p.profit)}</td>
                                         <td className="py-4 text-right px-2">
-                                            <span className="font-black text-[10px]">{margin}%</span>
+                                            <span className="font-black tabular-nums text-[10px]">{margin}%</span>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
-                        <tfoot className="bg-gray-100 dark:bg-black/20 font-black">
+                        <tfoot className="bg-muted/50 font-black text-foreground">
                             <tr className="uppercase tracking-widest text-[10px]">
                                 <td className="py-6 px-4 rounded-l-2xl">Total Akumulatif</td>
                                 <td></td>
-                                <td className="py-6 text-right">{formatCurrency(profit.totals.revenue)}</td>
-                                <td className="py-6 text-right text-gray-500">{formatCurrency(profit.totals.cost)}</td>
-                                <td className="py-6 text-right text-emerald-600 border-l dark:border-gray-800 px-2">{formatCurrency(profit.totals.profit)}</td>
-                                <td className="py-6 text-right rounded-r-2xl px-4">{profit.totals.margin.toFixed(1)}%</td>
+                                <td className="py-6 text-right tabular-nums">{formatCurrency(profit.totals.revenue)}</td>
+                                <td className="py-6 text-right tabular-nums text-muted-foreground">{formatCurrency(profit.totals.cost)}</td>
+                                <td className="py-6 text-right tabular-nums text-emerald-600 border-l border-border px-2">{formatCurrency(profit.totals.profit)}</td>
+                                <td className="py-6 text-right tabular-nums rounded-r-2xl px-4">{profit.totals.margin.toFixed(1)}%</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -339,15 +339,15 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             {/* Stock audit log */}
             {stockAuditData && stockAuditData.length > 0 && (
                 <CollapsibleSection id="sec-stockaudit" title="Audit Stok Manual" icon={ClipboardList}>
-                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 p-6 rounded-[2rem] mb-6 flex items-start gap-4">
-                        <ClipboardList className="w-6 h-6 text-amber-600 shrink-0" />
-                        <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed uppercase tracking-widest">
+                    <div className="bg-amber-100/30 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-900/30 p-6 rounded-[2rem] mb-6 flex items-start gap-4">
+                        <ClipboardList className="w-6 h-6 text-amber-600 dark:text-amber-500 shrink-0" />
+                        <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400/80 leading-relaxed uppercase tracking-widest">
                             Data di bawah mencatat perubahan stok yang dilakukan secara manual melalui halaman Edit Produk atau Stok Opname. Perubahan otomatis dari hasil penjualan tidak dicantumkan di sini.
                         </p>
                     </div>
-                    <div className="overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                        <table className="w-full text-xs">
-                            <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <div className="overflow-x-auto bg-muted/30 rounded-[2rem] p-8 border border-border">
+                        <table className="w-full text-xs zebra-rows">
+                            <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 <th className="text-left py-4 px-2">Produk</th>
                                 <th className="text-center py-4">Frk. Edit</th>
                                 <th className="text-right py-4">Total Selisih</th>
@@ -355,16 +355,16 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                             </tr></thead>
                             <tbody>
                                 {stockAuditData.map((log: any) => (
-                                    <tr key={log.product_id} className="border-b border-gray-100/50 dark:border-gray-800/50">
-                                        <td className="py-4 px-2 font-bold text-gray-700 dark:text-gray-300">{log.product_name}</td>
-                                        <td className="py-4 text-center font-bold text-gray-500">{formatNumber(log.change_count)}x</td>
+                                    <tr key={log.product_id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <td className="py-4 px-2 font-bold text-foreground">{log.product_name}</td>
+                                        <td className="py-4 text-center font-bold text-muted-foreground">{formatNumber(log.change_count)}x</td>
                                         <td className={cn(
-                                            "py-4 text-right font-black",
-                                            log.total_change > 0 ? 'text-emerald-600' : log.total_change < 0 ? 'text-red-600' : 'text-gray-500'
+                                            "py-4 text-right font-black tabular-nums",
+                                            log.total_change > 0 ? 'text-emerald-600 dark:text-emerald-500' : log.total_change < 0 ? 'text-red-600 dark:text-red-500' : 'text-muted-foreground'
                                         )}>
                                             {log.total_change > 0 ? '+' : ''}{formatNumber(log.total_change)}
                                         </td>
-                                        <td className="py-4 px-4 text-gray-500 font-bold uppercase tracking-widest text-[10px]">{log.user_names || '-'}</td>
+                                        <td className="py-4 px-4 text-muted-foreground font-bold uppercase tracking-widest text-[10px]">{log.user_names || '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -376,9 +376,9 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             {/* Stock trail log */}
             {stockTrailData && stockTrailData.length > 0 && (
                 <CollapsibleSection id="sec-stocktrail" title="Audit Mutasi Stok Detail" icon={Database}>
-                    <div className="overflow-x-auto bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border dark:border-gray-800">
-                        <table className="w-full text-xs">
-                            <thead><tr className="border-b dark:border-gray-800 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    <div className="overflow-x-auto bg-muted/30 rounded-[2rem] p-8 border border-border">
+                        <table className="w-full text-xs zebra-rows">
+                            <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 <th className="text-left py-4 px-2">Timestamp</th>
                                 <th className="text-left py-4">Produk</th>
                                 <th className="text-center py-4">Event</th>
@@ -388,24 +388,24 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                             </tr></thead>
                             <tbody>
                                 {stockTrailData.map((t: any) => (
-                                    <tr key={t.id} className="border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-white dark:hover:bg-black/20 transition-all">
-                                        <td className="py-4 px-2 text-[10px] text-gray-400 font-medium">{t.created_at?.slice(0, 19).replace('T', ' ')}</td>
-                                        <td className="py-4 font-black text-gray-800 dark:text-gray-200">{t.product_name}</td>
+                                    <tr key={t.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                        <td className="py-4 px-2 text-[10px] text-muted-foreground font-medium">{t.created_at?.slice(0, 19).replace('T', ' ')}</td>
+                                        <td className="py-4 font-black text-foreground">{t.product_name}</td>
                                         <td className="py-4 text-center">
                                             <Badge variant="outline" className="font-black text-[9px] uppercase tracking-widest border-2 py-0.5">
                                                 {t.event_type}
                                             </Badge>
                                         </td>
-                                        <td className="py-4 text-right text-gray-400 font-bold">
-                                            {t.quantity_before} <span className="mx-1 text-gray-300">&rsaquo;</span> <span className="text-gray-900 dark:text-gray-100 font-black">{t.quantity_after}</span>
+                                        <td className="py-4 text-right text-muted-foreground font-bold tabular-nums">
+                                            {t.quantity_before} <span className="mx-1 opacity-50">&rsaquo;</span> <span className="text-foreground font-black">{t.quantity_after}</span>
                                         </td>
                                         <td className={cn(
-                                            "py-4 text-right font-black",
-                                            t.quantity_change > 0 ? 'text-emerald-500' : 'text-red-500'
+                                            "py-4 text-right font-black tabular-nums",
+                                            t.quantity_change > 0 ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'
                                         )}>
                                             {t.quantity_change > 0 ? '+' : ''}{t.quantity_change}
                                         </td>
-                                        <td className="py-4 px-4 text-gray-500 text-[10px] font-bold uppercase tracking-widest">{t.user_name || '-'}</td>
+                                        <td className="py-4 px-4 text-muted-foreground text-[10px] font-bold uppercase tracking-widest">{t.user_name || '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>

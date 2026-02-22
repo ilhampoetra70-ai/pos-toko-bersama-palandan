@@ -62,8 +62,8 @@ export default memo(function UsersPage() {
   useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
-    const data = await (window as any).api.getUsers();
-    setUsers(data);
+    const data = await window.api.getUsers();
+    setUsers((data as any)?.data || (Array.isArray(data) ? data : []));
   };
 
   const resetForm = () => {
@@ -86,12 +86,17 @@ export default memo(function UsersPage() {
 
     try {
       if (editing) {
-        const data = { name: form.name, role: form.role } as any;
+        const data = { name: form.name, username: form.username, role: form.role as import('@/types/api').UserRole } as any;
         if (form.password) data.password = form.password;
-        await (window as any).api.updateUser(editing.id, data);
+        await window.api.updateUser(editing.id, data);
       } else {
         if (!form.password) { setError('Password wajib diisi'); return; }
-        await (window as any).api.createUser(form);
+        await window.api.createUser({
+          name: form.name,
+          username: form.username,
+          password: form.password,
+          role: form.role as import('@/types/api').UserRole
+        });
       }
       resetForm();
       loadUsers();
@@ -101,13 +106,13 @@ export default memo(function UsersPage() {
   };
 
   const handleToggleActive = async (user: any) => {
-    await (window as any).api.updateUser(user.id, { active: user.active ? 0 : 1 });
+    await window.api.updateUser(user.id, { active: user.active ? 0 : 1 });
     loadUsers();
   };
 
   const handleDelete = async (user: any) => {
     if (!confirm(`Hapus user "${user.name}"?`)) return;
-    await (window as any).api.deleteUser(user.id);
+    await window.api.deleteUser(user.id);
     loadUsers();
   };
 
@@ -117,9 +122,9 @@ export default memo(function UsersPage() {
   );
 
   const roleConfig = {
-    admin: { label: 'Admin', color: 'bg-purple-100 text-purple-700 hover:bg-purple-100' },
-    supervisor: { label: 'Supervisor', color: 'bg-blue-100 text-blue-700 hover:bg-blue-100' },
-    cashier: { label: 'Cashier', color: 'bg-green-100 text-green-700 hover:bg-green-100' }
+    admin: { label: 'Admin', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400' },
+    supervisor: { label: 'Supervisor', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
+    cashier: { label: 'Cashier', color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' }
   } as any;
 
   return (
@@ -140,7 +145,7 @@ export default memo(function UsersPage() {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
             <Input
               placeholder="Cari user berdasarkan nama atau username..."
-              className="pl-10 h-11 bg-gray-50/50 border-none shadow-inner"
+              className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -150,7 +155,7 @@ export default memo(function UsersPage() {
 
       <Card className="border-none shadow-sm overflow-hidden">
         <Table>
-          <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
+          <TableHeader className="bg-gray-50/80 dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10 backdrop-blur-sm">
             <TableRow className="border-b-2">
               <TableHead className="font-black text-[11px] uppercase tracking-widest py-4">Nama & Username</TableHead>
               <TableHead className="font-black text-[11px] uppercase tracking-widest">Jabatan / Role</TableHead>
@@ -170,12 +175,12 @@ export default memo(function UsersPage() {
               <TableRow key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors h-16">
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-black text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-colors uppercase">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-gray-400 dark:text-gray-500 group-hover:bg-primary-50 dark:group-hover:bg-primary-950/30 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors uppercase">
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-black text-gray-900">{user.name}</div>
-                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">@{user.username}</div>
+                      <div className="font-black text-gray-900 dark:text-gray-100">{user.name}</div>
+                      <div className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">@{user.username}</div>
                     </div>
                   </div>
                 </TableCell>
@@ -191,7 +196,9 @@ export default memo(function UsersPage() {
                     onClick={() => handleToggleActive(user)}
                     className={cn(
                       "font-black text-[10px] uppercase h-7 px-3 rounded-full",
-                      user.active ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"
+                      user.active
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/40"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/40"
                     )}
                   >
                     {user.active ? <UserCheck className="w-3.5 h-3.5 mr-1.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />}
@@ -203,7 +210,7 @@ export default memo(function UsersPage() {
                     <Button variant="ghost" size="icon" className="text-primary-600 h-9 w-9" onClick={() => handleEdit(user)}>
                       <Edit3 className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-red-500 h-9 w-9 hover:bg-red-50" onClick={() => handleDelete(user)}>
+                    <Button variant="ghost" size="icon" className="text-red-500 h-9 w-9 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={() => handleDelete(user)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -215,8 +222,8 @@ export default memo(function UsersPage() {
       </Card>
 
       <Dialog open={showForm} onOpenChange={resetForm}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white dark:bg-gray-950 flex flex-col">
-          <DialogHeader className="p-6 border-b shrink-0 bg-gray-50/50">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white dark:bg-gray-950 border-none flex flex-col">
+          <DialogHeader className="p-6 border-b dark:border-gray-800 shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400">
                 <Users className="w-6 h-6" />
@@ -301,7 +308,7 @@ export default memo(function UsersPage() {
               </div>
             </div>
 
-            <DialogFooter className="p-6 bg-gray-50/50 border-t gap-3 shrink-0">
+            <DialogFooter className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-t dark:border-gray-800 gap-3 shrink-0">
               <Button type="button" variant="outline" onClick={resetForm} className="h-11 px-6 font-bold flex-1 border-gray-200 dark:border-gray-800">Batal</Button>
               <Button type="submit" className="h-11 px-8 font-black bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20 flex-1">
                 <CheckCircle2 className="w-4 h-4 mr-2" /> Simpan Data

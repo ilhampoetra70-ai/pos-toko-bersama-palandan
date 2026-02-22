@@ -12,10 +12,12 @@
   <title>Cek Harga</title>
 
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+  <!-- SVG favicon (modern browsers — Chrome 80+, Firefox 84+, Safari 13+) -->
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <!-- PNG fallback only for legacy browsers (IE, old Edge) -->
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <!-- Apple touch icon must remain PNG — iOS requirement, cannot use SVG -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 
   <style>
     * {

@@ -115,7 +115,7 @@ export default function DatabasePage() {
 
     const handleManualBackup = async () => {
         try {
-            const result = await (window as any).api.dbManualBackup();
+            const result = await window.api.dbManualBackup();
             if (result.success) {
                 showMessage('Backup berhasil disimpan ke: ' + result.path);
                 refetchStats();
@@ -129,7 +129,7 @@ export default function DatabasePage() {
 
     const checkIntegrity = async () => {
         try {
-            const result = await (window as any).api.dbIntegrityCheck();
+            const result = await window.api.dbIntegrityCheck();
             setIntegrityResult(result);
             if (result.ok) showMessage('Database dalam kondisi prima');
             else showMessage('Database bermasalah: ' + result.result, 'error');
@@ -144,7 +144,7 @@ export default function DatabasePage() {
             message: 'Data saat ini akan diganti sepenuhnya dengan data dari file backup. Aplikasi akan restart setelah restore. Lanjutkan?',
             variant: 'danger',
             action: async () => {
-                const result = await (window as any).api.dbRestoreBackup();
+                const result = await window.api.dbRestoreBackup();
                 if (result.success) showMessage('Restore berhasil. Aplikasi akan restart...');
                 else if (result.error !== 'Dibatalkan') showMessage('Gagal restore: ' + result.error, 'error');
             }
@@ -157,7 +157,7 @@ export default function DatabasePage() {
             message: null,
             variant: 'hard-reset',
             action: async () => {
-                await (window as any).api.dbHardReset();
+                await window.api.dbHardReset();
             }
         });
     };
@@ -176,7 +176,7 @@ export default function DatabasePage() {
                     {confirmModal?.variant === 'hard-reset' && (
                         <div className="space-y-4 py-4">
                             <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 p-4 rounded-xl flex gap-3">
-                                <ShieldAlert className="w-5 h-5 text-red-600 flex-shrink-0" />
+                                <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
                                 <p className="text-sm font-bold text-red-700 dark:text-red-400">
                                     SEMUA DATA akan dihapus permanen: produk, transaksi, pengguna, dan pengaturan.
                                 </p>
@@ -262,7 +262,7 @@ export default function DatabasePage() {
                                                 <TableRow key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 h-14 border-none">
                                                     <TableCell className="w-12 pl-6">{item.icon}</TableCell>
                                                     <TableCell className="font-black text-gray-900 dark:text-gray-100">{item.label}</TableCell>
-                                                    <TableCell className="text-right pr-8 font-black text-lg text-primary-600 font-mono tracking-tight">{item.value}</TableCell>
+                                                    <TableCell className="text-right pr-8 font-black text-lg text-primary-600 dark:text-primary-400 font-mono tracking-tight">{item.value}</TableCell>
                                                 </TableRow>
                                             )) : (
                                                 <TableRow><TableCell colSpan={3} className="text-center py-20 opacity-20"><RefreshCw className="w-12 h-12 mx-auto animate-spin" /></TableCell></TableRow>
@@ -340,9 +340,9 @@ export default function DatabasePage() {
                                     <div className="pt-4 border-t dark:border-gray-800 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Storage Path</span>
-                                            <Button variant="ghost" size="sm" onClick={async () => await (window as any).api.dbSetBackupDir()} className="h-7 text-[10px] font-black text-primary-600 hover:bg-primary-50 uppercase tracking-widest">Ubah Lokasi</Button>
+                                            <Button variant="ghost" size="sm" onClick={async () => await window.api.dbSetBackupDir()} className="h-7 text-[10px] font-black text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/30 uppercase tracking-widest">Ubah Lokasi</Button>
                                         </div>
-                                        <p className="text-[10px] font-mono text-gray-500 truncate bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border dark:border-gray-800">{stats?.autoBackupDir || 'Default (userData/backups/)'}</p>
+                                        <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400 truncate bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border dark:border-gray-800">{stats?.autoBackupDir || 'Default (userData/backups/)'}</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -356,7 +356,7 @@ export default function DatabasePage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-xl border border-orange-100 dark:border-orange-900/50 flex gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                                         <p className="text-sm font-bold text-orange-700 dark:text-orange-400 leading-relaxed uppercase tracking-tight">Perhatian: Backup otomatis akan dibuat sebelum file ditimpa. Aplikasi akan restart.</p>
                                     </div>
                                     <Button onClick={handleRestoreBackup} disabled={processing} className="w-full h-14 bg-orange-600 hover:bg-orange-700 font-black text-lg gap-3 shadow-lg shadow-orange-600/20">
@@ -386,14 +386,14 @@ export default function DatabasePage() {
                                         {backupHistory.length > 0 ? backupHistory.map((b: any, i: number) => (
                                             <TableRow key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 h-14 group">
                                                 <TableCell className="pl-10">
-                                                    <span className="font-mono text-xs font-black text-gray-600 dark:text-gray-400 group-hover:text-primary-600">{b.filename}</span>
+                                                    <span className="font-mono text-xs font-black text-gray-600 dark:text-gray-400 group-hover:text-primary-600 dark:group-hover:text-primary-400">{b.filename}</span>
                                                 </TableCell>
                                                 <TableCell className="text-center text-xs font-bold text-gray-500">{new Date(b.date).toLocaleString('id-ID')}</TableCell>
                                                 <TableCell className="text-right font-mono text-xs font-bold">{formatFileSize(b.size)}</TableCell>
                                                 <TableCell className="text-right pr-10">
                                                     <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="sm" onClick={() => handleRestoreBackupFromHistory(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-primary-600 hover:bg-primary-50">RESTORE</Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => mutations.deleteBackup.mutate(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-red-600 hover:bg-red-50">HAPUS</Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => handleRestoreBackupFromHistory(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/30">RESTORE</Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => mutations.deleteBackup.mutate(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">HAPUS</Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -458,7 +458,7 @@ export default function DatabasePage() {
                                                 min="1"
                                                 value={archiveMonths}
                                                 onChange={e => setArchiveMonths(parseInt(e.target.value))}
-                                                className="h-12 border-none bg-white dark:bg-gray-900 font-black text-lg focus-visible:ring-primary-500"
+                                                className="h-12 border-none bg-white dark:bg-gray-800 font-black text-lg focus-visible:ring-primary-500"
                                             />
                                         </div>
                                         <Button onClick={() => refetchArchivable()} disabled={isLoadingArchivable} variant="secondary" className="h-12 bg-white hover:bg-gray-100 font-black px-6 shadow-sm border border-gray-200">
@@ -534,7 +534,7 @@ export default function DatabasePage() {
                                     <CardDescription className="font-bold">Laporan teknis lengkap berisi statistik, kesehatan, dan pengaturan sistem.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-10">
-                                    <Button onClick={async () => await (window as any).api.dbExportSummaryPdf()} className="w-full h-14 bg-red-600 hover:bg-red-700 font-black text-lg gap-3 shadow-lg shadow-red-600/20">
+                                    <Button onClick={async () => await window.api.dbExportSummaryPdf()} className="w-full h-14 bg-red-600 hover:bg-red-700 font-black text-lg gap-3 shadow-lg shadow-red-600/20">
                                         <Download className="w-5 h-5" /> Export PDF Ringkasan
                                     </Button>
                                 </CardContent>
@@ -556,7 +556,7 @@ export default function DatabasePage() {
             message: 'Data saat ini akan diganti dengan file backup ini. Aplikasi akan restart setelah restore. Lanjutkan?',
             variant: 'danger',
             action: async () => {
-                const result = await (window as any).api.dbRestoreFromHistory(path);
+                const result = await window.api.dbRestoreFromHistory(path);
                 if (result.success) showMessage('Restore berhasil. Aplikasi akan restart...');
                 else showMessage('Gagal restore: ' + result.error, 'error');
             }
@@ -576,8 +576,8 @@ function MaintenanceCard({ title, description, icon: Icon, label, bottomLabel, a
             <CardContent className="flex-grow flex flex-col justify-center py-6">
                 {label && (
                     <div className="text-center group">
-                        <div className="text-3xl font-black text-primary-600 mb-1 font-mono tracking-tight group-hover:scale-110 transition-all">{label}</div>
-                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{bottomLabel}</div>
+                        <div className="text-3xl font-black text-primary-600 dark:text-primary-400 mb-1 font-mono tracking-tight group-hover:scale-110 transition-all">{label}</div>
+                        <div className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{bottomLabel}</div>
                     </div>
                 )}
             </CardContent>
@@ -588,7 +588,7 @@ function MaintenanceCard({ title, description, icon: Icon, label, bottomLabel, a
                     variant={variant || 'outline'}
                     className={cn(
                         "w-full font-black uppercase tracking-widest text-[10px] h-11",
-                        !variant && "bg-gray-50 hover:bg-gray-100 border-none shadow-sm"
+                        !variant && "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-none shadow-sm"
                     )}
                 >
                     {processing ? <RefreshCw className="w-3 h-3 animate-spin mr-2" /> : null}

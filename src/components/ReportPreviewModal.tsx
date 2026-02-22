@@ -158,6 +158,7 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
                         srcDoc={html}
                         title="Report Preview"
                         className="w-full h-full border-0 bg-white"
+                        style={{ colorScheme: 'light' }}
                         sandbox="allow-same-origin allow-scripts"
                     />
                 </div>

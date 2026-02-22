@@ -75,24 +75,29 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
     }, []);
 
     const loadData = async () => {
-        const s = await (window as any).api.getSettings();
-        const allTemplates = await (window as any).api.getReceiptTemplates();
-        setTemplates(allTemplates);
-        setSettings(s);
-        setHeaderText(s.receipt_header || '');
-        setFooterText(s.receipt_footer || '');
-        setReceiptWidth(s.receipt_width || '58');
-        setLogo(s.receipt_logo || '');
-        setSelectedTemplateId(s.receipt_template_id || null);
-
         try {
-            const tmpl = JSON.parse(s.receipt_template || '{}');
-            setTemplate({
-                sections: { ...DEFAULT_TEMPLATE.sections, ...(tmpl.sections || {}) },
-                font_size: tmpl.font_size || 'medium'
-            });
-        } catch {
-            setTemplate(DEFAULT_TEMPLATE);
+            const sRes = (await window.api.getSettings()) || {};
+            const allTemplates = (await window.api.getReceiptTemplates()) || [];
+
+            setTemplates(allTemplates);
+            setSettings(sRes);
+            setHeaderText(sRes.receipt_header || '');
+            setFooterText(sRes.receipt_footer || '');
+            setReceiptWidth(sRes.receipt_width ? String(sRes.receipt_width) : '58');
+            setLogo(sRes.receipt_logo || '');
+            setSelectedTemplateId(sRes.receipt_template_id ? Number(sRes.receipt_template_id) : null);
+
+            try {
+                const tmpl = JSON.parse(sRes.receipt_template || '{}');
+                setTemplate({
+                    sections: { ...DEFAULT_TEMPLATE.sections, ...(tmpl.sections || {}) },
+                    font_size: tmpl.font_size || 'medium'
+                });
+            } catch {
+                setTemplate(DEFAULT_TEMPLATE);
+            }
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -115,7 +120,7 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
 
     const updatePreview = useCallback(async () => {
         const previewSettings = buildPreviewSettings();
-        const html = await (window as any).api.getReceiptHTMLWithSettings(SAMPLE_TRANSACTION, previewSettings);
+        const html = await window.api.getReceiptHTMLWithSettings(SAMPLE_TRANSACTION as any, previewSettings as any);
         setPreviewHTML(html);
     }, [buildPreviewSettings]);
 
@@ -141,7 +146,7 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
     };
 
     const handleUploadLogo = async () => {
-        const result = await (window as any).api.uploadLogo();
+        const result = await window.api.uploadLogo();
         if (result.success) {
             setLogo(result.logo);
         }
@@ -153,13 +158,13 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
 
     const handleSave = async () => {
         setSaving(true);
-        await (window as any).api.updateSettings({
+        await window.api.updateSettings({
             receipt_template: JSON.stringify(template),
             receipt_logo: logo,
             receipt_header: headerText,
             receipt_footer: footerText,
             receipt_width: receiptWidth,
-            receipt_template_id: selectedTemplateId
+            receipt_template_id: selectedTemplateId ? String(selectedTemplateId) : ''
         });
         setSaving(false);
         onClose();
@@ -379,4 +384,45 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
             </div>
         </div>
     );
+}
+const getSampleTransaction = (): Transaction => {
+    // Mock transaction missing id ... wait I can just spread default props
+    return {
+        id: 0,
+        invoice_number: 'INV-SAMPLE-001',
+        cashier_name: 'Budi',
+        subtotal: 100000,
+        tax_amount: 11000,
+        discount_amount: 0,
+        total: 111000,
+        payment_method: 'cash',
+        amount_paid: 150000,
+        change_amount: 39000,
+        created_at: new Date().toISOString(),
+        status: 'completed' as const,
+        payment_status: 'paid' as const,
+        remaining_balance: 0,
+        items: [
+            { id: 1, transaction_id: 0, product_id: 1, product_name: 'Nasi Goreng Spesial', quantity: 2, price: 50000, subtotal: 100000, barcode: '' }
+        ]
+    };
+};
+
+function generatePreviewHTML(previewSettings: any): string {
+    const is80mm = previewSettings.receipt_width === '80';
+    return `
+        <html>
+            <body style="width: ${is80mm ? '80mm' : '58mm'}; font-family: sans-serif; padding: ${is80mm ? '10px' : '5px'}; font-size: ${previewSettings.receipt_template?.font_size === 'small' ? '12px' : '14px'}">
+                <center>
+                    ${previewSettings.receipt_logo ? `<img src="${previewSettings.receipt_logo}" style="max-width: 80%" />` : ''}
+                    <h3>${previewSettings.receipt_header || 'Toko Demo'}</h3>
+                </center>
+                <hr />
+                <p>Nasi Goreng Spesial x2<br/>Rp 100.000</p>
+                <hr />
+                <p style="text-align: right">Total: Rp 111.000</p>
+                <center><p>${previewSettings.receipt_footer || 'Terima kasih'}</p></center>
+            </body>
+        </html>
+    `;
 }

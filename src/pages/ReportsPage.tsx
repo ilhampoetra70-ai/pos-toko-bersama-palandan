@@ -118,13 +118,7 @@ export default memo(function ReportsPage() {
         setStoreName(settings.store_name || '');
     }, [settings]);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const currentToday = getToday();
-            // Auto update dates if they were set to "yesterday" via default logic (simplified here)
-        }, 60000);
-        return () => clearInterval(interval);
-    }, []);
+
 
     const handleFilter = () => {
         if (activeTab === 'sales') refetchSales();
@@ -203,9 +197,11 @@ export default memo(function ReportsPage() {
     const wrapReport = (title: string, dateRange: string, body: string) => {
         const now = new Date().toLocaleString('id-ID');
         const activeFont = (FONTS[fontFamily]?.value) || "'Segoe UI', Arial, sans-serif";
-        return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="color-scheme" content="light"><style>
+    :root{color-scheme:light}
+    html{background-color:#ffffff}
     @page { size: A4; margin: 25mm; }
-    body{font-family:${activeFont};font-size:11px;line-height:1.4;color:#1a1a1a;padding:20mm}
+    body{font-family:${activeFont};font-size:11px;line-height:1.4;color:#1a1a1a;background-color:#ffffff;padding:20mm}
     .report-header{text-align:center;margin-bottom:15px;padding-bottom:12px;border-bottom:2px solid #333}
     .summary-cards{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
     .summary-card{flex:1;min-width:120px;border:1px solid #ddd;border-radius:5px;padding:10px;text-align:center}
@@ -276,12 +272,12 @@ export default memo(function ReportsPage() {
                     </thead>
                     <tbody>
                         ${txLog.map((t: any) => {
-                            const waktu = t.created_at
-                                ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-                                : '-';
-                            const itemList = (t.items || []).slice(0, 3).map((i: any) => `${i.product_name} (${i.quantity})`).join(', ');
-                            const itemText = (t.items || []).length > 3 ? itemList + ` +${t.items.length - 3} lainnya` : (itemList || '-');
-                            return `<tr>
+            const waktu = t.created_at
+                ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                : '-';
+            const itemList = (t.items || []).slice(0, 3).map((i: any) => `${i.product_name} (${i.quantity})`).join(', ');
+            const itemText = (t.items || []).length > 3 ? itemList + ` +${t.items.length - 3} lainnya` : (itemList || '-');
+            return `<tr>
                                 <td style="font-size:9px;color:#666;white-space:nowrap">${waktu}</td>
                                 <td style="font-size:9px;font-weight:bold">${t.invoice_number || '-'}</td>
                                 <td style="font-size:9px">${methodLabel(t.payment_method)}</td>
@@ -289,7 +285,7 @@ export default memo(function ReportsPage() {
                                 <td style="text-align:right;font-weight:bold;white-space:nowrap">${formatCurrency(t.total || 0)}</td>
                                 <td style="font-size:9px;color:#666">${t.cashier_name || '-'}</td>
                             </tr>`;
-                        }).join('')}
+        }).join('')}
                     </tbody>
                 </table>
                 ${txLog.length >= 300 ? `<p style="font-size:9px;color:#999;margin-top:4px">* Ditampilkan 300 transaksi terbaru. Untuk ekspor lengkap gunakan tab Laporan Lengkap.</p>` : ''}
@@ -310,12 +306,12 @@ export default memo(function ReportsPage() {
                     </thead>
                     <tbody>
                         ${stockTrailDetailData.slice(0, 50).map((t: any) => {
-                            const waktu = t.created_at
-                                ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-                                : '-';
-                            const changeColor = t.quantity_change > 0 ? 'color:green' : 'color:red';
-                            const changeSign = t.quantity_change > 0 ? '+' : '';
-                            return `<tr>
+            const waktu = t.created_at
+                ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                : '-';
+            const changeColor = t.quantity_change > 0 ? 'color:green' : 'color:red';
+            const changeSign = t.quantity_change > 0 ? '+' : '';
+            return `<tr>
                                 <td style="font-size:9px;color:#666">${waktu}</td>
                                 <td>${t.product_name || '-'}</td>
                                 <td style="text-align:center;font-size:9px;text-transform:uppercase">${t.event_type || '-'}</td>
@@ -323,7 +319,7 @@ export default memo(function ReportsPage() {
                                 <td style="text-align:right;font-weight:bold;${changeColor}">${changeSign}${t.quantity_change}</td>
                                 <td style="font-size:9px;color:#666">${t.user_name || '-'}</td>
                             </tr>`;
-                        }).join('')}
+        }).join('')}
                     </tbody>
                 </table>
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
@@ -339,10 +335,10 @@ export default memo(function ReportsPage() {
 
         const body = `
             <div class="summary-cards">
-                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL LABA</div><div style="font-size:18px;font-weight:900;color:green">${formatCurrency(profitData.totals.profit)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">PENDAPATAN</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.totals.revenue)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL MODAL</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.totals.cost)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">MARGIN</div><div style="font-size:18px;font-weight:900">${profitData.totals.margin.toFixed(1)}%</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL LABA</div><div style="font-size:18px;font-weight:900;color:green">${formatCurrency(profitData.total_profit)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">PENDAPATAN</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.total_revenue)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL MODAL</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.total_cost)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">MARGIN</div><div style="font-size:18px;font-weight:900">${((profitData.total_profit / profitData.total_revenue) * 100).toFixed(1)}%</div></div>
             </div>
                     ${(profitData.transactionLog && profitData.transactionLog.length > 0) ? `
                 <h3>Log Transaksi Aktual (${profitData.transactionLog.length} transaksi)</h3>
@@ -358,7 +354,7 @@ export default memo(function ReportsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${profitData.transactionLog.map((t: any) => {
+                        ${(profitData.transactionLog || []).map((t: any) => {
             const waktu = t.created_at
                 ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
                 : '-';
@@ -390,7 +386,7 @@ export default memo(function ReportsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${stockTrailDetailData.slice(0, 50).map((t: any) => {
+                        ${(stockTrailDetailData || []).slice(0, 50).map((t: any) => {
             const waktu = t.created_at
                 ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
                 : '-';
@@ -408,9 +404,10 @@ export default memo(function ReportsPage() {
                     </tbody>
                 </table>
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
-            ` : ''}
-        `;
-        return wrapReport('Laporan Laba', `${dateFrom} s/d ${dateTo}`, body);
+            ` : ''
+            }
+`;
+        return wrapReport('Laporan Laba', `${dateFrom} s / d ${dateTo} `, body);
     };
 
     const buildComparisonHTML = () => {
@@ -419,43 +416,43 @@ export default memo(function ReportsPage() {
         const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
         const body = `
-            <h3>Komparasi Periode</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Metrik</th>
-                        <th style="text-align:right">Periode A (${dateFrom} s/d ${dateTo})</th>
-                        <th style="text-align:right">Periode B (${dateFrom2} s/d ${dateTo2})</th>
-                        <th style="text-align:center">Perubahan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Pendapatan</td>
-                        <td style="text-align:right">${formatCurrency(comparisonData.periodA.revenue)}</td>
-                        <td style="text-align:right">${formatCurrency(comparisonData.periodB.revenue)}</td>
-                        <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.revenue >= 0 ? 'green' : 'red'}">
-                            ${comparisonData.delta.revenue >= 0 ? '+' : ''}${comparisonData.delta.revenue.toFixed(1)}%
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Jumlah Transaksi</td>
-                        <td style="text-align:right">${formatNumber(comparisonData.periodA.count)}</td>
-                        <td style="text-align:right">${formatNumber(comparisonData.periodB.count)}</td>
-                        <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.count >= 0 ? 'green' : 'red'}">
-                            ${comparisonData.delta.count >= 0 ? '+' : ''}${comparisonData.delta.count.toFixed(1)}%
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Rata-rata Transaksi</td>
-                        <td style="text-align:right">${formatCurrency(comparisonData.periodA.average)}</td>
-                        <td style="text-align:right">${formatCurrency(comparisonData.periodB.average)}</td>
-                        <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.average >= 0 ? 'green' : 'red'}">
-                            ${comparisonData.delta.average >= 0 ? '+' : ''}${comparisonData.delta.average.toFixed(1)}%
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    <h3>Komparasi Periode</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metrik</th>
+                    <th style="text-align:right">Periode A (${dateFrom} s/d ${dateTo})</th>
+                    <th style="text-align:right">Periode B (${dateFrom2} s/d ${dateTo2})</th>
+                    <th style="text-align:center">Perubahan</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Pendapatan</td>
+                    <td style="text-align:right">${formatCurrency(comparisonData.periodA.revenue)}</td>
+                    <td style="text-align:right">${formatCurrency(comparisonData.periodB.revenue)}</td>
+                    <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.revenue >= 0 ? 'green' : 'red'}">
+                        ${comparisonData.delta.revenue >= 0 ? '+' : ''}${comparisonData.delta.revenue.toFixed(1)}%
+                    </td>
+                </tr>
+                <tr>
+                    <td>Jumlah Transaksi</td>
+                    <td style="text-align:right">${formatNumber(comparisonData.periodA.count)}</td>
+                    <td style="text-align:right">${formatNumber(comparisonData.periodB.count)}</td>
+                    <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.count >= 0 ? 'green' : 'red'}">
+                        ${comparisonData.delta.count >= 0 ? '+' : ''}${comparisonData.delta.count.toFixed(1)}%
+                    </td>
+                </tr>
+                <tr>
+                    <td>Rata-rata Transaksi</td>
+                    <td style="text-align:right">${formatCurrency(comparisonData.periodA.average)}</td>
+                    <td style="text-align:right">${formatCurrency(comparisonData.periodB.average)}</td>
+                    <td style="text-align:center;font-weight:bold;color:${comparisonData.delta.average >= 0 ? 'green' : 'red'}">
+                        ${comparisonData.delta.average >= 0 ? '+' : ''}${comparisonData.delta.average.toFixed(1)}%
+                    </td>
+                </tr>
+            </tbody>
+        </table>
             ${(includeStockTrail && stockTrailDetailData && stockTrailDetailData.length > 0) ? `
                 <h3>Log Mutasi Stok — Restok & Penyesuaian (${Math.min(stockTrailDetailData.length, 50)} dari ${stockTrailDetailData.length} entri)</h3>
                 <table>
@@ -470,7 +467,7 @@ export default memo(function ReportsPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${stockTrailDetailData.slice(0, 50).map((t: any) => {
+                        ${(stockTrailDetailData || []).slice(0, 50).map((t: any) => {
             const waktu = t.created_at
                 ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
                 : '-';
@@ -488,8 +485,9 @@ export default memo(function ReportsPage() {
                     </tbody>
                 </table>
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
-            ` : ''}
-        `;
+            ` : ''
+            }
+`;
         return wrapReport('Perbandingan Periode', 'Analisis Komparasi', body);
     };
 
@@ -500,14 +498,14 @@ export default memo(function ReportsPage() {
         const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
         const body = `
-            <h3>Ringkasan Eksekutif</h3>
+    <h3>Ringkasan Eksekutif</h3>
             <div class="summary-cards">
                 <div class="summary-card"><div>PENDAPATAN</div><div style="font-weight:900">${formatCurrency(sales.summary.revenue)}</div></div>
                 <div class="summary-card"><div>TRANSAKSI</div><div style="font-weight:900">${formatNumber(sales.summary.count)}</div></div>
                 <div class="summary-card"><div>RATA-RATA</div><div style="font-weight:900">${formatCurrency(sales.summary.average)}</div></div>
-                <div class="summary-card"><div>LABA KOTOR</div><div style="font-weight:900;color:green">${formatCurrency(profit.totals.profit)}</div></div>
-                <div class="summary-card"><div>MARGIN</div><div style="font-weight:900;color:blue">${profit.totals.margin.toFixed(1)}%</div></div>
-                <div class="summary-card"><div>TOTAL MODAL</div><div style="font-weight:900">${formatCurrency(profit.totals.cost)}</div></div>
+                <div class="summary-card"><div>LABA KOTOR</div><div style="font-weight:900;color:green">${formatCurrency(profit.total_profit)}</div></div>
+                <div class="summary-card"><div>MARGIN</div><div style="font-weight:900;color:blue">${((profit.total_profit / profit.total_revenue) * 100).toFixed(1)}%</div></div>
+                <div class="summary-card"><div>TOTAL MODAL</div><div style="font-weight:900">${formatCurrency(profit.total_cost)}</div></div>
             </div>
             
             <h3>Metode Pembayaran</h3>
@@ -584,7 +582,8 @@ export default memo(function ReportsPage() {
         }).join('')}
                     </tbody>
                 </table>
-            ` : '<p style="color:#999;font-size:10px">Tidak ada data transaksi untuk periode ini.</p>'}
+            ` : '<p style="color:#999;font-size:10px">Tidak ada data transaksi untuk periode ini.</p>'
+            }
             ${(includeStockTrail && stockTrailDetailData && stockTrailDetailData.length > 0) ? `
                 <h3>Log Mutasi Stok — Restok & Penyesuaian (${Math.min(stockTrailDetailData.length, 50)} dari ${stockTrailDetailData.length} entri)</h3>
                 <table>
@@ -600,12 +599,12 @@ export default memo(function ReportsPage() {
                     </thead>
                     <tbody>
                         ${stockTrailDetailData.slice(0, 50).map((t: any) => {
-            const waktu = t.created_at
-                ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
-                : '-';
-            const changeColor = t.quantity_change > 0 ? 'color:green' : 'color:red';
-            const changeSign = t.quantity_change > 0 ? '+' : '';
-            return `<tr>
+                const waktu = t.created_at
+                    ? new Date(t.created_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : '-';
+                const changeColor = t.quantity_change > 0 ? 'color:green' : 'color:red';
+                const changeSign = t.quantity_change > 0 ? '+' : '';
+                return `<tr>
                                 <td style="font-size:9px;color:#666">${waktu}</td>
                                 <td>${t.product_name || '-'}</td>
                                 <td style="text-align:center;font-size:9px;text-transform:uppercase">${t.event_type || '-'}</td>
@@ -613,104 +612,103 @@ export default memo(function ReportsPage() {
                                 <td style="text-align:right;font-weight:bold;${changeColor}">${changeSign}${t.quantity_change}</td>
                                 <td style="font-size:9px;color:#666">${t.user_name || '-'}</td>
                             </tr>`;
-        }).join('')}
+            }).join('')}
                     </tbody>
                 </table>
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
-            ` : ''}
-        `;
-        return wrapReport('Laporan Lengkap', `${dateFrom} s/d ${dateTo}`, body);
+            ` : ''
+            }
+`;
+        return wrapReport('Laporan Lengkap', `${dateFrom} s / d ${dateTo} `, body);
     };
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Laporan</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Analisis performa bisnis dan inventaris</p>
+                    <h2 className="text-3xl font-black text-foreground tracking-tight mb-1">Laporan</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Analisis performa bisnis dan inventaris</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setShowPrintConfig(true)} disabled={exporting || loading} className="gap-2 h-11 px-6 shadow-sm font-bold dark:border-gray-700 dark:text-gray-200">
-                        <Printer className="w-5 h-5" /> Cetak / Export
-                    </Button>
-                    <Button onClick={handleFilter} disabled={loading} className="gap-2 h-11 px-6 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-bold">
-                        {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
-                        {loading ? 'Memuat...' : 'Refresh Data'}
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setShowPrintConfig(true)} disabled={exporting || loading} className="flex items-center gap-2 px-4 py-2 border border-border bg-card hover:bg-muted text-card-foreground rounded-lg shadow-sm font-semibold text-sm transition-colors">
+                        <Printer className="w-4 h-4" /> Cetak / Export
                     </Button>
                 </div>
             </div>
 
             {/* Inline status message (replaces alert()) */}
             {statusMsg && (
-                <div className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium border ${
-                    statusMsg.type === 'success'
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-                        : statusMsg.type === 'error'
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium border ${statusMsg.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : statusMsg.type === 'error'
                         ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
                         : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
-                }`}>
+                    } `}>
                     <span className="flex-1">{statusMsg.text}</span>
                     <button onClick={() => setStatusMsg(null)} className="opacity-60 hover:opacity-100 text-lg leading-none">&times;</button>
                 </div>
             )}
 
-            <Card className="border-none shadow-sm dark:bg-gray-900">
-                <CardContent className="p-4">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="grid grid-cols-2 lg:grid-cols-4 h-auto bg-gray-100 dark:bg-gray-800 p-1 rounded-xl gap-1">
-                            {TABS.filter(tab => hasRole('admin', 'supervisor') || !['profit', 'comprehensive'].includes(tab.id)).map(tab => (
-                                <TabsTrigger
-                                    key={tab.id}
-                                    value={tab.id}
-                                    className="rounded-lg font-bold text-xs gap-1.5 py-2.5 data-[state=active]:bg-white dark:data-[state=active]:bg-emerald-600 dark:data-[state=active]:text-white data-[state=active]:shadow-sm dark:text-gray-400 dark:data-[state=active]:shadow-emerald-900/40"
-                                >
-                                    <tab.icon className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{tab.label}</span>
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                </CardContent>
-            </Card>
+            <Card className="bg-card text-card-foreground border border-border shadow-sm rounded-xl">
+                <CardContent className="p-3 flex flex-col lg:flex-row items-center justify-between gap-4">
+                    {/* Tab Navigation (Compact) */}
+                    <div className="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="inline-flex bg-muted text-muted-foreground p-1 rounded-lg w-full justify-start h-auto">
+                                {TABS.filter(tab => hasRole('admin', 'supervisor') || !['profit', 'comprehensive'].includes(tab.id)).map(tab => (
+                                    <TabsTrigger
+                                        key={tab.id}
+                                        value={tab.id}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs font-semibold transition-all"
+                                    >
+                                        <tab.icon className="w-3.5 h-3.5 shrink-0" /> <span className="hidden sm:inline">{tab.label}</span>
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </Tabs>
+                    </div>
 
-            <Card className="border-none shadow-sm dark:bg-gray-900">
-                <CardContent className="p-6">
-                    <div className="flex flex-wrap items-end gap-6">
-                        <div className="space-y-1.5 flex-1 min-w-[200px]">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
-                                {activeTab === 'comparison' ? 'Periode A - Dari' : 'Dari Tanggal'}
-                            </label>
-                            <div className="relative">
-                                <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
-                                <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 border-gray-200 shadow-inner font-bold" />
-                            </div>
-                        </div>
-                        <div className="space-y-1.5 flex-1 min-w-[200px]">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
-                                {activeTab === 'comparison' ? 'Periode A - Sampai' : 'Sampai Tanggal'}
-                            </label>
-                            <div className="relative">
-                                <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
-                                <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 border-gray-200 shadow-inner font-bold" />
-                            </div>
+                    {/* Filters */}
+                    <div className="flex w-full lg:w-auto items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-2 h-9 shadow-sm focus-within:ring-1 ring-primary/50 transition-shadow">
+                            <Calendar className="w-4 h-4 text-muted-foreground ml-1" />
+                            <Input
+                                type="date"
+                                value={dateFrom}
+                                onChange={e => setDateFrom(e.target.value)}
+                                className="border-0 shadow-none h-8 text-xs font-semibold px-1 w-[130px] bg-transparent text-foreground focus-visible:ring-0"
+                            />
+                            <span className="text-muted-foreground text-xs">-</span>
+                            <Input
+                                type="date"
+                                value={dateTo}
+                                onChange={e => setDateTo(e.target.value)}
+                                className="border-0 shadow-none h-8 text-xs font-semibold px-1 w-[130px] bg-transparent text-foreground focus-visible:ring-0"
+                            />
                         </div>
 
                         {activeTab === 'comparison' && (
-                            <>
-                                <Separator orientation="vertical" className="h-11 hidden lg:block dark:bg-gray-700" />
-                                <div className="space-y-1.5 flex-1 min-w-[200px]">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Periode B - Dari</label>
-                                    <Input type="date" value={dateFrom2} onChange={e => setDateFrom2(e.target.value)} className="h-11 bg-gray-50/50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 border-gray-200 shadow-inner font-bold" />
-                                </div>
-                                <div className="space-y-1.5 flex-1 min-w-[200px]">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Periode B - Sampai</label>
-                                    <Input type="date" value={dateTo2} onChange={e => setDateTo2(e.target.value)} className="h-11 bg-gray-50/50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 border-gray-200 shadow-inner font-bold" />
-                                </div>
-                            </>
+                            <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-2 h-9 shadow-sm focus-within:ring-1 ring-primary/50 transition-shadow">
+                                <span className="text-muted-foreground text-xs font-semibold ml-1">B</span>
+                                <Input
+                                    type="date"
+                                    value={dateFrom2}
+                                    onChange={e => setDateFrom2(e.target.value)}
+                                    className="border-0 shadow-none h-8 text-xs font-semibold px-1 w-[130px] bg-transparent text-foreground focus-visible:ring-0"
+                                />
+                                <span className="text-muted-foreground text-xs">-</span>
+                                <Input
+                                    type="date"
+                                    value={dateTo2}
+                                    onChange={e => setDateTo2(e.target.value)}
+                                    className="border-0 shadow-none h-8 text-xs font-semibold px-1 w-[130px] bg-transparent text-foreground focus-visible:ring-0"
+                                />
+                            </div>
                         )}
 
-                        <Button onClick={handleFilter} disabled={loading} size="lg" className="h-11 px-8 font-black bg-gray-900 hover:bg-black dark:bg-emerald-700 dark:hover:bg-emerald-600 shadow-lg gap-2">
-                            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                            {loading ? 'Memuat...' : 'Proses Laporan'}
+                        <Button onClick={handleFilter} disabled={loading} size="sm" className="flex items-center gap-2 h-9 px-4 bg-primary-600 text-white hover:bg-primary-700 rounded-lg shadow-sm text-xs font-bold transition-colors">
+                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            {loading ? 'Memuat...' : 'Proses'}
                         </Button>
                     </div>
                 </CardContent>
@@ -744,8 +742,8 @@ export default memo(function ReportsPage() {
                         {activeTab === 'comparison' && comparisonData && (
                             <ComparisonReportTab
                                 data={comparisonData}
-                                labelA={`${dateFrom} - ${dateTo}`}
-                                labelB={`${dateFrom2} - ${dateTo2}`}
+                                labelA={`${dateFrom} - ${dateTo} `}
+                                labelB={`${dateFrom2} - ${dateTo2} `}
                                 stockAuditData={stockAuditData}
                                 stockTrailData={stockTrailDetailData}
                             />

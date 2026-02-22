@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '../utils/format';
 import { Product } from '@/lib/types';
-import { Button } from '@/components/ui/card'; // Note: Card is used in original but not here
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button'; // Note: Card is used in original but not here
 import { X, Download, Printer } from 'lucide-react';
 
 interface BarcodePreviewModalProps {

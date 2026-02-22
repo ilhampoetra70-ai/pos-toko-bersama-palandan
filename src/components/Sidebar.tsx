@@ -99,7 +99,7 @@ export default function Sidebar() {
                         onClick={async () => {
                             if (confirm('Restart aplikasi?')) {
                                 try {
-                                    await (window as any).api.restartApp();
+                                    await window.api.restartApp();
                                 } catch (error: any) {
                                     alert('Gagal restart: ' + error.message + '\n\nSilakan tutup dan buka kembali aplikasi secara manual.');
                                 }

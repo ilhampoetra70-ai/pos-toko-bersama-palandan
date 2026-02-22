@@ -31,12 +31,12 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
     const loadPreview = async () => {
         setLoading(true);
         try {
-            let tx = transaction;
+            let tx: any = transaction;
             if (transaction.id) {
-                const fresh = await (window as any).api.getTransactionById(transaction.id);
-                if (fresh) tx = fresh;
+                const response = await window.api.getTransactionById(transaction.id);
+                if (response) tx = response;
             }
-            const result = await (window as any).api.getReceiptHTML(tx);
+            const result = await window.api.getReceiptHTML(tx);
             setHtml(result);
         } catch (err) {
             console.error('Failed to load receipt preview:', err);
@@ -49,12 +49,12 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
         setPrinting(true);
         setPrintStatus(null);
         try {
-            let tx = transaction;
+            let tx: any = transaction;
             if (transaction.id) {
-                const fresh = await (window as any).api.getTransactionById(transaction.id);
-                if (fresh) tx = fresh;
+                const response = await window.api.getTransactionById(transaction.id);
+                if (response) tx = response;
             }
-            const result = await (window as any).api.printReceipt(tx);
+            const result = await window.api.printReceipt(tx);
             if (!result.success) {
                 setPrintStatus('error');
                 alert('Print gagal: ' + (result.error || 'Unknown error'));
@@ -110,7 +110,7 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
                             variant="outline"
                             onClick={onClose}
                             disabled={printing}
-                            className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-none bg-gray-50 dark:bg-gray-900 hover:bg-gray-100"
+                            className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-none bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
                             Tutup
                         </Button>

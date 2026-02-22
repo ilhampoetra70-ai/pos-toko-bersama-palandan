@@ -4,11 +4,10 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon.svg',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  '/icons/apple-touch-icon.png',
-  '/icons/favicon-32x32.png',
+  '/icons/icon.svg',          // Primary — scalable, smallest file
+  '/icons/icon-192x192.png',  // Keep — required for push notification icon
+  '/icons/icon-512x512.png',  // Keep — required for PWA install prompt
+  '/icons/apple-touch-icon.png', // Keep — iOS requirement
   'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js'
 ];
 
@@ -66,7 +65,7 @@ self.addEventListener('fetch', (event) => {
                     .then((cache) => cache.put(event.request, response));
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
             return cachedResponse;
           }
 

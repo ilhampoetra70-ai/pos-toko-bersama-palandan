@@ -55,7 +55,7 @@ export default function PrintConfigModal({
     useEffect(() => {
         if (mode === 'text' && textAction === 'print') {
             setLoadingPrinters(true);
-            (window as any).api.getPrinters().then((list: PrinterInfo[]) => {
+            window.api.getPrinters().then((list: PrinterInfo[]) => {
                 setPrinters(list || []);
                 if (list && list.length > 0) setSelectedPrinter(list[0].name);
             }).finally(() => setLoadingPrinters(false));
@@ -91,7 +91,7 @@ export default function PrintConfigModal({
     };
 
     const handlePrintFromPreview = async () => {
-        const result = await (window as any).api.printReportHtml(previewHtml);
+        const result = await window.api.printReportHtml(previewHtml);
         if (result && !result.success && result.error !== 'Cancelled') {
             alert('Gagal mencetak: ' + result.error);
         }
