@@ -14,7 +14,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(localStorage.getItem('pos_token'));
+    const [token, setToken] = useState<string | null>(sessionStorage.getItem('pos_token'));
     const [loading, setLoading] = useState(true);
 
     // Session Timeout Logic
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (result.success) {
                     setUser(result.user);
                 } else {
-                    localStorage.removeItem('pos_token');
+                    sessionStorage.removeItem('pos_token');
                     setToken(null);
                     setUser(null);
                 }
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (username: string, password: string) => {
         const result = await window.api.login(username, password);
         if (result.success && result.token && result.user) {
-            localStorage.setItem('pos_token', result.token);
+            sessionStorage.setItem('pos_token', result.token);
             setToken(result.token);
             // The API returns UserInfo which lacks 'active' and 'created_at'.
             // We supplement it to match the standard User interface expected by the state.
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = useCallback(() => {
-        localStorage.removeItem('pos_token');
+        sessionStorage.removeItem('pos_token');
         setToken(null);
         setUser(null);
     }, []);
@@ -77,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Check for timeout every minute
         const checkInterval = setInterval(() => {
             if (Date.now() - lastActivityRef.current > SESSION_TIMEOUT) {
+                sessionStorage.setItem('session_expired_msg', 'Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit.');
                 logout();
-                alert('Sesi Anda telah berakhir karena tidak ada aktivitas selama 30 menit.');
             }
         }, 60000);
 
