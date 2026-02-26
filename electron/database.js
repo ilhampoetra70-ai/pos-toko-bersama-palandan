@@ -1931,6 +1931,11 @@ async function createAutoBackup() {
     const dir = settings.auto_backup_dir || path.join(app.getPath('userData'), 'backups');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
+    // Hapus file backup otomatis sebelumnya jika ada
+    if (settings.last_backup_path && fs.existsSync(settings.last_backup_path)) {
+        try { fs.unlinkSync(settings.last_backup_path); } catch (_) {}
+    }
+
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-');
     const backupName = `pos-cashier-backup-${timestamp}.db`;
