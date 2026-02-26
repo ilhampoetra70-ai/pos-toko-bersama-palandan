@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency, formatDateTime } from '../utils/format';
+import { formatCurrency, formatDateTime, formatDate } from '../utils/format';
 import ReceiptPreview from '../components/ReceiptPreview';
 import AddPaymentModal from '../components/AddPaymentModal';
 import {
@@ -103,6 +103,7 @@ export default memo(function TransactionsPage() {
     const [showReceipt, setShowReceipt] = useState(false);
     const [showAddPayment, setShowAddPayment] = useState(false);
     const [printingId, setPrintingId] = useState<number | null>(null);
+    const [txToVoid, setTxToVoid] = useState<any>(null);
 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -159,8 +160,14 @@ export default memo(function TransactionsPage() {
         setSelectedTxId(null);
     };
 
-    const handleVoid = async (tx: any) => {
-        if (!confirm(`Void transaksi ${tx.invoice_number || tx.id}? Stok produk akan dikembalikan.`)) return;
+    const handleVoid = (tx: any) => {
+        setTxToVoid(tx);
+    };
+
+    const confirmVoid = () => {
+        if (!txToVoid) return;
+        const tx = txToVoid;
+        setTxToVoid(null);
         voidMutation.mutate(tx.id, {
             onSuccess: () => {
                 handleCloseDetail();
@@ -292,8 +299,8 @@ export default memo(function TransactionsPage() {
                 >
                     <Table className="relative border-separate border-spacing-0">
                         <TableHeader className="bg-gray-50/80 dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10 backdrop-blur-sm">
-                            <TableRow className="border-b flex items-center w-full">
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest py-4 w-[15%]">Invoice</TableHead>
+                            <TableRow className="border-b flex items-center w-full h-14">
+                                <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Invoice</TableHead>
                                 <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Waktu</TableHead>
                                 <TableHead className="font-black text-[11px] uppercase tracking-widest w-[10%]">Kasir</TableHead>
                                 <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Pembeli</TableHead>
@@ -344,9 +351,7 @@ export default memo(function TransactionsPage() {
                                         >
                                             <TableCell className="font-medium w-[15%]">{tx.invoice_number}</TableCell>
                                             <TableCell className="text-xs text-gray-500 w-[15%]">
-                                                {new Date(tx.created_at).toLocaleString('id-ID', {
-                                                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                                                })}
+                                                {formatDateTime(tx.created_at)}
                                             </TableCell>
                                             <TableCell className="text-xs w-[10%]">{tx.cashier_name || '-'}</TableCell>
                                             <TableCell className="text-xs w-[15%] truncate" title={tx.customer_name || 'Umum'}>
@@ -540,7 +545,7 @@ export default memo(function TransactionsPage() {
                                                     value={paymentLabel(selectedTx.payment_method)}
                                                 />
                                                 {selectedTx.due_date && (
-                                                    <InfoItem icon={Clock} label="Jatuh Tempo" value={new Date(selectedTx.due_date).toLocaleDateString('id-ID')} className="text-orange-600" />
+                                                    <InfoItem icon={Clock} label="Jatuh Tempo" value={formatDate(selectedTx.due_date)} className="text-orange-600" />
                                                 )}
                                             </div>
                                         </div>
@@ -602,7 +607,7 @@ export default memo(function TransactionsPage() {
                                                                 <div key={i} className="flex justify-between items-start gap-3">
                                                                     <div className="space-y-0.5">
                                                                         <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
-                                                                            {new Date(ph.payment_date).toLocaleDateString('id-ID')}
+                                                                            {formatDate(ph.payment_date)}
                                                                         </p>
                                                                         <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{paymentLabel(ph.payment_method)}</p>
                                                                     </div>
@@ -706,6 +711,22 @@ export default memo(function TransactionsPage() {
                     />
                 )
             }
+
+            <Dialog open={!!txToVoid} onOpenChange={() => setTxToVoid(null)}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="font-black">Void Transaksi</DialogTitle>
+                        <DialogDescription>
+                            Void transaksi <strong>{txToVoid?.invoice_number || txToVoid?.id}</strong>?
+                            Stok semua produk akan dikembalikan. Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setTxToVoid(null)} className="font-bold">Batal</Button>
+                        <Button onClick={confirmVoid} className="bg-red-600 hover:bg-red-700 text-white font-black">Ya, Void</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 });
