@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useDashboardStats, useSlowMovingProducts, useLowStockProducts } from '@/lib/queries';
-import { formatCurrency, formatDateTime, formatNumber } from '../utils/format';
+import { formatCurrency, formatDateTime, formatTime, formatNumber } from '../utils/format';
 import SalesTrendChart from '../components/charts/SalesTrendChart';
 import {
     TrendingUp,
@@ -146,7 +146,7 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
                 {/* Penjualan */}
-                <Card className="border shadow-sm flex flex-col justify-between h-32 hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-default">
+                <Card className="border shadow-sm flex flex-col justify-between h-32 hover:border-primary-300 dark:hover:border-primary-700 transition-all cursor-default group/card overflow-hidden">
                     <CardContent className="p-5 flex flex-col justify-between h-full">
                         <div className="flex justify-between items-start">
                             <div>
@@ -155,8 +155,11 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                                     {formatCurrency(stats.today_sales_total)}
                                 </p>
                             </div>
-                            <div className="p-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg shrink-0">
-                                <DollarSign className="w-5 h-5" />
+                            <div className="relative group/icon transition-all duration-300 transform group-hover/card:scale-110">
+                                <div className="absolute inset-0 bg-green-500/20 blur-xl rounded-full opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                                <div className="relative p-2.5 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg shadow-green-500/20 dark:shadow-green-900/40 shrink-0">
+                                    <DollarSign className="w-5 h-5" />
+                                </div>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
@@ -175,7 +178,7 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                 </Card>
 
                 {/* Transaksi */}
-                <Card className="border shadow-sm flex flex-col justify-between h-32 hover:border-primary-300 dark:hover:border-primary-700 transition-colors cursor-default">
+                <Card className="border shadow-sm flex flex-col justify-between h-32 hover:border-primary-300 dark:hover:border-primary-700 transition-all cursor-default group/card overflow-hidden">
                     <CardContent className="p-5 flex flex-col justify-between h-full">
                         <div className="flex justify-between items-start">
                             <div>
@@ -184,8 +187,11 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                                     {formatNumber(stats.today_sales_count)}
                                 </p>
                             </div>
-                            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
-                                <ShoppingCart className="w-5 h-5" />
+                            <div className="relative group/icon transition-all duration-300 transform group-hover/card:scale-110">
+                                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+                                <div className="relative p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20 dark:shadow-blue-900/40 shrink-0">
+                                    <ShoppingCart className="w-5 h-5" />
+                                </div>
                             </div>
                         </div>
                         <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -285,7 +291,7 @@ function CashierDashboard({ stats, user, navigate }: { stats: any; user: any; na
                                             return (
                                                 <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors">
                                                     <td className="px-5 py-3 text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">
-                                                        {new Date(tx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                        {formatTime(tx.created_at)}
                                                     </td>
                                                     <td className="px-5 py-3">
                                                         <span className="font-semibold text-gray-900 dark:text-gray-100 text-xs">{tx.invoice_number}</span>
@@ -533,10 +539,10 @@ function KPICardsSection({ stats, hasRole }: { stats: any, hasRole: any }) {
 
 function EnhancedStatCard({ title, value, subtitle, comparison, icon: Icon, variant, progress }: any) {
     const variants = {
-        blue: "bg-blue-600 border-blue-500/20 dark:border-blue-800",
-        purple: "bg-purple-600 border-purple-500/20 dark:border-purple-800",
-        green: "bg-green-600 border-green-500/20 dark:border-green-800",
-        orange: "bg-orange-600 border-orange-500/20 dark:border-orange-800"
+        blue: "from-blue-500 to-blue-700 shadow-blue-500/30 glow-blue-500/20",
+        purple: "from-purple-500 to-purple-700 shadow-purple-500/30 glow-purple-500/20",
+        green: "from-green-500 to-green-700 shadow-green-500/30 glow-green-500/20",
+        orange: "from-orange-500 to-orange-700 shadow-orange-500/30 glow-orange-500/20"
     } as any;
 
     return (
@@ -548,13 +554,33 @@ function EnhancedStatCard({ title, value, subtitle, comparison, icon: Icon, vari
             variant === 'orange' && "border-orange-100/50 dark:border-orange-900/50"
         )}>
             <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                    <div className={cn("p-2 rounded-lg text-white shadow-md", variants[variant].split(' ')[0])}>
-                        <Icon className="w-4 h-4" />
+                <div className="flex items-start justify-between mb-4">
+                    <div className="relative group/icon">
+                        {/* Radiant Glow */}
+                        <div className={cn(
+                            "absolute inset-0 blur-xl rounded-full opacity-30 dark:opacity-40 transition-all duration-500 group-hover:opacity-70 group-hover:scale-125 bg-gradient-to-br",
+                            variants[variant].split(' ').slice(0, 2).join(' ')
+                        )} />
+
+                        <div className={cn(
+                            "relative p-3 rounded-2xl text-white shadow-xl bg-gradient-to-br transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-6 border border-white/10",
+                            variants[variant].split(' ').slice(0, 2).join(' ')
+                        )}>
+                            <Icon className="w-5 h-5" />
+                        </div>
                     </div>
+
                     {comparison !== undefined && (
-                        <Badge variant={comparison >= 0 ? "default" : "destructive"} className="h-5 font-bold shadow-sm px-1.5">
-                            {comparison >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
+                        <Badge
+                            variant={comparison >= 0 ? "default" : "destructive"}
+                            className={cn(
+                                "h-6 font-black shadow-sm px-2 gap-1 rounded-full border-2 transition-all duration-300",
+                                comparison >= 0
+                                    ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/40"
+                                    : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/40"
+                            )}
+                        >
+                            {comparison >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownLeft className="w-3 h-3" />}
                             {Math.abs(comparison).toFixed(1)}%
                         </Badge>
                     )}
@@ -589,8 +615,16 @@ function SalesChartSection({ chartData, chartPeriod, setChartPeriod, stats }: an
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                         Total: <span className="text-gray-900 font-bold">{formatCurrency(currentPeriodTotal)}</span>
                         {trend !== 0 && (
-                            <Badge variant={trend >= 0 ? "default" : "destructive"} className="h-5 text-[10px] px-1.5 leading-none">
-                                {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownLeft className="w-3 h-3" />}
+                            <Badge
+                                variant={trend >= 0 ? "default" : "destructive"}
+                                className={cn(
+                                    "h-5 text-[10px] px-1.5 leading-none font-black border-2",
+                                    trend >= 0
+                                        ? "bg-green-50 text-green-600 border-green-100 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/40"
+                                        : "bg-red-50 text-red-600 border-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/40"
+                                )}
+                            >
+                                {trend >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
                                 {Math.abs(trend).toFixed(1)}%
                             </Badge>
                         )}
@@ -926,7 +960,7 @@ function RecentTransactionsSection({ transactions, navigate }: any) {
                                     return (
                                         <tr key={tx.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                                             <td className="py-2 px-4 text-[10px] font-bold text-gray-500">
-                                                {new Date(tx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                                {formatTime(tx.created_at)}
                                             </td>
                                             <td className="py-2 px-4">
                                                 <span className="font-black text-gray-900 dark:text-gray-100 text-xs">{tx.invoice_number}</span>

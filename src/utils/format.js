@@ -58,6 +58,15 @@ export function formatDateTimeFull(dateStr) {
   });
 }
 
+export function formatTime(dateStr) {
+  if (!dateStr) return '-';
+  const d = parseDbDate(dateStr);
+  return d.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function formatNumber(num) {
   return Number(num || 0).toLocaleString('id-ID');
 }
