@@ -1,5 +1,14 @@
 const { BrowserWindow } = require('electron');
 
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function formatCurrency(amount) {
   return 'Rp ' + Number(amount).toLocaleString('id-ID');
 }
@@ -90,8 +99,27 @@ function generateReceiptHTML(transaction, settings) {
     changeAmount: transaction.change_amount,
     paymentMethod: transaction.payment_method,
     formatCurrency: formatCurrency,
-    logoHTML: settings.doc_logo_html || (settings.receipt_logo ? `<div class="center" style="margin-bottom:4px;"><img src="${settings.receipt_logo}" style="max-width:80%;max-height:60px;" /></div>` : '')
+    logoHTML: settings.doc_logo_html || ''
   };
+
+  // Escape semua field string dari user/DB sebelum masuk ke template HTML
+  data.storeName      = escHtml(data.storeName);
+  data.storeAddress   = escHtml(data.storeAddress);
+  data.storePhone     = escHtml(data.storePhone);
+  data.headerText     = escHtml(data.headerText);
+  data.footerText     = escHtml(data.footerText);
+  data.invoiceNumber  = escHtml(data.invoiceNumber);
+  data.date           = escHtml(data.date);
+  data.cashierName    = escHtml(data.cashierName);
+  data.notes          = escHtml(data.notes);
+  data.customerName   = escHtml(data.customerName);
+  data.customerAddress = escHtml(data.customerAddress);
+  data.items = data.items.map(item => ({ ...item, name: escHtml(item.name) }));
+  // logoHTML adalah raw HTML dari settings (intentional) — tidak di-escape,
+  // namun receipt_logo di-escape untuk mencegah attribute injection
+  if (!data.logoHTML && settings.receipt_logo) {
+    data.logoHTML = `<div class="center" style="margin-bottom:4px;"><img src="${escHtml(settings.receipt_logo)}" style="max-width:80%;max-height:60px;" /></div>`;
+  }
 
   const template = receiptTemplates.getTemplate(templateId);
   return `<!DOCTYPE html>
@@ -124,6 +152,14 @@ async function printReceipt(transaction, settings) {
       webPreferences: { nodeIntegration: false }
     });
 
+    // Bug Fix: Tambahkan did-fail-load handler.
+    // Tanpa ini, jika halaman gagal dimuat, Promise tidak pernah resolve/reject
+    // dan printWindow menjadi zombie di memori selamanya.
+    printWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      printWindow.destroy(); // Gunakan destroy() untuk pembersihan pasti
+      reject(new Error(`Failed to load receipt for printing: ${errorDescription} (${errorCode})`));
+    });
+
     printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
 
     printWindow.webContents.on('did-finish-load', () => {
@@ -139,7 +175,10 @@ async function printReceipt(transaction, settings) {
       }
 
       printWindow.webContents.print(options, (success, failureReason) => {
-        printWindow.close();
+        // Bug Fix: Ganti .close() dengan .destroy().
+        // Untuk hidden window, .destroy() langsung menghancurkan native handle
+        // tanpa menunggu event 'close'/'beforeunload' yang tidak perlu.
+        printWindow.destroy();
         if (success) {
           resolve({ success: true });
         } else {
@@ -266,9 +305,9 @@ function generateReportHTML(title, storeName, dateRange, bodyHTML) {
 </head>
 <body>
   <div class="report-header">
-    <h1>${storeName}</h1>
-    <h2>${title}</h2>
-    <div class="date-range">${dateRange}</div>
+    <h1>${escHtml(storeName)}</h1>
+    <h2>${escHtml(title)}</h2>
+    <div class="date-range">${escHtml(dateRange)}</div>
   </div>
   ${bodyHTML}
   <div class="report-footer">

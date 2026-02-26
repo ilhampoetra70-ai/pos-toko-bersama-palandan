@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '../utils/format';
 import { Product } from '@/lib/types';
+import { esc } from '@/lib/escape';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button'; // Note: Card is used in original but not here
 import { X, Download, Printer } from 'lucide-react';
@@ -51,7 +52,7 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Print Label - ${product.name}</title>
+        <title>Print Label - ${esc(product.name)}</title>
         <style>
           @page {
             size: 40mm 30mm;
@@ -96,7 +97,7 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
       <body>
         ${Array(labelCount).fill(`
           <div class="label">
-            <div class="product-name">${product.name}</div>
+            <div class="product-name">${esc(product.name)}</div>
             <img class="barcode-img" src="${canvasRef.current.toDataURL()}" />
           </div>
         `).join('')}

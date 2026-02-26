@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Product } from '@/lib/types';
+import { esc } from '@/lib/escape';
 import { X, Printer, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,7 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
     const sampleCanvasRef = useRef<HTMLCanvasElement>(null);
     const [rendering, setRendering] = useState(true);
     const [printing, setPrinting] = useState(false);
+    const [printError, setPrintError] = useState('');
 
     // Filter products with barcodes
     const validProducts = products.filter(p => p.barcode);
@@ -126,7 +128,7 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
         <body>
           ${barcodeImages.map(({ product, dataUrl }) => `
             <div class="label">
-              <div class="product-name">${product.name}</div>
+              <div class="product-name">${esc(product.name)}</div>
               <img class="barcode-img" src="${dataUrl}" />
             </div>
           `).join('')}
@@ -142,7 +144,7 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
             printWindow.document.close();
         } catch (err: any) {
             console.error('Failed to print:', err);
-            alert('Gagal mencetak: ' + err.message);
+            setPrintError('Gagal mencetak: ' + err.message);
         }
 
         setPrinting(false);
@@ -243,6 +245,14 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
                     )}
                 </div>
 
+                {printError && (
+                    <div className="px-6 pb-4 -mt-2">
+                        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-2xl text-xs font-medium">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            <span>{printError}</span>
+                        </div>
+                    </div>
+                )}
                 <div className="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex gap-4">
                     <button
                         onClick={onClose}

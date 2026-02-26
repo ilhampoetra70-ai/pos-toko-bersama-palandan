@@ -8,6 +8,15 @@ const cors = require('cors');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 const { requireAuth } = require('./auth');
 
 let server = null;
@@ -279,16 +288,19 @@ function createAPIServer(database, port = 3001) {
           const appName = settings.app_name || 'POS Admin';
           const appLogo = settings.app_logo || '/icons/icon.svg';
 
-          // Inject Dynamic Title
-          let html = htmlContent.replace(/<title>.*?<\/title>/, `<title>${appName}</title>`);
+          // Inject Dynamic Title — escape untuk mencegah HTML injection
+          let html = htmlContent.replace(/<title>.*?<\/title>/, `<title>${escHtml(appName)}</title>`);
 
-          // Inject Dynamic Favicon/Icon
-          const iconType = appLogo && appLogo.startsWith('data:image/svg') ? 'image/svg+xml' :
+          // Inject Dynamic Favicon/Icon — escape attribute values
+          const safeIconType = escHtml(
+            appLogo && appLogo.startsWith('data:image/svg') ? 'image/svg+xml' :
             appLogo && appLogo.startsWith('data:image/png') ? 'image/png' :
-              appLogo && appLogo.endsWith('.svg') ? 'image/svg+xml' : 'image/x-icon';
+            appLogo && appLogo.endsWith('.svg') ? 'image/svg+xml' : 'image/x-icon'
+          );
+          const safeAppLogo = escHtml(appLogo);
 
-          html = html.replace(/<link rel="icon".*?>/g, `<link rel="icon" type="${iconType}" href="${appLogo}">`);
-          html = html.replace(/<link rel="apple-touch-icon".*?>/g, `<link rel="apple-touch-icon" href="${appLogo}">`);
+          html = html.replace(/<link rel="icon".*?>/g, `<link rel="icon" type="${safeIconType}" href="${safeAppLogo}">`);
+          html = html.replace(/<link rel="apple-touch-icon".*?>/g, `<link rel="apple-touch-icon" href="${safeAppLogo}">`);
 
           // Inject Global Config Script
           const configScript = `
@@ -698,6 +710,9 @@ function createAPIServer(database, port = 3001) {
 
   // ─── Auth (Simple) ──────────────────────────────────────────
   apiRouter.get('/users', (req, res) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Hanya admin yang dapat melihat daftar pengguna.' });
+    }
     try {
       const users = db.getUsers().map(u => ({
         id: u.id,
@@ -882,8 +897,11 @@ function createAPIServer(database, port = 3001) {
     }
   });
 
-  // Revoke a specific device session
+  // Revoke a specific device session (admin only)
   apiRouter.delete('/users/:id/sessions/:sessionId', (req, res) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Hanya admin yang dapat mencabut akses perangkat.' });
+    }
     try {
       const userId = parseInt(req.params.id);
       const sessionId = parseInt(req.params.sessionId);
