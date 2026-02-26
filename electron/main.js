@@ -77,25 +77,32 @@ function createWindow() {
   }
 }
 
+const AUTO_BACKUP_INTERVAL_DAYS = 4;
+
 function scheduleAutoBackup() {
   const checkAndBackup = () => {
     try {
-      const today = new Date().toISOString().slice(0, 10);
       const settings = database.getSettings();
+      // Hanya jalankan backup otomatis jika storage path sudah dikonfigurasi
+      if (!settings.auto_backup_dir) return;
+
       const lastBackup = settings.last_backup_date;
-      if (!lastBackup || lastBackup.slice(0, 10) !== today) {
+      const intervalMs = AUTO_BACKUP_INTERVAL_DAYS * 24 * 60 * 60 * 1000;
+      const shouldBackup = !lastBackup || (Date.now() - new Date(lastBackup).getTime() >= intervalMs);
+
+      if (shouldBackup) {
         database.createAutoBackup();
-        console.log('[AutoBackup] Daily backup created for', today);
+        console.log(`[AutoBackup] Backup otomatis dibuat (interval ${AUTO_BACKUP_INTERVAL_DAYS} hari)`);
       }
     } catch (e) {
       console.error('[AutoBackup] Error:', e.message);
     }
   };
 
-  // First check after 30 seconds, then every 60 minutes
+  // Cek pertama setelah 30 detik, lalu setiap 6 jam
   setTimeout(() => {
     checkAndBackup();
-    setInterval(checkAndBackup, 60 * 60 * 1000);
+    setInterval(checkAndBackup, 6 * 60 * 60 * 1000);
   }, 30000);
 }
 

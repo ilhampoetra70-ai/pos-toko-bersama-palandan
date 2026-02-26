@@ -608,7 +608,7 @@ function searchProducts(query, limit = 50) {
 
 function getLowStockProducts(threshold = 5) {
     return all(
-        `SELECT p.id, p.name, p.barcode, p.stock, p.price, p.cost, p.unit, c.name as category_name
+        `SELECT p.id, p.category_id, p.name, p.barcode, p.stock, p.price, p.cost, p.unit, p.margin_mode, c.name as category_name
          FROM products p
          LEFT JOIN categories c ON p.category_id = c.id
          WHERE p.active = 1 AND p.stock <= ?
@@ -1933,7 +1933,7 @@ async function createAutoBackup() {
 
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-');
-    const backupName = `pos - cashier - backup - ${timestamp}.db`;
+    const backupName = `pos-cashier-backup-${timestamp}.db`;
     const backupPath = path.join(dir, backupName);
 
     try {
