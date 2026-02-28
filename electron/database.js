@@ -65,6 +65,7 @@ function applyPragmas() {
     db.pragma('synchronous = NORMAL');     // Aman dengan WAL, lebih cepat
     db.pragma('cache_size = -64000');      // 64MB cache (default cuma 2MB)
     db.pragma('temp_store = MEMORY');      // Temp tables di RAM
+    db.pragma('foreign_keys = ON');        // [FIX] Tegakkan referential integrity
 
     // Dynamic mmap_size based on system RAM
     const totalRamMB = Math.floor(require('os').totalmem() / 1024 / 1024);
@@ -73,7 +74,7 @@ function applyPragmas() {
         : 134217728;  // 128MB — RAM < 4GB (low-spec)
 
     db.pragma(`mmap_size = ${mmapSize}`);
-    console.log(`[Database] Pragmas applied. RAM: ${totalRamMB}MB, mmap_size: ${mmapSize / 1024 / 1024}MB`);
+    console.log(`[Database] Pragmas applied. RAM: ${totalRamMB}MB, mmap_size: ${mmapSize / 1024 / 1024}MB, foreign_keys: ON`);
 }
 function run(sql, params = []) {
     return cachedPrepare(sql).run(params);
@@ -130,8 +131,8 @@ function createTables() {
     user_id INTEGER NOT NULL,
     device_id TEXT NOT NULL,
     device_name TEXT,
-    last_seen DATETIME DEFAULT (datetime('now','localtime')),
-    created_at DATETIME DEFAULT (datetime('now','localtime')),
+    last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, device_id),
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
@@ -151,6 +152,7 @@ function createTables() {
     stock INTEGER DEFAULT 0,
     unit TEXT,
     active INTEGER DEFAULT 1,
+    low_stock_threshold INTEGER DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     margin_mode TEXT DEFAULT 'manual'
@@ -227,7 +229,7 @@ function createTables() {
             user_name TEXT,
             notes TEXT,
             reference_id INTEGER,
-            created_at DATETIME DEFAULT(datetime('now', 'localtime'))
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
     run(`CREATE INDEX IF NOT EXISTS idx_stock_trail_product ON stock_trail(product_id)`);
     run(`CREATE INDEX IF NOT EXISTS idx_stock_trail_event ON stock_trail(event_type)`);
@@ -241,6 +243,14 @@ function createTables() {
     run(`CREATE INDEX IF NOT EXISTS idx_transactions_payment_status ON transactions(payment_status)`);   // NEW
     run(`CREATE INDEX IF NOT EXISTS idx_stock_trail_product_created ON stock_trail(product_id, created_at)`); // NEW
     run(`CREATE INDEX IF NOT EXISTS idx_products_active_stock ON products(active, stock)`);
+
+    // AI Insight cache — single-row table, keyed by data hash
+    run(`CREATE TABLE IF NOT EXISTS ai_insight_cache (
+        id INTEGER PRIMARY KEY,
+        insight_json TEXT NOT NULL,
+        data_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
 }
 
 function seedSettings() {
@@ -299,6 +309,7 @@ function runMigrations() {
     addColumnIfNotExists('transactions', 'remaining_balance', 'REAL DEFAULT 0');
     addColumnIfNotExists('transactions', 'payment_notes', 'TEXT');
     addColumnIfNotExists('products', 'margin_mode', "TEXT DEFAULT 'manual'");
+    addColumnIfNotExists('products', 'low_stock_threshold', 'INTEGER DEFAULT NULL');
     addColumnIfNotExists('transaction_items', 'original_cost', 'REAL DEFAULT 0');
     addColumnIfNotExists('stock_audit_log', 'difference', 'INTEGER DEFAULT 0');
     addColumnIfNotExists('stock_audit_log', 'reason', 'TEXT');
@@ -352,14 +363,39 @@ function runMigrations() {
         user_id INTEGER NOT NULL,
         device_id TEXT NOT NULL,
         device_name TEXT,
-        last_seen DATETIME DEFAULT (datetime('now','localtime')),
-        created_at DATETIME DEFAULT (datetime('now','localtime')),
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, device_id),
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
       )`);
         run(`CREATE INDEX IF NOT EXISTS idx_device_sessions_user ON device_sessions(user_id)`);
         console.log('[Migrations] device_sessions table ready');
     } catch (e) { console.error('[Migrations] device_sessions:', e.message); }
+
+    // Migrate existing stock_trail.created_at from localtime to UTC
+    // (Previously used datetime('now','localtime'), now uses CURRENT_TIMESTAMP/UTC)
+    try {
+        const alreadyMigrated = get("SELECT value FROM settings WHERE key = 'migrated_stock_trail_utc'");
+        if (!alreadyMigrated) {
+            const offsetRow = get("SELECT value FROM settings WHERE key = 'timezone_offset'");
+            const offset = (offsetRow?.value && offsetRow.value !== 'auto')
+                ? parseFloat(offsetRow.value)
+                : -(new Date().getTimezoneOffset() / 60);
+            const sign = offset >= 0 ? '-' : '+';
+            const absOffset = Math.abs(offset);
+            const count = get('SELECT COUNT(*) as c FROM stock_trail')?.c || 0;
+            if (count > 0) {
+                run(`UPDATE stock_trail SET created_at = datetime(created_at, '${sign}${absOffset} hours')`);
+            }
+            run("INSERT OR IGNORE INTO settings (key, value) VALUES ('migrated_stock_trail_utc', '1')");
+            console.log(`[Migrations] Converted ${count} stock_trail records from localtime to UTC (offset: ${offset}h)`);
+        }
+    } catch (err) {
+        console.error('[Migrations] stock_trail UTC migration error:', err.message);
+    }
+
+    // AI Insight cache: add days column for per-range cache isolation
+    addColumnIfNotExists('ai_insight_cache', 'days', 'INTEGER NOT NULL DEFAULT 30');
 
     try { db.exec('ANALYZE'); } catch (e) { /* ignore */ }
     console.log('[Migrations] Migration check completed.');
@@ -395,7 +431,7 @@ function updateUser(id, user) {
 }
 
 function updateUserLastLogin(id) {
-    run("UPDATE users SET last_login = datetime('now', 'localtime') WHERE id = ?", [id]);
+    run("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [id]);
 }
 
 function deleteUser(id) {
@@ -407,10 +443,10 @@ function deleteUser(id) {
 function upsertDeviceSession(userId, deviceId, deviceName) {
     run(
         `INSERT INTO device_sessions (user_id, device_id, device_name, last_seen)
-       VALUES (?, ?, ?, datetime('now','localtime'))
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(user_id, device_id) DO UPDATE SET
          device_name = excluded.device_name,
-         last_seen = datetime('now','localtime')`,
+         last_seen = CURRENT_TIMESTAMP`,
         [userId, deviceId, deviceName]
     );
 }
@@ -472,8 +508,11 @@ function updateCategory(id, name) {
 }
 
 function deleteCategory(id) {
-    run('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
-    run('DELETE FROM categories WHERE id = ?', [id]);
+    const deleteTx = db.transaction(() => {
+        run('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
+        run('DELETE FROM categories WHERE id = ?', [id]);
+    });
+    deleteTx();
     return { id };
 }
 
@@ -931,12 +970,14 @@ function getStockTrailAll(filters = {}) {
         params.push(filters.user_id);
     }
     if (filters.date_from) {
+        const range = getLocalDayRangeUTC(new Date(filters.date_from));
         query += ` AND st.created_at >= ? `;
-        params.push(filters.date_from + ' 00:00:00');
+        params.push(range.start);
     }
     if (filters.date_to) {
+        const range = getLocalDayRangeUTC(new Date(filters.date_to));
         query += ` AND st.created_at <= ? `;
-        params.push(filters.date_to + ' 23:59:59');
+        params.push(range.end);
     }
     if (filters.search) {
         const term = `%${filters.search}%`;
@@ -981,12 +1022,14 @@ function getStockTrailCount(filters = {}) {
         params.push(filters.user_id);
     }
     if (filters.date_from) {
+        const range = getLocalDayRangeUTC(new Date(filters.date_from));
         query += ` AND st.created_at >= ? `;
-        params.push(filters.date_from + ' 00:00:00');
+        params.push(range.start);
     }
     if (filters.date_to) {
+        const range = getLocalDayRangeUTC(new Date(filters.date_to));
         query += ` AND st.created_at <= ? `;
-        params.push(filters.date_to + ' 23:59:59');
+        params.push(range.end);
     }
     if (filters.search) {
         const term = `%${filters.search}%`;
@@ -1058,11 +1101,12 @@ function resolvePaymentStatus(data) {
 }
 
 function decrementProductStock(productId, quantity, userId, userName, invoiceNumber, txId) {
+    // Atomic decrement — prevents race condition if two sales hit simultaneously
+    run("UPDATE products SET stock = stock - ?, updated_at = datetime('now', 'localtime') WHERE id = ?", [quantity, productId]);
+    // Re-read after update to get accurate new stock for trail logging
     const currentProduct = get("SELECT stock, name FROM products WHERE id = ?", [productId]);
-    const oldStock = currentProduct ? (currentProduct.stock || 0) : 0;
-    const newStock = oldStock - quantity;
-
-    run("UPDATE products SET stock = ?, updated_at = datetime('now', 'localtime') WHERE id = ?", [newStock, productId]);
+    const newStock = currentProduct ? (currentProduct.stock ?? 0) : 0;
+    const oldStock = newStock + quantity;
 
     // Record to new stock trail
     createStockTrail({
@@ -1100,7 +1144,6 @@ function insertInitialPayment(txId, amount, paymentMethod, userId) {
 }
 
 function createTransaction(data) {
-    const invoiceNumber = generateInvoiceNumber();
     const items = data.items || [];
     const status = resolvePaymentStatus(data);
 
@@ -1109,6 +1152,8 @@ function createTransaction(data) {
     const costMultiplier = 1 - (defaultMargin / 100);
 
     const insertTransaction = db.transaction(() => {
+        // Generate invoice number inside transaction so concurrent calls cannot produce duplicates
+        const invoiceNumber = generateInvoiceNumber();
         const info = run(
             `INSERT INTO transactions(invoice_number, user_id, subtotal, tax_amount, discount_amount, total, payment_method, amount_paid, change_amount, customer_name, customer_address, payment_status, due_date, total_paid, remaining_balance, payment_notes)
              VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1228,12 +1273,14 @@ function getDashboardStats() {
     const now = new Date();
     const todayRange = getLocalDayRangeUTC(now);
 
-    // Invalidate cache if day has changed
+    // Invalidate cache if day or timezone offset has changed
     const todayKey = todayRange.local_date;
-    if (dashboardCache.today && dashboardCache.today !== todayKey) {
+    const cacheKey = `${todayKey}:${cachedTimezoneOffset ?? 'auto'}`;
+    if (dashboardCache.key && dashboardCache.key !== cacheKey) {
         dashboardCache.data = null;
     }
     dashboardCache.today = todayKey;
+    dashboardCache.key = cacheKey;
 
     const todaySales = get("SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as total FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ?", [todayRange.start, todayRange.end]) || { count: 0, total: 0 };
     const totalProducts = get('SELECT COUNT(*) as count FROM products WHERE active = 1') || { count: 0 };
@@ -1419,9 +1466,11 @@ function getEnhancedDashboardStats() {
     const now = new Date();
     const todayRange = getLocalDayRangeUTC(now);
     const todayKey = todayRange.local_date;
+    // Cache key includes timezone offset so changing it in Settings invalidates cache
+    const cacheKey = `${todayKey}:${cachedTimezoneOffset ?? 'auto'}`;
 
-    // Invalidate cache if day has changed
-    if (dashboardCache.today && dashboardCache.today !== todayKey) {
+    // Invalidate cache if day or timezone offset has changed
+    if (dashboardCache.key && dashboardCache.key !== cacheKey) {
         dashboardCache.data = null;
     }
 
@@ -1498,7 +1547,8 @@ function getEnhancedDashboardStats() {
     dashboardCache = {
         data: result,
         expiry: nowTs + 30000,
-        today: todayKey
+        today: todayKey,
+        key: cacheKey
     };
 
     return result;
@@ -1887,11 +1937,18 @@ function resetSettings() {
 }
 
 function hardResetDatabase() {
-    // This is drastic. Drop tables.
+    // This is drastic. Drop ALL tables (termasuk stock_trail & device_sessions).
     clearStmtCache();
-    const tables = ['transaction_items', 'transactions', 'products', 'categories', 'users', 'settings', 'stock_audit_log', 'payment_history'];
-    db.pragma('foreign_keys = OFF'); // needed to drop
-    for (const t of tables) run(`DROP TABLE IF EXISTS ${t} `);
+    const tables = [
+        'transaction_items', 'transactions',
+        'products', 'categories',
+        'users', 'settings',
+        'stock_audit_log', 'payment_history',
+        'stock_trail',       // [FIX] sebelumnya terlewat
+        'device_sessions',   // [FIX] sebelumnya terlewat
+    ];
+    db.pragma('foreign_keys = OFF'); // matikan sementara agar bisa drop
+    for (const t of tables) db.exec(`DROP TABLE IF EXISTS ${t}`);
     db.pragma('foreign_keys = ON');
 
     createTables();
@@ -1926,25 +1983,42 @@ function getDatabaseStats() {
     };
 }
 
+const AUTO_BACKUP_MAX_ROTATE = 3; // [FIX] Jumlah rotasi backup otomatis yang dipertahankan
+
 async function createAutoBackup() {
     const settings = getSettings();
     const dir = settings.auto_backup_dir || path.join(app.getPath('userData'), 'backups');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    // Hapus file backup otomatis sebelumnya jika ada
-    if (settings.last_backup_path && fs.existsSync(settings.last_backup_path)) {
-        try { fs.unlinkSync(settings.last_backup_path); } catch (_) {}
-    }
-
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-');
-    const backupName = `pos-cashier-backup-${timestamp}.db`;
+    const backupName = `pos-cashier-auto-${timestamp}.db`;
     const backupPath = path.join(dir, backupName);
 
     try {
         await db.backup(backupPath);
         run("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_backup_date', ?)", [now.toISOString()]);
         run("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_backup_path', ?)", [backupPath]);
+
+        // [FIX] Rotasi: hapus backup otomatis lama jika sudah melebihi batas
+        try {
+            const autoFiles = fs.readdirSync(dir)
+                .filter(f => f.startsWith('pos-cashier-auto-') && f.endsWith('.db'))
+                .map(f => ({ name: f, mtime: fs.statSync(path.join(dir, f)).mtimeMs }))
+                .sort((a, b) => b.mtime - a.mtime); // terbaru di depan
+
+            // Hapus yang lebih dari batas rotasi
+            const toDelete = autoFiles.slice(AUTO_BACKUP_MAX_ROTATE);
+            for (const f of toDelete) {
+                try { fs.unlinkSync(path.join(dir, f.name)); } catch (_) { }
+            }
+            if (toDelete.length > 0) {
+                console.log(`[AutoBackup] Rotasi: hapus ${toDelete.length} backup lama, pertahankan ${AUTO_BACKUP_MAX_ROTATE} terbaru.`);
+            }
+        } catch (rotateErr) {
+            console.warn('[AutoBackup] Rotasi gagal (non-fatal):', rotateErr.message);
+        }
+
         return { success: true, path: backupPath, filename: backupName };
     } catch (err) {
         return { success: false, error: err.message };
@@ -1960,8 +2034,11 @@ function restoreDatabase(backupPath) {
         fs.copyFileSync(backupPath, dbPath);
         db = new Database(dbPath);
         applyPragmas();
+        runMigrations(); // [FIX] Pastikan skema terkini setelah restore backup lama
+        console.log('[Database] Restore selesai, migrasi diterapkan.');
         return { success: true, requiresRestart: true };
     } catch (e) {
+        console.error('[Database] Restore gagal:', e.message);
         return { success: false, error: e.message };
     }
 }
@@ -2128,12 +2205,28 @@ function getStockAuditLogSummary(dateFrom, dateTo) {
     }
 }
 
+function getTotalDbSize() {
+    const walPath = dbPath + '-wal';
+    const shmPath = dbPath + '-shm';
+    let size = fs.existsSync(dbPath) ? fs.statSync(dbPath).size : 0;
+    if (fs.existsSync(walPath)) size += fs.statSync(walPath).size;
+    if (fs.existsSync(shmPath)) size += fs.statSync(shmPath).size;
+    return size;
+}
+
 function vacuumDatabase() {
     try {
-        const sizeBefore = fs.statSync(dbPath).size;
-        // Use db.exec for VACUUM as it's a management command that doesn't allow prepared statements
+        // Lakukan Checkpoint agresif (TRUNCATE) agar ukuran file wal terestart ke 0 byte, mencegah akumulasi file.
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        
+        const sizeBefore = getTotalDbSize();
+        
         db.exec('VACUUM');
-        const sizeAfter = fs.statSync(dbPath).size;
+        
+        // Pastikan WAL bersih lagi setelah VACUUM untuk mengamankan shrink file.
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        
+        const sizeAfter = getTotalDbSize();
         return {
             success: true,
             sizeBefore,
@@ -2161,9 +2254,51 @@ function checkDatabaseIntegrity() {
 
 function closeDatabase() { clearStmtCache(); if (db) db.close(); }
 
+// ─── AI Insight Cache ─────────────────────────────────────
+function getAiInsightCache(days = null) {
+    if (days) {
+        return get('SELECT * FROM ai_insight_cache WHERE days = ? ORDER BY id DESC LIMIT 1', [days]);
+    }
+    return get('SELECT * FROM ai_insight_cache ORDER BY id DESC LIMIT 1');
+}
+
+function getLatestAiInsightCache() {
+    return get('SELECT * FROM ai_insight_cache ORDER BY id DESC LIMIT 1');
+}
+
+function getTimezoneOffsetHours() {
+    if (cachedTimezoneOffset !== null && cachedTimezoneOffset !== 'auto') {
+        return Number(cachedTimezoneOffset);
+    }
+    try {
+        const row = get("SELECT value FROM settings WHERE key = 'timezone_offset'");
+        if (row && row.value && row.value !== 'auto') return parseFloat(row.value);
+    } catch (e) { /* fallback */ }
+    return -(new Date().getTimezoneOffset() / 60);
+}
+
+function saveAiInsightCache(insightJson, dataHash, days = 30) {
+    run('DELETE FROM ai_insight_cache WHERE days = ?', [days]);
+    run(
+        'INSERT INTO ai_insight_cache (insight_json, data_hash, days, created_at) VALUES (?, ?, ?, ?)',
+        [insightJson, dataHash, days, new Date().toISOString()]
+    );
+}
+
+// ─── AI LLM Preset ────────────────────────────────────────
+function getAiLlmPreset() {
+    const row = get("SELECT value FROM settings WHERE key = 'ai_llm_preset'");
+    return row?.value ?? 'seimbang';
+}
+
+function saveAiLlmPreset(preset) {
+    run("INSERT OR REPLACE INTO settings (key, value) VALUES ('ai_llm_preset', ?)", [preset]);
+}
+
 // ─── Exports ────────────────────────────────────────────
 module.exports = {
     initDatabase, closeDatabase, saveDatabase: () => { }, // no-op compatibility
+    run, get, all, // low-level helpers (used by ai-aggregator, etc.)
     getUsers, getUserById, getUserByUsername, createUser, updateUser, deleteUser, updateUserLastLogin,
     upsertDeviceSession, getDeviceSessions, getDeviceSessionByDeviceId, countDeviceSessions,
     getOldestDeviceSession, deleteDeviceSessionById, deleteDeviceSession,
@@ -2185,5 +2320,7 @@ module.exports = {
     getDatabasePath, getBackupDir, getBackupHistory,
     createAutoBackup, deleteBackupFile, validateBackupFile, restoreDatabase,
     createTables, seedSettings,
-    getMarginImpactStats, updateMarginSettings
+    getMarginImpactStats, updateMarginSettings,
+    getAiInsightCache, getLatestAiInsightCache, saveAiInsightCache, getTimezoneOffsetHours,
+    getAiLlmPreset, saveAiLlmPreset,
 };

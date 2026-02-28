@@ -4,7 +4,8 @@ import { Product } from '@/lib/types';
 import { esc } from '@/lib/escape';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button'; // Note: Card is used in original but not here
-import { X, Download, Printer } from 'lucide-react';
+import { X, Download } from 'lucide-react';
+import { RetroPrinter } from '../components/RetroIcons';
 
 interface BarcodePreviewModalProps {
     product: Product;
@@ -163,15 +164,15 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-gray-950 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+            <div className="bg-card dark:bg-background rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b dark:border-border flex items-center justify-between bg-background dark:bg-background text-foreground dark:text-foreground">
                     <div>
                         <h3 className="font-black text-xl uppercase tracking-tight">Label Barcode</h3>
-                        <p className="text-xs text-gray-500 font-medium truncate max-w-[250px]">{product.name}</p>
+                        <p className="text-xs text-muted-foreground font-medium truncate max-w-[250px]">{product.name}</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-all font-black"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -180,10 +181,10 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
                     <div
                         ref={labelRef}
-                        className="mx-auto bg-white border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-3xl p-6 flex flex-col items-center justify-between shadow-inner"
+                        className="mx-auto bg-card border-2 border-dashed border-border dark:border-border rounded-3xl p-6 flex flex-col items-center justify-between shadow-inner"
                         style={{ width: '220px', height: '160px' }}
                     >
-                        <div className="text-[10px] font-black text-center truncate w-full uppercase tracking-tighter text-gray-900">
+                        <div className="text-[10px] font-black text-center truncate w-full uppercase tracking-tighter text-foreground">
                             {product.name}
                         </div>
 
@@ -191,21 +192,21 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
                     </div>
 
                     <div className="text-center">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none">
                             Ukuran Standar Thermal
                         </p>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mt-1">
                             40 x 30 mm
                         </p>
                     </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-2xl p-6 space-y-4 border dark:border-gray-800">
+                    <div className="bg-background dark:bg-background rounded-2xl p-6 space-y-4 border dark:border-border">
                         <div className="flex items-center justify-between">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Jumlah Salinan</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Jumlah Salinan</label>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setLabelCount(c => Math.max(1, c - 1))}
-                                    className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-sm flex items-center justify-center font-black text-gray-600 dark:text-gray-400 hover:bg-gray-100 transition-colors"
+                                    className="w-10 h-10 rounded-xl bg-card dark:bg-card border dark:border-border shadow-sm flex items-center justify-center font-black text-muted-foreground dark:text-muted-foreground hover:bg-muted transition-colors"
                                 >
                                     -
                                 </button>
@@ -214,24 +215,24 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
                                 </div>
                                 <button
                                     onClick={() => setLabelCount(c => Math.min(100, c + 1))}
-                                    className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-sm flex items-center justify-center font-black text-gray-600 dark:text-gray-400 hover:bg-gray-100 transition-colors"
+                                    className="w-10 h-10 rounded-xl bg-card dark:bg-card border dark:border-border shadow-sm flex items-center justify-center font-black text-muted-foreground dark:text-muted-foreground hover:bg-muted transition-colors"
                                 >
                                     +
                                 </button>
                             </div>
                         </div>
 
-                        <div className="text-[10px] text-gray-500 font-bold bg-white dark:bg-gray-950 rounded-xl p-3 border dark:border-gray-800 flex gap-2">
+                        <div className="text-[10px] text-muted-foreground font-bold bg-card dark:bg-background rounded-xl p-3 border dark:border-border flex gap-2">
                             <span className="text-primary-600 flex-shrink-0">ⓘ</span>
                             <span><strong>Barcode CODE128:</strong> Standar industri yang kompatibel dengan semua jenis scanner kasir laser / digital.</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex gap-4">
+                <div className="p-6 border-t dark:border-border bg-background dark:bg-background flex gap-4">
                     <button
                         onClick={handleDownload}
-                        className="flex-1 h-14 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-gray-700 dark:text-gray-300"
+                        className="flex-1 h-14 bg-card dark:bg-card border dark:border-border rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:bg-muted dark:hover:bg-muted transition-all text-muted-foreground dark:text-muted-foreground"
                     >
                         <Download className="w-4 h-4" /> Download
                     </button>
@@ -239,7 +240,7 @@ export default function BarcodePreviewModal({ product, onClose }: BarcodePreview
                         onClick={handlePrint}
                         className="flex-1 h-14 bg-primary-600 hover:bg-primary-700 rounded-2xl font-black text-xs uppercase tracking-widest text-white shadow-lg shadow-primary-600/20 flex items-center justify-center gap-2 transition-all"
                     >
-                        <Printer className="w-4 h-4" /> Print {labelCount > 1 ? `(${labelCount}x)` : ''}
+                        <RetroPrinter className="w-4 h-4" /> Print {labelCount > 1 ? `(${labelCount}x)` : ''}
                     </button>
                 </div>
             </div>

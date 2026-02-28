@@ -1,21 +1,6 @@
 import { useState, useEffect, memo } from 'react';
-import {
-    History,
-    Search,
-    Filter,
-    Calendar,
-    User,
-    Package,
-    RefreshCw,
-    ArrowRight,
-    TrendingUp,
-    TrendingDown,
-    RotateCcw,
-    Layout,
-    Info,
-    ChevronRight,
-    CheckCircle2
-} from 'lucide-react';
+import { Search, Filter, Calendar, User, ArrowRight, TrendingDown, RotateCcw, Layout, Info, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { RetroHistory, RetroBox, RetroRefresh, RetroMoney } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,13 +23,14 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { formatDateTime } from '../utils/format';
 
 const EVENT_LABELS = {
-    initial: { label: 'Stok Awal', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50' },
-    sale: { label: 'Penjualan', color: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' },
-    restock: { label: 'Restok', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50' },
-    adjustment: { label: 'Penyesuaian', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50' },
-    return: { label: 'Retur', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50' },
+    initial: { label: 'Stok Awal', color: 'bg-primary/10 text-primary dark:text-primary border-primary dark:border-primary/50' },
+    sale: { label: 'Penjualan', color: 'bg-red-500/10 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/50' },
+    restock: { label: 'Restok', color: 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50' },
+    adjustment: { label: 'Penyesuaian', color: 'bg-amber-500/10 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/50' },
+    return: { label: 'Retur', color: 'bg-purple-500/10 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-900/50' },
     opname: { label: 'Stock Opname', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-900/50' }
 } as any;
 
@@ -142,14 +128,6 @@ export default memo(function StockTrailPage() {
         setSearchTerm('');
     };
 
-    const formatDateTime = (dateStr: string) => {
-        if (!dateStr) return '-';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('id-ID', {
-            day: '2-digit', month: 'short', year: 'numeric'
-        }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -158,7 +136,7 @@ export default memo(function StockTrailPage() {
                     <p className="text-sm text-muted-foreground font-medium">Jejak logis setiap perubahan persediaan barang</p>
                 </div>
                 <Button onClick={() => loadTrails()} disabled={loading} className="gap-2 h-11 px-6 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-bold">
-                    {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <History className="w-5 h-5" />}
+                    {loading ? <RetroRefresh className="w-5 h-5 animate-spin" /> : <RetroHistory className="w-5 h-5" />}
                     Refresh Log
                 </Button>
             </div>
@@ -171,7 +149,7 @@ export default memo(function StockTrailPage() {
                             <div className="relative">
                                 <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3.5" />
                                 <Input
-                                    className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
+                                    className="pl-10 h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner"
                                     placeholder="Ketik nama produk atau catatan..."
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
@@ -181,7 +159,7 @@ export default memo(function StockTrailPage() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Produk</label>
                             <Select value={filters.product_id} onValueChange={val => setFilters(f => ({ ...f, product_id: val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <SelectValue placeholder="Semua Produk" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -195,7 +173,7 @@ export default memo(function StockTrailPage() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Jenis Event</label>
                             <Select value={filters.event_type} onValueChange={val => setFilters(f => ({ ...f, event_type: val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <SelectValue placeholder="Semua Event" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -212,7 +190,7 @@ export default memo(function StockTrailPage() {
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">User / Pelaksana</label>
                             <Select value={filters.user_id} onValueChange={val => setFilters(f => ({ ...f, user_id: val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <SelectValue placeholder="Semua User" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -225,11 +203,11 @@ export default memo(function StockTrailPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Dari</label>
-                            <Input type="date" className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner" value={filters.date_from} onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))} />
+                            <Input type="date" className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner" value={filters.date_from} onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))} />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Sampai</label>
-                            <Input type="date" className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner" value={filters.date_to} onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))} />
+                            <Input type="date" className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner" value={filters.date_to} onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))} />
                         </div>
                         <div className="flex items-end gap-2">
                             <Button onClick={clearFilters} variant="outline" className="flex-1 h-11 font-bold gap-2 border-transparent bg-muted/50 text-foreground hover:bg-muted transition-colors shadow-none text-xs uppercase tracking-widest">
@@ -265,12 +243,12 @@ export default memo(function StockTrailPage() {
                             ) : trails.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">
-                                        <History className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                                        <RetroHistory className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                         <p className="font-bold text-lg">Tidak ada riwayat ditemukan</p>
                                     </TableCell>
                                 </TableRow>
                             ) : trails.map((trail) => {
-                                const eventInfo = EVENT_LABELS[trail.event_type] || { label: trail.event_type, color: 'bg-gray-100 text-gray-700' };
+                                const eventInfo = EVENT_LABELS[trail.event_type] || { label: trail.event_type, color: 'bg-muted text-muted-foreground' };
                                 const isPositive = trail.quantity_change > 0;
                                 return (
                                     <TableRow key={trail.id} className="hover:bg-muted/30 transition-colors h-14 border-b border-border">
@@ -296,10 +274,10 @@ export default memo(function StockTrailPage() {
                                             <div className={cn(
                                                 "inline-flex items-center gap-1 font-black px-2 py-0.5 rounded text-[11px] tabular-nums",
                                                 isPositive
-                                                    ? "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400"
-                                                    : "text-red-600 bg-red-500/10 dark:text-red-400"
+                                                    ? "text-emerald-800 bg-emerald-500/10 dark:text-emerald-400"
+                                                    : "text-red-800 bg-red-500/10 dark:text-red-400"
                                             )}>
-                                                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                                {isPositive ? <RetroMoney className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                 {isPositive ? '+' : ''}{trail.quantity_change}
                                             </div>
                                         </TableCell>

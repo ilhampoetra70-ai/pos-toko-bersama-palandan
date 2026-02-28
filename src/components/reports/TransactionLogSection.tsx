@@ -53,10 +53,10 @@ export default function TransactionLogSection({ data }: any) {
                                         <div className="col-span-2 flex flex-wrap items-center gap-1">
                                             <span className={cn(
                                                 "inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-bold",
-                                                t.payment_method === 'cash' ? "bg-green-100/50 text-green-700 dark:bg-green-900/40 dark:text-green-400" :
-                                                    t.payment_method === 'qris' ? "bg-blue-100/50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" :
-                                                        t.payment_method === 'debit' ? "bg-purple-100/50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400" :
-                                                            "bg-gray-100/50 text-gray-700 dark:bg-gray-800/40 dark:text-gray-400"
+                                                t.payment_method === 'cash' ? "bg-green-100/50 text-green-800 dark:bg-green-900/40 dark:text-green-400" :
+                                                    t.payment_method === 'qris' ? "bg-primary/50 text-primary-foreground dark:bg-primary/40 dark:text-primary-foreground" :
+                                                        t.payment_method === 'debit' ? "bg-purple-100/50 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400" :
+                                                            "bg-muted/50 text-muted-foreground dark:bg-card/40 dark:text-muted-foreground"
                                             )}>
                                                 {t.payment_method === 'cash' ? 'TUNAI' : String(t.payment_method).toUpperCase()}
                                             </span>

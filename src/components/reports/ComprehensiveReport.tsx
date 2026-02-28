@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import SalesTrendChart from '../charts/SalesTrendChart';
 import TopProductsChart from '../charts/TopProductsChart';
 import PaymentPieChart from '../charts/PaymentPieChart';
 import HourlySalesChart from '../charts/HourlySalesChart';
 import ProfitMarginChart from '../charts/ProfitMarginChart';
-import { ChevronUp, ChevronDown, LayoutDashboard, TrendingUp, Package, CreditCard, History, Calculator, ClipboardList, Database } from 'lucide-react';
+import { ChevronUp, ChevronDown, Calculator, ClipboardList, MapPin } from 'lucide-react';
+import { RetroDashboard, RetroMoney, RetroBox, RetroWallet, RetroHistory, RetroDatabase, RetroUsers, RetroSparkle } from '../../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +56,7 @@ interface MiniCardProps {
 
 function MiniCard({ label, value, sub, color = 'blue' }: MiniCardProps) {
     const colors = {
-        blue: 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-400',
+        blue: 'bg-primary/50 dark:bg-primary/20 border-primary dark:border-primary/50 text-primary-foreground dark:text-primary',
         green: 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400',
         orange: 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50 text-amber-700 dark:text-amber-400',
         purple: 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/50 text-purple-700 dark:text-purple-400',
@@ -80,6 +81,16 @@ interface ComprehensiveReportProps {
 
 export default function ComprehensiveReport({ data, stockAuditData, stockTrailData }: ComprehensiveReportProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const [aiInsight, setAiInsight] = useState<{ narrative: string; highlights: string[]; created_at?: string } | null>(null);
+
+    // Load cached AI insight (read-only, never generates new)
+    useEffect(() => {
+        window.api.getAiInsightCache().then((r: any) => {
+            if (r.success && r.data && r.data.narrative) {
+                setAiInsight({ ...r.data, created_at: r.created_at });
+            }
+        }).catch(() => { /* silently ignore */ });
+    }, []);
 
     if (!data) return null;
 
@@ -93,15 +104,42 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
     const peakHour = [...hourly].sort((a, b) => b.total - a.total)[0];
     const topProduct = sales.topProducts[0];
 
+    // Customer rankings derived from transactionLog
+    const customerByName: { name: string; count: number; total: number }[] = Object.values(
+        transactionLog.reduce((acc: any, tx: any) => {
+            const key = (tx.customer_name || '').trim();
+            if (!key) return acc;
+            if (!acc[key]) acc[key] = { name: key, count: 0, total: 0 };
+            acc[key].count++;
+            acc[key].total += tx.total || 0;
+            return acc;
+        }, {})
+    ).sort((a: any, b: any) => b.total - a.total).slice(0, 20) as any;
+
+    const customerByAddress: { address: string; count: number; total: number }[] = Object.values(
+        transactionLog.reduce((acc: any, tx: any) => {
+            const key = (tx.customer_address || '').trim();
+            if (!key) return acc;
+            if (!acc[key]) acc[key] = { address: key, count: 0, total: 0 };
+            acc[key].count++;
+            acc[key].total += tx.total || 0;
+            return acc;
+        }, {})
+    ).sort((a: any, b: any) => b.total - a.total).slice(0, 20) as any;
+
+    const hasCustomerData = customerByName.length > 0 || customerByAddress.length > 0;
+
     const navItems = [
-        { id: 'sec-summary', label: 'Ringkasan', icon: LayoutDashboard },
-        { id: 'sec-trend', label: 'Tren', icon: TrendingUp },
-        { id: 'sec-products', label: 'Produk', icon: Package },
-        { id: 'sec-payment', label: 'Pembayaran', icon: CreditCard },
-        { id: 'sec-txlog', label: 'Transaksi', icon: History },
+        { id: 'sec-summary', label: 'Ringkasan', icon: RetroDashboard },
+        { id: 'sec-trend', label: 'Tren', icon: RetroMoney },
+        { id: 'sec-products', label: 'Produk', icon: RetroBox },
+        { id: 'sec-payment', label: 'Pembayaran', icon: RetroWallet },
+        { id: 'sec-txlog', label: 'Transaksi', icon: RetroHistory },
         { id: 'sec-profit', label: 'Laba', icon: Calculator },
+        ...(hasCustomerData ? [{ id: 'sec-customers', label: 'Pelanggan', icon: RetroUsers }] : []),
         ...(stockAuditData && stockAuditData.length > 0 ? [{ id: 'sec-stockaudit', label: 'Stok Opname', icon: ClipboardList }] : []),
-        ...(stockTrailData && stockTrailData.length > 0 ? [{ id: 'sec-stocktrail', label: 'Log Mutasi', icon: Database }] : []),
+        ...(stockTrailData && stockTrailData.length > 0 ? [{ id: 'sec-stocktrail', label: 'Log Mutasi', icon: RetroDatabase }] : []),
+        ...(aiInsight ? [{ id: 'sec-ai-insight', label: 'AI Insight', icon: RetroSparkle }] : []),
     ];
 
     return (
@@ -120,7 +158,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             </div>
 
             {/* Executive summary */}
-            <CollapsibleSection id="sec-summary" title="Ringkasan Eksekutif" icon={LayoutDashboard}>
+            <CollapsibleSection id="sec-summary" title="Ringkasan Eksekutif" icon={RetroDashboard}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <MiniCard label="Total Pendapatan" value={formatCurrency(sales.summary.revenue)} color="blue" />
                     <MiniCard label="Jumlah Transaksi" value={formatNumber(sales.summary.count)} sub="transaksi terdaftar" color="green" />
@@ -136,7 +174,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             </CollapsibleSection>
 
             {/* Sales trend */}
-            <CollapsibleSection id="sec-trend" title="Visualisasi Tren" icon={TrendingUp}>
+            <CollapsibleSection id="sec-trend" title="Visualisasi Tren" icon={RetroMoney}>
                 <div className="space-y-6">
                     <SalesTrendChart data={sales.dailyBreakdown} />
                     <HourlySalesChart data={hourly} />
@@ -144,7 +182,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             </CollapsibleSection>
 
             {/* Product performance */}
-            <CollapsibleSection id="sec-products" title="Performa Produk Detail" icon={Package}>
+            <CollapsibleSection id="sec-products" title="Performa Produk Detail" icon={RetroBox}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-2">
@@ -165,7 +203,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                             <td className="py-4 px-2 text-muted-foreground font-bold">{i + 1}</td>
                                             <td className="py-4 font-bold text-foreground">{p.product_name}</td>
                                             <td className="py-4 text-center">
-                                                <Badge variant="secondary" className="font-black bg-emerald-100/50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 border-none">{formatNumber(p.qty)}</Badge>
+                                                <Badge variant="secondary" className="font-black bg-emerald-100/50 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 border-none">{formatNumber(p.qty)}</Badge>
                                             </td>
                                             <td className="py-4 text-right font-black text-foreground px-2">{formatCurrency(p.total)}</td>
                                         </tr>
@@ -196,7 +234,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                                 <td className="py-4 px-2 text-muted-foreground font-bold">{i + 1}</td>
                                                 <td className="py-4 font-bold text-foreground">{p.product_name}</td>
                                                 <td className="py-4 text-center">
-                                                    <Badge variant="secondary" className="font-black bg-red-100/50 text-red-700 dark:bg-red-900/40 dark:text-red-400 border-none">{formatNumber(p.qty)}</Badge>
+                                                    <Badge variant="secondary" className="font-black bg-red-100/50 text-red-800 dark:bg-red-900/40 dark:text-red-400 border-none">{formatNumber(p.qty)}</Badge>
                                                 </td>
                                                 <td className="py-4 text-right font-black text-foreground px-2">{formatCurrency(p.total)}</td>
                                             </tr>
@@ -211,7 +249,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             </CollapsibleSection>
 
             {/* Payment methods */}
-            <CollapsibleSection id="sec-payment" title="Analisis Pembayaran" icon={CreditCard}>
+            <CollapsibleSection id="sec-payment" title="Analisis Pembayaran" icon={RetroWallet}>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                     <PaymentPieChart data={sales.paymentBreakdown} />
                     <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
@@ -245,10 +283,10 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
             </CollapsibleSection>
 
             {/* Transaction log */}
-            <CollapsibleSection id="sec-txlog" title="Log Transaksi Terakhir" icon={History}>
+            <CollapsibleSection id="sec-txlog" title="Log Transaksi Terakhir" icon={RetroHistory}>
                 {transactionLog.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center text-muted-foreground gap-4">
-                        <History className="w-12 h-12 opacity-20" />
+                        <RetroHistory className="w-12 h-12 opacity-20" />
                         <p className="font-bold uppercase tracking-widest text-xs">Tidak ada riwayat transaksi</p>
                     </div>
                 ) : (
@@ -336,6 +374,96 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                 </div>
             </CollapsibleSection>
 
+            {/* Customer rankings */}
+            {hasCustomerData && (
+                <CollapsibleSection id="sec-customers" title="Pemeringkatan Pelanggan" icon={RetroUsers}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* By name */}
+                        <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-2">
+                                <RetroUsers className="w-3 h-3" />
+                                Peringkat Berdasarkan Nama Pembeli
+                            </h4>
+                            {customerByName.length === 0 ? (
+                                <div className="h-32 flex items-center justify-center text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                    Tidak ada data nama pembeli
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs zebra-rows">
+                                        <thead>
+                                            <tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                <th className="text-left py-4 px-2">#</th>
+                                                <th className="text-left py-4">Nama</th>
+                                                <th className="text-center py-4">Tx</th>
+                                                <th className="text-right py-4 px-2">Total Belanja</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {customerByName.map((c, i) => (
+                                                <tr key={c.name} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                                    <td className="py-3 px-2 text-muted-foreground font-bold">{i + 1}</td>
+                                                    <td className="py-3 font-bold text-foreground max-w-[140px] truncate" title={c.name}>{c.name}</td>
+                                                    <td className="py-3 text-center">
+                                                        <Badge variant="secondary" className="font-black bg-primary/50 text-primary-foreground dark:bg-primary/40 dark:text-primary-foreground border-none">
+                                                            {c.count}x
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="py-3 text-right font-black tabular-nums text-foreground px-2">{formatCurrency(c.total)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* By address */}
+                        <div className="bg-muted/30 rounded-[2rem] p-8 border border-border">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-6 flex items-center gap-2">
+                                <MapPin className="w-3 h-3" />
+                                Peringkat Berdasarkan Alamat Pembeli
+                            </h4>
+                            {customerByAddress.length === 0 ? (
+                                <div className="h-32 flex items-center justify-center text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+                                    Tidak ada data alamat pembeli
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs zebra-rows">
+                                        <thead>
+                                            <tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                <th className="text-left py-4 px-2">#</th>
+                                                <th className="text-left py-4">Alamat</th>
+                                                <th className="text-center py-4">Tx</th>
+                                                <th className="text-right py-4 px-2">Total Belanja</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {customerByAddress.map((c, i) => (
+                                                <tr key={c.address} className="border-b border-border hover:bg-muted/50 transition-colors">
+                                                    <td className="py-3 px-2 text-muted-foreground font-bold">{i + 1}</td>
+                                                    <td className="py-3 font-bold text-foreground max-w-[140px] truncate" title={c.address}>{c.address}</td>
+                                                    <td className="py-3 text-center">
+                                                        <Badge variant="secondary" className="font-black bg-purple-100/50 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400 border-none">
+                                                            {c.count}x
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="py-3 text-right font-black tabular-nums text-foreground px-2">{formatCurrency(c.total)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <p className="mt-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">
+                        Data diambil dari log transaksi periode ini · Transaksi tanpa nama/alamat tidak dihitung · Maks. 20 entri per tabel
+                    </p>
+                </CollapsibleSection>
+            )}
+
             {/* Stock audit log */}
             {stockAuditData && stockAuditData.length > 0 && (
                 <CollapsibleSection id="sec-stockaudit" title="Audit Stok Manual" icon={ClipboardList}>
@@ -375,7 +503,7 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
 
             {/* Stock trail log */}
             {stockTrailData && stockTrailData.length > 0 && (
-                <CollapsibleSection id="sec-stocktrail" title="Audit Mutasi Stok Detail" icon={Database}>
+                <CollapsibleSection id="sec-stocktrail" title="Audit Mutasi Stok Detail" icon={RetroDatabase}>
                     <div className="overflow-x-auto bg-muted/30 rounded-[2rem] p-8 border border-border">
                         <table className="w-full text-xs zebra-rows">
                             <thead><tr className="border-b border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -410,6 +538,37 @@ export default function ComprehensiveReport({ data, stockAuditData, stockTrailDa
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </CollapsibleSection>
+            )}
+
+            {/* AI Insight */}
+            {aiInsight && (
+                <CollapsibleSection id="sec-ai-insight" title="AI Insight Bisnis" icon={RetroSparkle}>
+                    {aiInsight.created_at && (
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-6">
+                            Digenerate pada: {new Date(aiInsight.created_at).toLocaleString('id-ID')}
+                        </p>
+                    )}
+                    {aiInsight.highlights && aiInsight.highlights.length > 0 && (
+                        <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10 mb-6">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-3">Sorotan Utama</p>
+                            <ul className="space-y-2">
+                                {aiInsight.highlights.map((h, i) => (
+                                    <li key={i} className="text-sm font-medium text-foreground flex items-start gap-2">
+                                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                                        {h}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    <div className="bg-muted/30 rounded-[2rem] p-8 border border-border space-y-4">
+                        {aiInsight.narrative.split('\n').filter(p => p.trim()).map((para, i) => (
+                            <p key={i} className={`text-sm leading-relaxed text-foreground ${i === 0 ? 'font-medium text-base' : ''}`}>
+                                {para}
+                            </p>
+                        ))}
                     </div>
                 </CollapsibleSection>
             )}

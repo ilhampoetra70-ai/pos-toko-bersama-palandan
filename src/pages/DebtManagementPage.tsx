@@ -3,20 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatDateTime } from '../utils/format';
 import AddPaymentModal from '../components/AddPaymentModal';
 import { useOutstandingDebts, useDebtSummary } from '@/lib/queries';
-import {
-    CreditCard,
-    Search,
-    Filter,
-    Calendar,
-    ChevronRight,
-    AlertCircle,
-    Layout,
-    RefreshCw,
-    MoreVertical,
-    ArrowUpRight,
-    TrendingUp,
-    Clock
-} from 'lucide-react';
+import { Search, Filter, Calendar, ChevronRight, AlertCircle, Layout, MoreVertical, ArrowUpRight, Clock } from 'lucide-react';
+import { RetroWallet, RetroRefresh, RetroMoney } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,9 +22,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const PAYMENT_STATUS_CONFIG: Record<string, { label: string, color: string, borderColor: string }> = {
-    pending: { label: 'Pending', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', borderColor: 'border-blue-200 dark:border-blue-800' },
-    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', borderColor: 'border-orange-200 dark:border-orange-800' },
-    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', borderColor: 'border-purple-200 dark:border-purple-800' },
+    pending: { label: 'Pending', color: 'bg-primary text-primary-foreground dark:bg-primary/30 dark:text-primary', borderColor: 'border-primary dark:border-primary' },
+    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', borderColor: 'border-orange-200 dark:border-orange-800' },
+    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', borderColor: 'border-purple-200 dark:border-purple-800' },
 };
 
 function PaymentStatusBadge({ status }: { status: string }) {
@@ -109,7 +97,7 @@ export default function DebtManagementPage() {
         return (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
                 <div className="w-12 h-12 border-4 border-primary-50 border-t-primary-600 rounded-full animate-spin"></div>
-                <p className="text-gray-500 font-bold">Menyinkronkan data piutang...</p>
+                <p className="text-muted-foreground font-bold">Menyinkronkan data piutang...</p>
             </div>
         );
     }
@@ -118,11 +106,11 @@ export default function DebtManagementPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Piutang</h2>
-                    <p className="text-sm text-gray-500 font-medium">Manajemen tagihan dan cicilan customer</p>
+                    <h2 className="text-3xl font-black text-foreground dark:text-foreground tracking-tight">Piutang</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Manajemen tagihan dan cicilan customer</p>
                 </div>
                 <Button onClick={() => refetchDebts()} disabled={loading} variant="outline" className="gap-2 h-11 px-6 shadow-sm font-bold">
-                    <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} /> Refresh Data
+                    <RetroRefresh className={cn("w-4 h-4", loading && "animate-spin")} /> Refresh Data
                 </Button>
             </div>
 
@@ -133,7 +121,7 @@ export default function DebtManagementPage() {
                         title="Total Piutang"
                         value={formatCurrency(summary.total_outstanding)}
                         subtitle={`${summary.total_count} transaksi`}
-                        icon={CreditCard}
+                        icon={RetroWallet}
                         color="orange"
                     />
                     <StatCard
@@ -150,8 +138,8 @@ export default function DebtManagementPage() {
                                 <CardContent className="p-5 flex items-center gap-4">
                                     <div className="space-y-1">
                                         <PaymentStatusBadge status={s.payment_status} />
-                                        <div className="text-xl font-black text-gray-900 dark:text-gray-100 mt-1">{formatCurrency(s.total)}</div>
-                                        <div className="text-[10px] font-black text-gray-400 tracking-widest uppercase">{s.count} TRANSAKSI</div>
+                                        <div className="text-xl font-black text-foreground dark:text-foreground mt-1">{formatCurrency(s.total)}</div>
+                                        <div className="text-[10px] font-black text-muted-foreground tracking-widest uppercase">{s.count} TRANSAKSI</div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -161,26 +149,26 @@ export default function DebtManagementPage() {
             )}
 
             {/* Filters */}
-            <Card className="border-none shadow-sm bg-white dark:bg-gray-900">
+            <Card className="border-none shadow-sm bg-card dark:bg-background">
                 <CardContent className="p-6">
                     <div className="flex flex-wrap items-end gap-6">
                         <div className="space-y-1.5 flex-1 min-w-[250px]">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cari Pembeli</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Cari Pembeli</label>
                             <div className="relative">
-                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3.5" />
                                 <Input
                                     placeholder="Nama atau alamat..."
                                     value={filters.customer_search}
                                     onChange={e => setFilters(f => ({ ...f, customer_search: e.target.value }))}
-                                    className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 dark:text-gray-100 border-none shadow-inner font-bold"
+                                    className="pl-10 h-11 bg-background/50 dark:bg-card/50 dark:text-foreground border-none shadow-inner font-bold"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1.5 w-48">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Pembayaran</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Status Pembayaran</label>
                             <Select value={filters.payment_status || 'all'} onValueChange={v => setFilters(f => ({ ...f, payment_status: v === 'all' ? '' : v }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 dark:text-gray-100 border-none shadow-inner font-bold">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 dark:text-foreground border-none shadow-inner font-bold">
                                     <SelectValue placeholder="Semua" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -192,16 +180,16 @@ export default function DebtManagementPage() {
                             </Select>
                         </div>
 
-                        <div className="flex items-center gap-3 h-11 px-4 bg-gray-50/50 dark:bg-gray-800/50 rounded-xl">
+                        <div className="flex items-center gap-3 h-11 px-4 bg-background/50 dark:bg-card/50 rounded-xl">
                             <Checkbox
                                 id="overdue_only"
                                 checked={filters.overdue_only}
                                 onCheckedChange={(checked) => setFilters(f => ({ ...f, overdue_only: !!checked }))}
                             />
-                            <label htmlFor="overdue_only" className="text-sm font-bold text-gray-600 dark:text-gray-300 cursor-pointer">Jatuh tempo saja</label>
+                            <label htmlFor="overdue_only" className="text-sm font-bold text-muted-foreground dark:text-muted-foreground cursor-pointer">Jatuh tempo saja</label>
                         </div>
 
-                        <Button onClick={handleFilter} disabled={loading} size="lg" className="h-11 px-8 font-black bg-gray-900 dark:bg-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 shadow-lg">
+                        <Button onClick={handleFilter} disabled={loading} size="lg" className="h-11 px-8 font-black bg-foreground text-background dark:bg-card dark:text-foreground hover:bg-black dark:hover:bg-muted shadow-lg">
                             Tampilkan Piutang
                         </Button>
                     </div>
@@ -209,24 +197,24 @@ export default function DebtManagementPage() {
             </Card>
 
             {/* Table */}
-            <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-900">
+            <Card className="border border-border shadow-sm overflow-hidden bg-card dark:bg-background">
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-gray-50/30 dark:bg-gray-800/20 border-b dark:border-gray-800">
-                                <TableHead className="font-black text-[10px] uppercase dark:text-gray-400 pl-6 h-14">CUSTOMER / INVOICE</TableHead>
-                                <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400">TOTAL</TableHead>
-                                <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400">TERBAYAR</TableHead>
-                                <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400">SISA</TableHead>
-                                <TableHead className="text-center font-black text-[10px] uppercase dark:text-gray-400">JATUH TEMPO</TableHead>
-                                <TableHead className="text-center font-black text-[10px] uppercase dark:text-gray-400">STATUS</TableHead>
-                                <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400 pr-6">AKSI</TableHead>
+                    <Table className="zebra-rows">
+                        <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                            <TableRow className="border-b border-border">
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground pl-6">CUSTOMER / INVOICE</TableHead>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">TOTAL</TableHead>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">TERBAYAR</TableHead>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">SISA</TableHead>
+                                <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">JATUH TEMPO</TableHead>
+                                <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">STATUS</TableHead>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground pr-6">AKSI</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="divide-y">
+                        <TableBody>
                             {debts.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-20 text-gray-400">
+                                    <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-3 opacity-30">
                                             <Layout className="w-16 h-16" />
                                             <p className="text-lg font-bold">Tidak ada piutang yang ditemukan</p>
@@ -241,20 +229,20 @@ export default function DebtManagementPage() {
                                     <TableRow
                                         key={tx.id}
                                         className={cn(
-                                            "group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all border-gray-100 dark:border-gray-800 h-20",
+                                            "group hover:bg-muted/30 transition-colors border-b border-border h-20",
                                             daysOverdue ? "bg-red-50/20 dark:bg-red-950/10" : ""
                                         )}
                                     >
                                         <TableCell className="pl-6">
                                             <div className="flex flex-col">
-                                                <span className="font-black text-gray-900 dark:text-gray-100">{tx.customer_name || '-'}</span>
+                                                <span className="font-black text-foreground dark:text-foreground">{tx.customer_name || '-'}</span>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-xs font-bold text-primary-600 font-mono tracking-wider">{tx.invoice_number}</span>
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{formatDateTime(tx.created_at)}</span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">{formatDateTime(tx.created_at)}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-right font-bold text-gray-500">{formatCurrency(tx.total)}</TableCell>
+                                        <TableCell className="text-right font-bold text-muted-foreground">{formatCurrency(tx.total)}</TableCell>
                                         <TableCell className="text-right font-bold text-green-600">{formatCurrency(tx.total_paid)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="font-black text-orange-600 text-lg">{formatCurrency(tx.remaining_balance)}</div>
@@ -262,7 +250,7 @@ export default function DebtManagementPage() {
                                         <TableCell className="text-center">
                                             {tx.due_date ? (
                                                 <div className="flex flex-col items-center gap-1">
-                                                    <div className={cn("text-xs font-black", daysOverdue ? "text-red-600" : "text-gray-600 dark:text-gray-400")}>
+                                                    <div className={cn("text-xs font-black", daysOverdue ? "text-red-600" : "text-muted-foreground dark:text-muted-foreground")}>
                                                         {new Date(tx.due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                     {daysOverdue && (
@@ -271,7 +259,7 @@ export default function DebtManagementPage() {
                                                         </Badge>
                                                     )}
                                                 </div>
-                                            ) : <span className="text-gray-300">-</span>}
+                                            ) : <span className="text-muted-foreground">-</span>}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <PaymentStatusBadge status={tx.payment_status} />
@@ -297,7 +285,7 @@ export default function DebtManagementPage() {
             {/* Totals Summary Footer */}
             {debts.length > 0 && (
                 <div className="flex justify-end pt-2">
-                    <Card className="border-none shadow-lg bg-gray-900 text-white p-1 rounded-2xl">
+                    <Card className="border-none shadow-lg bg-foreground text-background text-white p-1 rounded-2xl">
                         <CardContent className="p-4 px-8 flex items-center gap-12">
                             <TotalItem label="Total Tagihan" value={debts.reduce((sum: number, d: any) => sum + d.total, 0)} color="white" />
                             <TotalItem label="Total Terbayar" value={debts.reduce((sum: number, d: any) => sum + d.total_paid, 0)} color="emerald" />
@@ -321,7 +309,7 @@ export default function DebtManagementPage() {
 
 function StatCard({ title, value, subtitle, icon: Icon, color }: any) {
     const colors = {
-        blue: "bg-blue-500 shadow-blue-500/20",
+        blue: "bg-primary shadow-blue-500/20",
         green: "bg-green-500 shadow-green-500/20",
         orange: "bg-orange-500 shadow-orange-500/20",
         purple: "bg-purple-500 shadow-purple-500/20",
@@ -329,15 +317,15 @@ function StatCard({ title, value, subtitle, icon: Icon, color }: any) {
     } as any;
 
     return (
-        <Card className="border-none shadow-sm hover:shadow-md transition-all bg-white dark:bg-gray-900 group">
+        <Card className="border-none shadow-sm hover:shadow-md transition-all bg-card dark:bg-background group">
             <CardContent className="p-5 flex items-center gap-4">
                 <div className={cn("p-3 rounded-2xl text-white shadow-lg transition-transform group-hover:scale-110", colors[color])}>
                     <Icon className="w-6 h-6" />
                 </div>
                 <div className="space-y-0.5">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{title}</p>
-                    <p className="text-xl font-black text-gray-900 dark:text-gray-100">{value}</p>
-                    {subtitle && <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{subtitle}</p>}
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{title}</p>
+                    <p className="text-xl font-black text-foreground dark:text-foreground">{value}</p>
+                    {subtitle && <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{subtitle}</p>}
                 </div>
             </CardContent>
         </Card>
@@ -353,7 +341,7 @@ function TotalItem({ label, value, color }: { label: string, value: number, colo
 
     return (
         <div className="flex flex-col items-end">
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1">{label}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">{label}</span>
             <span className={cn("text-xl font-black tabular-nums", colorClasses[color])}>{formatCurrency(value)}</span>
         </div>
     );

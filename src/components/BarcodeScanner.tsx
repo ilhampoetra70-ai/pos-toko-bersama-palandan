@@ -96,15 +96,15 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-gray-950 rounded-3xl p-6 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-card dark:bg-background rounded-3xl p-6 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h3 className="font-black text-xl text-gray-900 dark:text-gray-100 uppercase tracking-tight">Scan Barcode</h3>
-                        <p className="text-xs text-gray-500 font-medium">Gunakan kamera untuk mendeteksi barcode</p>
+                        <h3 className="font-black text-xl text-foreground dark:text-foreground uppercase tracking-tight">Scan Barcode</h3>
+                        <p className="text-xs text-muted-foreground font-medium">Gunakan kamera untuk mendeteksi barcode</p>
                     </div>
                     <button
                         onClick={() => { stopScanner(); onClose(); }}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-all font-black"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -123,10 +123,10 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
                         <div className="relative group">
                             <div
                                 ref={videoRef}
-                                className="w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden relative shadow-inner border-4 border-gray-100 dark:border-gray-900"
+                                className="w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden relative shadow-inner border-4 border-border dark:border-gray-900"
                             >
                                 {!scanning && !error && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-900/80">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-foreground text-background/80">
                                         <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
                                         <p className="text-[10px] font-black text-white uppercase tracking-widest">Inisialisasi Kamera...</p>
                                     </div>
@@ -143,14 +143,14 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
                                     </>
                                 )}
                             </div>
-                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-1.5 rounded-full flex items-center gap-2 shadow-xl border border-gray-800">
+                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-foreground text-background text-white px-4 py-1.5 rounded-full flex items-center gap-2 shadow-xl border border-border">
                                 <Camera className="w-3 h-3 text-primary-400" />
                                 <span className="text-[9px] font-black uppercase tracking-widest">Live Scanner Active</span>
                             </div>
                         </div>
 
                         <div className="text-center px-4">
-                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 leading-relaxed uppercase tracking-tight">
+                            <p className="text-xs font-bold text-muted-foreground dark:text-muted-foreground leading-relaxed uppercase tracking-tight">
                                 Posisikan barcode di dalam kotak pemindaian.<br />
                                 Pastikan cahaya cukup terang dan tidak silau.
                             </p>
@@ -158,11 +158,11 @@ export default function BarcodeScanner({ onDetected, onClose }: BarcodeScannerPr
                     </div>
                 )}
 
-                <div className="flex justify-end mt-8 border-t dark:border-gray-800 pt-6">
+                <div className="flex justify-end mt-8 border-t dark:border-border pt-6">
                     <Button
                         variant="outline"
                         onClick={() => { stopScanner(); onClose(); }}
-                        className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] bg-gray-50 dark:bg-gray-900 border-none shadow-sm"
+                        className="w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] bg-background dark:bg-background border-none shadow-sm"
                     >
                         Batal & Tutup
                     </Button>

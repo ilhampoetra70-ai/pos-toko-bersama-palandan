@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Printer, FileDown, Maximize, FileText } from 'lucide-react';
+import { X, FileDown, Maximize } from 'lucide-react';
+import { RetroPrinter, RetroReceipt } from '../components/RetroIcons';
 import { cn } from '@/lib/utils';
 
 const ZOOM_LEVELS = [
@@ -78,19 +79,19 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
     return (
         <div className="fixed inset-0 bg-black/80 flex flex-col z-50 animate-in fade-in duration-300">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-8 py-5 flex items-center justify-between shrink-0 shadow-lg z-10">
+            <div className="bg-card dark:bg-background border-b border-border dark:border-border px-8 py-5 flex items-center justify-between shrink-0 shadow-lg z-10">
                 <div className="flex items-center gap-8">
                     <div>
-                        <h2 className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-3">
+                        <h2 className="text-xl font-black text-foreground dark:text-foreground tracking-tight flex items-center gap-3">
                             <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center">
-                                <FileText className="w-6 h-6 text-primary-600" />
+                                <RetroReceipt className="w-6 h-6 text-primary-600" />
                             </div>
                             Preview Laporan
                         </h2>
                     </div>
 
                     {/* Zoom controls */}
-                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 rounded-2xl p-1.5 border dark:border-gray-800 shadow-inner">
+                    <div className="flex items-center gap-1 bg-muted dark:bg-background rounded-2xl p-1.5 border dark:border-border shadow-inner">
                         {ZOOM_LEVELS.map(level => (
                             <button
                                 key={level.value}
@@ -98,8 +99,8 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
                                 className={cn(
                                     "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
                                     zoom === level.value
-                                        ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-sm'
-                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                                        ? 'bg-card dark:bg-card text-primary-600 dark:text-primary-400 shadow-sm'
+                                        : 'text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground'
                                 )}
                             >
                                 {level.label}
@@ -113,9 +114,9 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
                         onClick={handlePrint}
                         disabled={printing || downloading}
                         variant="outline"
-                        className="h-12 px-6 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm"
+                        className="h-12 px-6 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border-border dark:border-border rounded-2xl shadow-sm"
                     >
-                        <Printer className="w-4 h-4" />
+                        <RetroPrinter className="w-4 h-4" />
                         {printing ? 'MENCETAK...' : 'CETAK LAPORAN'}
                     </Button>
 
@@ -128,13 +129,13 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
                         {downloading ? 'MENYIMPAN...' : 'DOWNLOAD PDF'}
                     </Button>
 
-                    <div className="w-px h-8 bg-gray-200 dark:bg-gray-800 mx-1" />
+                    <div className="w-px h-8 bg-muted dark:bg-card mx-1" />
 
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all group font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-muted dark:hover:bg-card transition-all group font-black"
                     >
-                        <X className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+                        <X className="w-6 h-6 text-muted-foreground group-hover:text-red-500 transition-colors" />
                     </button>
                 </div>
             </div>
@@ -142,10 +143,10 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
             {/* Preview area */}
             <div
                 ref={containerRef}
-                className="flex-1 overflow-auto bg-gray-500/20 dark:bg-gray-900/50 p-10 flex items-start justify-center backdrop-blur-md"
+                className="flex-1 overflow-auto bg-foreground/20 dark:bg-background/50 p-10 flex items-start justify-center backdrop-blur-md"
             >
                 <div
-                    className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.3)] transition-transform origin-top"
+                    className="bg-card shadow-[0_30px_60px_rgba(0,0,0,0.3)] transition-transform origin-top"
                     style={{
                         width: A4_WIDTH,
                         height: A4_HEIGHT,
@@ -157,7 +158,7 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
                         ref={iframeRef}
                         srcDoc={html}
                         title="Report Preview"
-                        className="w-full h-full border-0 bg-white"
+                        className="w-full h-full border-0 bg-card"
                         style={{ colorScheme: 'light' }}
                         sandbox="allow-same-origin allow-scripts"
                     />
@@ -165,8 +166,8 @@ export default function ReportPreviewModal({ html, onClose, onPrint, onDownloadP
             </div>
 
             {/* Footer info */}
-            <div className="bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 px-6 py-3 text-center shrink-0">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-600">
+            <div className="bg-card dark:bg-background border-t border-border dark:border-border px-6 py-3 text-center shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground dark:text-muted-foreground">
                     A4 Document Format • Render Zoom: {zoom === 'fit' ? `${Math.round(scale * 100)}%` : `${zoom}%`}
                 </span>
             </div>

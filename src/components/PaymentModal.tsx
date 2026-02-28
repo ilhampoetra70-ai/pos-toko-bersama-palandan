@@ -1,37 +1,27 @@
 import { useState } from 'react';
 import { formatCurrency } from '../utils/format';
-import {
-    CheckCircle2,
-    Clock,
-    CreditCard,
-    Wallet,
-    QrCode,
-    User as UserIcon,
-    Calendar,
-    AlertCircle,
-    Banknote,
-    Info
-} from 'lucide-react';
+import { CheckCircle2, Clock, QrCode, Calendar, AlertCircle, Banknote, Info } from 'lucide-react';
+import { RetroWallet } from '../components/RetroIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const PAYMENT_STATUSES = [
-    { value: 'lunas', label: 'Lunas', desc: 'Bayar penuh', icon: CheckCircle2, color: 'green' },
-    { value: 'pending', label: 'Pending', desc: 'COD/Bayar nanti', icon: Clock, color: 'blue' },
-    { value: 'hutang', label: 'Hutang', desc: 'Kredit + jatuh tempo', icon: AlertCircle, color: 'orange' },
-    { value: 'cicilan', label: 'Cicilan', desc: 'Bayar bertahap', icon: CreditCard, color: 'purple' },
+    { value: 'lunas', label: 'Lunas', desc: 'Bayar penuh', icon: CheckCircle2 },
+    { value: 'pending', label: 'Pending', desc: 'COD/Bayar nanti', icon: Clock },
+    { value: 'hutang', label: 'Hutang', desc: 'Kredit + jatuh tempo', icon: AlertCircle },
+    { value: 'cicilan', label: 'Cicilan', desc: 'Bayar bertahap', icon: RetroWallet },
 ] as const;
+
+const NUMPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'];
 
 interface PaymentModalProps {
     total: number;
@@ -48,9 +38,9 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
     const [dueDate, setDueDate] = useState('');
     const [initialPayment, setInitialPayment] = useState('');
     const [paymentNotes, setPaymentNotes] = useState('');
-
     const [localCustomerName, setLocalCustomerName] = useState(customerName || '');
     const [localCustomerAddress, setLocalCustomerAddress] = useState(customerAddress || '');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const paid = parseInt(amountPaid) || 0;
     const change = paid - total;
@@ -59,9 +49,10 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
     const requiresCustomerInfo = paymentStatus !== 'lunas';
     const hasCustomerInfo = localCustomerName && localCustomerName.trim().length > 0;
     const customerInfoMissing = requiresCustomerInfo && !hasCustomerInfo;
-
     const requiresDueDate = paymentStatus === 'hutang';
     const dueDateMissing = requiresDueDate && !dueDate;
+    const isLunasCash = paymentStatus === 'lunas' && paymentMethod === 'cash';
+    const showNumpad = isLunasCash || paymentStatus !== 'lunas';
 
     const quickAmounts = [
         total,
@@ -70,24 +61,36 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
         Math.ceil(total / 100000) * 100000,
     ].filter((v, i, a) => v >= total && a.indexOf(v) === i).slice(0, 4);
 
+    const handleNumpadPress = (key: string) => {
+        const setter = isLunasCash ? setAmountPaid : setInitialPayment;
+        setter(prev => {
+            if (key === '⌫') return prev.slice(0, -1);
+            if (key === '000') return prev === '' ? '' : prev + '000';
+            const next = prev + key;
+            const num = parseInt(next);
+            return isNaN(num) ? '' : String(num);
+        });
+    };
+
+    const numpadValue = isLunasCash ? paid : dpAmount;
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMessage('');
+
         if (customerInfoMissing) {
-            alert('Untuk pembayaran non-lunas, Nama Pembeli wajib diisi');
+            setErrorMessage('Untuk pembayaran non-lunas, Nama Pembeli wajib diisi');
             return;
         }
         if (dueDateMissing) {
-            alert('Tanggal jatuh tempo wajib diisi untuk pembayaran hutang');
+            setErrorMessage('Tanggal jatuh tempo wajib diisi untuk pembayaran hutang');
             return;
         }
-        if (paymentStatus === 'lunas') {
-            if (paymentMethod === 'cash' && paid < total) return;
-        }
+        if (paymentStatus === 'lunas' && paymentMethod === 'cash' && paid < total) return;
         if ((paymentStatus === 'cicilan' || paymentStatus === 'hutang') && dpAmount > total) {
-            alert('Pembayaran awal tidak boleh melebihi total');
+            setErrorMessage('Pembayaran awal tidak boleh melebihi total');
             return;
         }
-
         onConfirm({
             payment_method: paymentMethod,
             amount_paid: paymentStatus === 'lunas' ? (paymentMethod === 'cash' ? paid : total) : dpAmount,
@@ -101,22 +104,6 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
         });
     };
 
-    const getStatusClasses = (status: string, isActive: boolean) => {
-        const activeClasses = {
-            lunas: 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-400',
-            pending: 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-400',
-            hutang: 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-400',
-            cicilan: 'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-400',
-        } as Record<string, string>;
-
-        return cn(
-            "relative py-3 px-4 rounded-xl text-sm font-medium border-2 transition-all text-left flex flex-col gap-1",
-            isActive
-                ? activeClasses[status]
-                : "border-gray-100 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-700"
-        );
-    };
-
     const canSubmit = () => {
         if (customerInfoMissing) return false;
         if (dueDateMissing) return false;
@@ -126,247 +113,297 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-lg h-auto max-h-[85vh] p-0 gap-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950 shadow-2xl">
-                <DialogHeader className="p-5 pb-3 border-b dark:border-gray-800 shrink-0">
+            <DialogContent className="sm:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background shadow-2xl">
+                <DialogHeader className="p-5 pb-3 border-b dark:border-border shrink-0">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
+                        <RetroWallet className="w-5 h-5" />
                         Pembayaran
                     </DialogTitle>
                     <DialogDescription>Pilih metode pembayaran dan selesaikan transaksi</DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto min-h-0 bg-gray-50/30 dark:bg-gray-900/10">
-                    <form id="payment-form" onSubmit={handleSubmit} className="p-5 space-y-4">
-                        <div className="bg-primary-50 dark:bg-primary-900/40 rounded-2xl p-4 text-center border border-primary-100 dark:border-primary-800/50 shadow-inner">
+                {/* Two-column body */}
+                <div className="flex-1 flex min-h-0 overflow-hidden">
+
+                    {/* Left: form fields */}
+                    <div className="flex-1 overflow-y-auto bg-background/30 dark:bg-background/10">
+                        <form id="payment-form" onSubmit={handleSubmit} className="p-5 space-y-4">
+
+                            {errorMessage && (
+                                <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-lg text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                    <span>{errorMessage}</span>
+                                </div>
+                            )}
+
+                            {/* Status pembayaran */}
+                            <div className="space-y-2.5">
+                                <Label className="text-sm font-bold opacity-80 pl-1">Status Pembayaran</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {PAYMENT_STATUSES.map(status => (
+                                        <button type="button" key={status.value}
+                                            onClick={() => setPaymentStatus(status.value)}
+                                            className={cn(
+                                                "relative py-2 px-3 rounded-xl text-sm font-bold border-2 transition-all text-left flex flex-col gap-0.5",
+                                                paymentStatus === status.value
+                                                    ? (status.value === 'lunas' ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30' :
+                                                        status.value === 'pending' ? 'border-primary bg-primary text-primary-foreground dark:bg-primary/30' :
+                                                            status.value === 'hutang' ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-900/30' :
+                                                                'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30')
+                                                    : "border-border dark:border-border text-muted-foreground dark:text-muted-foreground hover:border-border dark:hover:border-gray-700"
+                                            )}>
+                                            <div className="flex items-center gap-1.5">
+                                                <status.icon className="w-3.5 h-3.5 shrink-0" />
+                                                <span className="text-xs leading-none">{status.label}</span>
+                                            </div>
+                                            <div className="text-[10px] opacity-60 font-normal leading-tight truncate">{status.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Info pembeli */}
+                            <div className="space-y-2 bg-background dark:bg-card/50 p-2.5 rounded-xl border dark:border-border">
+                                <div className="flex items-center gap-1.5 text-primary-700 dark:text-primary-400 pl-0.5">
+                                    <Info className="w-3 h-3" />
+                                    <h4 className="text-[10px] font-bold uppercase tracking-wider">Info Pembeli</h4>
+                                    {!requiresCustomerInfo && (
+                                        <span className="text-[10px] text-muted-foreground dark:text-muted-foreground font-normal normal-case tracking-normal">(opsional)</span>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="cust-name" className="text-[10px]">
+                                            Nama Pembeli
+                                            {requiresCustomerInfo && <span className="text-red-500 ml-1">*</span>}
+                                        </Label>
+                                        <Input id="cust-name"
+                                            placeholder={requiresCustomerInfo ? "Wajib diisi..." : "Nama (opsional)..."}
+                                            value={localCustomerName}
+                                            onChange={e => setLocalCustomerName(e.target.value)}
+                                            className="h-8 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="cust-addr" className="text-[10px]">Alamat</Label>
+                                        <Input id="cust-addr"
+                                            placeholder="Alamat (opsional)..."
+                                            value={localCustomerAddress}
+                                            onChange={e => setLocalCustomerAddress(e.target.value)}
+                                            className="h-8 text-xs" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Jatuh tempo */}
+                            {paymentStatus === 'hutang' && (
+                                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                                    <Label htmlFor="due-date">Tanggal Jatuh Tempo <span className="text-red-500">*</span></Label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input id="due-date" type="date" className="pl-9 h-10"
+                                            value={dueDate}
+                                            onChange={e => setDueDate(e.target.value)}
+                                            min={new Date().toISOString().slice(0, 10)} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* DP */}
+                            {(paymentStatus === 'cicilan' || paymentStatus === 'hutang') && (
+                                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                                    <Label htmlFor="initial-pay">Pembayaran Awal (DP)</Label>
+                                    <div className="relative">
+                                        <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input id="initial-pay" type="number" className="pl-9 h-10"
+                                            value={initialPayment}
+                                            onChange={e => setInitialPayment(e.target.value)}
+                                            placeholder="0" min="0" max={total} />
+                                    </div>
+                                    {dpAmount > 0 && (
+                                        <div className="text-sm bg-orange-50 dark:bg-orange-900 text-orange-700 dark:text-orange-400 p-2 rounded-lg font-medium flex justify-between items-center">
+                                            <span>Sisa tagihan:</span>
+                                            <span className="font-bold">{formatCurrency(total - dpAmount)}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Catatan kasir */}
+                            <div className="space-y-1">
+                                <Label htmlFor="pay-notes" className="text-xs">Catatan Kasir</Label>
+                                <textarea id="pay-notes"
+                                    className="w-full border dark:border-border dark:bg-background rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none dark:text-foreground h-14"
+                                    value={paymentNotes}
+                                    onChange={e => setPaymentNotes(e.target.value)}
+                                    placeholder="Catatan untuk struk (opsional)..." />
+                            </div>
+
+                            {/* Metode pembayaran */}
+                            {(paymentStatus === 'lunas' || dpAmount > 0) && (
+                                <div className="space-y-2.5">
+                                    <Label className="text-sm font-bold opacity-80 pl-1">Metode Pembayaran</Label>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { id: 'cash', label: 'Tunai', icon: RetroWallet },
+                                            { id: 'debit', label: 'Debit', icon: RetroWallet },
+                                            { id: 'qris', label: 'QRIS', icon: QrCode }
+                                        ].map(method => (
+                                            <button key={method.id} type="button"
+                                                onClick={() => setPaymentMethod(method.id as any)}
+                                                className={cn(
+                                                    "flex-1 py-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-1",
+                                                    paymentMethod === method.id
+                                                        ? "border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                                                        : "border-border dark:border-border text-muted-foreground dark:text-muted-foreground hover:border-border dark:hover:border-gray-700"
+                                                )}>
+                                                <method.icon className="w-4 h-4" />
+                                                <span className="text-[10px] font-bold">{method.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Non-lunas summary */}
+                            {paymentStatus !== 'lunas' && (
+                                <div className="bg-background dark:bg-card rounded-2xl p-4 space-y-3 border dark:border-border">
+                                    <div className="text-sm space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-muted-foreground dark:text-muted-foreground font-medium">Total Tagihan</span>
+                                            <span className="font-bold">{formatCurrency(total)}</span>
+                                        </div>
+                                        {dpAmount > 0 && (
+                                            <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+                                                <span className="font-medium">Pembayaran Awal</span>
+                                                <span className="font-bold">-{formatCurrency(dpAmount)}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center pt-2 border-t dark:border-border">
+                                            <span className="text-foreground dark:text-foreground font-bold">Sisa Tagihan</span>
+                                            <span className="text-xl font-black text-orange-600 dark:text-orange-400">{formatCurrency(total - dpAmount)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="h-2" />
+                        </form>
+                    </div>
+
+                    {/* Right: total + numpad */}
+                    <div className="w-80 shrink-0 border-l dark:border-border flex flex-col">
+
+                        {/* Total bayar */}
+                        <div className="p-4 border-b dark:border-border text-center bg-primary-50 dark:bg-primary-900/40">
                             <div className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-0.5">Total Bayar</div>
                             <div className="text-2xl font-black text-primary-700 dark:text-primary-300">{formatCurrency(total)}</div>
                         </div>
 
-                        <div className="space-y-2.5">
-                            <Label className="text-sm font-bold opacity-80 pl-1">Status Pembayaran</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {PAYMENT_STATUSES.map(status => (
-                                    <button
-                                        type="button"
-                                        key={status.value}
-                                        onClick={() => setPaymentStatus(status.value)}
-                                        className={cn(
-                                            "relative py-2 px-3 rounded-xl text-sm font-bold border-2 transition-all text-left flex flex-col gap-0.5",
-                                            paymentStatus === status.value
-                                                ? (status.value === 'lunas' ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/30' :
-                                                    status.value === 'pending' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30' :
-                                                        status.value === 'hutang' ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-900/30' :
-                                                            'border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/30')
-                                                : "border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-700"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-1.5 ring-offset-background">
-                                            <status.icon className="w-3.5 h-3.5 shrink-0" />
-                                            <span className="text-xs leading-none">{status.label}</span>
-                                        </div>
-                                        <div className="text-[10px] opacity-60 font-normal leading-tight truncate">{status.desc}</div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        {showNumpad ? (
+                            <div className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
 
-                        {requiresCustomerInfo && (
-                            <div className="space-y-3 bg-gray-50 dark:bg-gray-800/50 p-3.5 rounded-2xl border dark:border-gray-800 animate-in fade-in slide-in-from-top-2">
-                                <div className="flex items-center gap-2 text-primary-700 dark:text-primary-400 pl-1">
-                                    <Info className="w-3.5 h-3.5" />
-                                    <h4 className="text-xs font-bold uppercase tracking-wider">Info Pembeli</h4>
-                                </div>
-                                <div className="space-y-2.5">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="cust-name" className="text-xs">Nama Pembeli</Label>
-                                        <Input
-                                            id="cust-name"
-                                            placeholder="Wajib diisi..."
-                                            value={localCustomerName}
-                                            onChange={e => setLocalCustomerName(e.target.value)}
-                                            className="h-9 text-sm"
-                                        />
+                                {/* Amount display */}
+                                <div className="bg-muted dark:bg-card rounded-xl px-4 py-2.5 border dark:border-border text-right">
+                                    <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">
+                                        {isLunasCash ? 'Jumlah Bayar' : 'Pembayaran Awal (DP)'}
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="cust-addr" className="text-xs">Alamat</Label>
-                                        <textarea
-                                            id="cust-addr"
-                                            className="w-full border dark:border-gray-700 dark:bg-gray-900 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none dark:text-gray-200 h-16"
-                                            placeholder="Alamat penagihan/tujuan..."
-                                            value={localCustomerAddress}
-                                            onChange={e => setLocalCustomerAddress(e.target.value)}
-                                        />
+                                    <div className="text-2xl font-black tabular-nums text-foreground dark:text-white min-h-[1.75rem] truncate">
+                                        {numpadValue > 0 ? formatCurrency(numpadValue) : <span className="text-muted-foreground dark:text-muted-foreground">Rp 0</span>}
                                     </div>
                                 </div>
-                            </div>
-                        )}
 
-                        {paymentStatus === 'hutang' && (
-                            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                                <Label htmlFor="due-date">Tanggal Jatuh Tempo <span className="text-red-500">*</span></Label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input
-                                        id="due-date"
-                                        type="date"
-                                        className="pl-9 h-10"
-                                        value={dueDate}
-                                        onChange={e => setDueDate(e.target.value)}
-                                        min={new Date().toISOString().slice(0, 10)}
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {(paymentStatus === 'cicilan' || paymentStatus === 'hutang') && (
-                            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
-                                <Label htmlFor="initial-pay">Pembayaran Awal (DP)</Label>
-                                <div className="relative">
-                                    <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                    <Input
-                                        id="initial-pay"
-                                        type="number"
-                                        className="pl-9 h-10"
-                                        value={initialPayment}
-                                        onChange={e => setInitialPayment(e.target.value)}
-                                        placeholder="0"
-                                        min="0"
-                                        max={total}
-                                    />
-                                </div>
-                                {dpAmount > 0 && (
-                                    <div className="text-sm bg-orange-50 dark:bg-orange-900 text-orange-700 dark:text-orange-400 p-2 rounded-lg font-medium flex justify-between items-center">
-                                        <span>Sisa tagihan:</span>
-                                        <span className="font-bold">{formatCurrency(total - dpAmount)}</span>
+                                {/* Quick amounts — hanya untuk lunas cash */}
+                                {isLunasCash && (
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        {quickAmounts.map(amt => (
+                                            <button key={amt} type="button"
+                                                onClick={() => setAmountPaid(String(amt))}
+                                                    className="py-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/40 text-primary-700 dark:text-primary-400 rounded-lg text-[9px] font-bold transition-all border border-primary/20 dark:border-primary/30 leading-tight">
+                                                {formatCurrency(amt)}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
-                            </div>
-                        )}
 
-                        <div className="space-y-1">
-                            <Label htmlFor="pay-notes" className="text-xs">Catatan Kasir</Label>
-                            <textarea
-                                id="pay-notes"
-                                className="w-full border dark:border-gray-700 dark:bg-gray-900 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none dark:text-gray-200 h-14"
-                                value={paymentNotes}
-                                onChange={e => setPaymentNotes(e.target.value)}
-                                placeholder="Catatan untuk struk (opsional)..."
-                            />
-                        </div>
-
-                        {(paymentStatus === 'lunas' || dpAmount > 0) && (
-                            <div className="space-y-3 pt-1">
-                                <Label className="text-sm font-bold opacity-80 pl-1">Metode Pembayaran</Label>
-                                <div className="flex gap-2">
-                                    {[
-                                        { id: 'cash', label: 'Tunai', icon: Wallet },
-                                        { id: 'debit', label: 'Debit', icon: CreditCard },
-                                        { id: 'qris', label: 'QRIS', icon: QrCode }
-                                    ].map(method => (
-                                        <button
-                                            key={method.id}
-                                            type="button"
-                                            onClick={() => setPaymentMethod(method.id as any)}
+                                {/* Numpad */}
+                                <div className="grid grid-cols-3 gap-1.5">
+                                    {NUMPAD_KEYS.map(key => (
+                                        <button key={key} type="button"
+                                            onClick={() => handleNumpadPress(key)}
                                             className={cn(
-                                                "flex-1 py-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-1",
-                                                paymentMethod === method.id
-                                                    ? "border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
-                                                    : "border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:border-gray-200 dark:hover:border-gray-700"
-                                            )}
-                                        >
-                                            <method.icon className="w-4 h-4" />
-                                            <span className="text-[10px] font-bold">{method.label}</span>
+                                                "h-14 rounded-xl font-black text-xl transition-all active:scale-95 select-none",
+                                                key === '⌫'
+                                                    ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/30"
+                                                    : "bg-card dark:bg-card hover:bg-background dark:hover:bg-muted border border-border dark:border-border text-foreground dark:text-white shadow-sm",
+                                                key === '000' ? 'text-sm' : ''
+                                            )}>
+                                            {key}
                                         </button>
                                     ))}
                                 </div>
 
-                                {paymentStatus === 'lunas' && paymentMethod === 'cash' && (
-                                    <div className="space-y-3 mt-3 animate-in fade-in slide-in-from-bottom-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-xs">Jumlah Bayar</Label>
-                                            <Input
-                                                type="number"
-                                                className="h-11 text-xl font-black text-center"
-                                                value={amountPaid}
-                                                onChange={e => setAmountPaid(e.target.value)}
-                                                placeholder="0"
-                                                autoFocus
-                                            />
+                                {/* Kembalian (lunas cash) atau Sisa tagihan (non-lunas) */}
+                                {isLunasCash ? (
+                                    <div className={cn(
+                                        "rounded-xl p-3 text-center border transition-all",
+                                        paid === 0
+                                            ? "bg-background dark:bg-card/50 border-border dark:border-border"
+                                            : change >= 0
+                                                ? "bg-green-50 dark:bg-green-900/30 border-green-100 dark:border-green-800/50"
+                                                : "bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800/50"
+                                    )}>
+                                        <div className={cn(
+                                            "text-[10px] font-bold uppercase tracking-wider mb-0.5",
+                                            paid === 0 ? 'text-muted-foreground' : change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                                        )}>
+                                            {paid === 0 ? 'Kembalian' : change >= 0 ? 'Kembalian' : 'Kurang'}
                                         </div>
-
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {quickAmounts.map(amt => (
-                                                <button
-                                                    key={amt}
-                                                    type="button"
-                                                    onClick={() => setAmountPaid(String(amt))}
-                                                    className="px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:border-gray-700 rounded-lg text-[10px] font-bold transition-all grow"
-                                                >
-                                                    {formatCurrency(amt)}
-                                                </button>
-                                            ))}
+                                        <div className={cn(
+                                            "text-xl font-black tabular-nums",
+                                            paid === 0 ? 'text-muted-foreground dark:text-muted-foreground' : change >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                                        )}>
+                                            {paid === 0 ? formatCurrency(0) : formatCurrency(Math.abs(change))}
                                         </div>
-
-                                        {paid > 0 && (
-                                            <div className={cn(
-                                                "rounded-xl p-3 text-center shadow-sm border",
-                                                change >= 0
-                                                    ? "bg-green-50 dark:bg-green-900/30 border-green-100 dark:border-green-800/50"
-                                                    : "bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800/50"
-                                            )}>
-                                                <div className={cn("text-[10px] font-bold uppercase tracking-wider mb-0.5", change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
-                                                    {change >= 0 ? 'Kembalian' : 'Kurang'}
-                                                </div>
-                                                <div className={cn("text-xl font-black", change >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')}>
-                                                    {formatCurrency(Math.abs(change))}
-                                                </div>
-                                            </div>
-                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-xl p-3 text-center border bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-900/30">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-orange-600 dark:text-orange-400">
+                                            Sisa Tagihan
+                                        </div>
+                                        <div className="text-xl font-black tabular-nums text-orange-700 dark:text-orange-300">
+                                            {formatCurrency(total - dpAmount)}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                        )}
-
-                        {paymentStatus !== 'lunas' && (
-                            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 space-y-3 border dark:border-gray-800">
-                                <div className="text-sm space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Total Tagihan</span>
-                                        <span className="font-bold">{formatCurrency(total)}</span>
-                                    </div>
-                                    {dpAmount > 0 && (
-                                        <div className="flex justify-between items-center text-green-600 dark:text-green-400">
-                                            <span className="font-medium">Pembayaran Awal</span>
-                                            <span className="font-bold">-{formatCurrency(dpAmount)}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex justify-between items-center pt-2 border-t dark:border-gray-700">
-                                        <span className="text-gray-900 dark:text-gray-200 font-bold">Sisa Tagihan</span>
-                                        <span className="text-xl font-black text-orange-600 dark:text-orange-400">{formatCurrency(total - dpAmount)}</span>
-                                    </div>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center p-6">
+                                <div className="text-center space-y-2">
+                                    {paymentMethod === 'debit' && <RetroWallet className="w-10 h-10 mx-auto text-primary-400 opacity-50" />}
+                                    {paymentMethod === 'qris' && <QrCode className="w-10 h-10 mx-auto text-primary-400 opacity-50" />}
+                                    {paymentStatus !== 'lunas' && <Banknote className="w-10 h-10 mx-auto text-muted-foreground opacity-50" />}
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-muted-foreground">
+                                        {paymentStatus !== 'lunas' ? 'Transaksi dicatat' : 'Konfirmasi pembayaran'}
+                                    </p>
                                 </div>
                             </div>
                         )}
-                        <div className="h-4"></div>
-                    </form>
+                    </div>
                 </div>
 
-                <div className="p-5 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shrink-0">
+                {/* Footer */}
+                <div className="p-4 border-t dark:border-border bg-background dark:bg-background shrink-0">
                     <div className="flex gap-3">
                         <Button type="button" variant="outline" onClick={onClose} className="flex-1 h-11 text-sm font-bold">
                             Batal
                         </Button>
-                        <Button
-                            type="submit"
-                            form="payment-form"
-                            disabled={!canSubmit()}
+                        <Button type="submit" form="payment-form" disabled={!canSubmit()}
                             className={cn(
-                                "flex-[1.5] h-11 text-base font-black shadow-lg",
+                                "flex-[2] h-11 text-base font-black shadow-lg",
                                 paymentStatus === 'lunas'
                                     ? "bg-green-600 hover:bg-green-700 shadow-green-600/20"
                                     : "bg-primary-600 hover:bg-primary-700 shadow-primary-600/20"
-                            )}
-                        >
+                            )}>
                             {paymentStatus === 'lunas' ? 'Bayar Sekarang' : 'Simpan Transaksi'}
                         </Button>
                     </div>

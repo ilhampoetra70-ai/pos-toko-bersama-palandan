@@ -29,24 +29,24 @@ export default function ReceiptIframe({ html, width = '300px' }: ReceiptIframePr
     return (
         <div className="flex flex-col items-center">
             {/* Zoom Controls */}
-            <div className="flex items-center gap-2 mb-4 bg-white dark:bg-gray-950 rounded-2xl px-3 py-1.5 shadow-sm border dark:border-gray-800">
+            <div className="flex items-center gap-2 mb-4 bg-card dark:bg-background rounded-2xl px-3 py-1.5 shadow-sm border dark:border-border">
                 <button
                     onClick={zoomOut}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-600 dark:text-gray-400 font-black transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted dark:hover:bg-background text-muted-foreground dark:text-muted-foreground font-black transition-colors"
                     title="Zoom Out"
                 >
                     −
                 </button>
                 <button
                     onClick={resetZoom}
-                    className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary-600 px-2 transition-colors"
+                    className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary-600 px-2 transition-colors"
                     title="Reset Zoom"
                 >
                     {Math.round(zoom * 100)}%
                 </button>
                 <button
                     onClick={zoomIn}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-600 dark:text-gray-400 font-black transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-muted dark:hover:bg-background text-muted-foreground dark:text-muted-foreground font-black transition-colors"
                     title="Zoom In"
                 >
                     +
@@ -55,7 +55,7 @@ export default function ReceiptIframe({ html, width = '300px' }: ReceiptIframePr
 
             {/* Receipt Preview */}
             <div
-                className="bg-white mx-auto shadow-sm transition-transform origin-top"
+                className="bg-card mx-auto shadow-sm transition-transform origin-top"
                 style={{
                     maxWidth: width,
                     transform: `scale(${zoom})`,
@@ -66,6 +66,7 @@ export default function ReceiptIframe({ html, width = '300px' }: ReceiptIframePr
                     ref={iframeRef}
                     srcDoc={html}
                     onLoad={handleLoad}
+                    sandbox="allow-same-origin"
                     style={{
                         width: '100%',
                         height: `${height}px`,

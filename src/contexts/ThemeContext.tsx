@@ -51,6 +51,7 @@ const DARK_MODES = {
 };
 
 const FONTS: Record<string, { name: string, value: string }> = {
+    outfit: { name: 'Outfit (Retro Default)', value: "'Outfit', system-ui, sans-serif" },
     system: { name: 'System UI (Default)', value: "'Segoe UI', system-ui, -apple-system, sans-serif" },
     modern: { name: 'Modern Sans', value: "'Inter', 'Helvetica Neue', Arial, sans-serif" },
     classic: { name: 'Classic Sans', value: "'Verdana', 'Geneva', sans-serif" },
@@ -67,7 +68,7 @@ const FONTS: Record<string, { name: string, value: string }> = {
 const DEFAULT_SETTINGS: ThemeSettings = {
     themeColor: 'blue',
     darkMode: 'light',
-    fontFamily: 'roboto',
+    fontFamily: 'outfit',
     appName: 'POS Kasir',
     tagline: 'Sistem Kasir Modern',
     appLogo: '',
@@ -115,7 +116,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                     const dbSettings = await window.api.getSettings();
                     setSettings(prev => ({
                         ...prev,
-                        appName: dbSettings.app_name || prev.appName,
+                        appName: dbSettings.store_name || dbSettings.app_name || prev.appName,
                         tagline: dbSettings.tagline || prev.tagline,
                         appLogo: dbSettings.app_logo || prev.appLogo
                     }));

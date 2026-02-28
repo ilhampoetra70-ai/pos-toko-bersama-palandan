@@ -9,28 +9,8 @@ import {
     useTransactionDetail,
     useVoidTransaction
 } from '@/lib/queries';
-import {
-    FileText,
-    Search,
-    Filter,
-    Calendar,
-    Printer,
-    Trash2,
-    Clock,
-    CreditCard,
-    Wallet,
-    QrCode,
-    User,
-    Info,
-    AlertCircle,
-    CheckCircle2,
-    X,
-    History,
-    Plus,
-    Loader2,
-    ChevronLeft,
-    ChevronRight as ChevronRightIcon
-} from 'lucide-react';
+import { Search, Filter, Calendar, Clock, QrCode, User, Info, AlertCircle, CheckCircle2, X, Plus, Loader2, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { RetroReceipt, RetroPrinter, RetroTrash, RetroWallet, RetroHistory } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,10 +43,10 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 const PAYMENT_STATUS_CONFIG = {
-    lunas: { label: 'Lunas', color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-none' },
-    pending: { label: 'Pending', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 shadow-none' },
-    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400 shadow-none' },
-    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 shadow-none' },
+    lunas: { label: 'Lunas', color: 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400 shadow-none' },
+    pending: { label: 'Pending', color: 'bg-primary text-primary-foreground dark:bg-primary/30 dark:text-primary shadow-none' },
+    hutang: { label: 'Hutang', color: 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400 shadow-none' },
+    cicilan: { label: 'Cicilan', color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400 shadow-none' },
 } as any;
 
 function PaymentStatusBadge({ status }: { status: string }) {
@@ -199,10 +179,10 @@ export default memo(function TransactionsPage() {
     };
 
     const paymentMethodConfig = {
-        cash: { label: 'Tunai', icon: Wallet, color: 'text-green-600' },
-        debit: { label: 'Debit', icon: CreditCard, color: 'text-blue-600' },
+        cash: { label: 'Tunai', icon: RetroWallet, color: 'text-green-600' },
+        debit: { label: 'Debit', icon: RetroWallet, color: 'text-primary' },
         qris: { label: 'QRIS', icon: QrCode, color: 'text-purple-600' },
-        transfer: { label: 'Transfer', icon: FileText, color: 'text-orange-600' }
+        transfer: { label: 'Transfer', icon: RetroReceipt, color: 'text-orange-600' }
     } as any;
 
     const paymentLabel = (method: string) => {
@@ -214,8 +194,8 @@ export default memo(function TransactionsPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Transaksi</h2>
-                    <p className="text-sm text-gray-500 font-medium">Riwayat dan manajemen transaksi penjualan</p>
+                    <h2 className="text-3xl font-black text-foreground dark:text-foreground tracking-tight">Transaksi</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Riwayat dan manajemen transaksi penjualan</p>
                 </div>
             </div>
 
@@ -223,11 +203,11 @@ export default memo(function TransactionsPage() {
                 <CardContent className="p-4 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cari Pembeli</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Cari Pembeli</label>
                             <div className="relative">
-                                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                                <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3.5" />
                                 <Input
-                                    className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
+                                    className="pl-10 h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner"
                                     placeholder="Ketik nama atau alamat..."
                                     value={filters.customer_search}
                                     onChange={e => setFilters(f => ({ ...f, customer_search: e.target.value }))}
@@ -235,19 +215,19 @@ export default memo(function TransactionsPage() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Dari</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Dari</label>
                             <Input
                                 type="date"
-                                className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
+                                className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner"
                                 value={filters.date_from}
                                 onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Sampai</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Sampai</label>
                             <Input
                                 type="date"
-                                className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
+                                className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner"
                                 value={filters.date_to}
                                 onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
                             />
@@ -261,9 +241,9 @@ export default memo(function TransactionsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Transaksi</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Status Transaksi</label>
                             <Select value={filters.status} onValueChange={val => setFilters(f => ({ ...f, status: val === '__all__' ? '' : val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <SelectValue placeholder="Semua Status" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -274,9 +254,9 @@ export default memo(function TransactionsPage() {
                             </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Status Pembayaran</label>
+                            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Status Pembayaran</label>
                             <Select value={filters.payment_status} onValueChange={val => setFilters(f => ({ ...f, payment_status: val === '__all__' ? '' : val }))}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <SelectValue placeholder="Semua Pembayaran" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -295,19 +275,19 @@ export default memo(function TransactionsPage() {
             <Card className="border-none shadow-sm overflow-hidden">
                 <div
                     ref={parentRef}
-                    className="h-[calc(100vh-420px)] overflow-auto bg-white dark:bg-gray-950"
+                    className="h-[calc(100vh-420px)] overflow-auto bg-card dark:bg-background"
                 >
                     <Table className="relative border-separate border-spacing-0">
-                        <TableHeader className="bg-gray-50/80 dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10 backdrop-blur-sm">
-                            <TableRow className="border-b flex items-center w-full h-14">
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Invoice</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Waktu</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest w-[10%]">Kasir</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest w-[15%]">Pembeli</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest text-center w-[10%]">Metode</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest text-right w-[15%]">Total</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest text-center w-[10%]">Status</TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest text-right w-[10%]">Aksi</TableHead>
+                        <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                            <TableRow className="border-b border-border flex items-center w-full h-14">
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground w-[15%]">Invoice</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground w-[15%]">Waktu</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground w-[10%]">Kasir</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground w-[15%]">Pembeli</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground text-center w-[10%]">Metode</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground text-right w-[15%]">Total</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground text-center w-[10%]">Status</TableHead>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground text-right w-[10%]">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody
@@ -324,9 +304,9 @@ export default memo(function TransactionsPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : transactions.length === 0 ? (
-                                <TableRow className="absolute w-full flex flex-col items-center justify-center py-20 text-gray-400">
+                                <TableRow className="absolute w-full flex flex-col items-center justify-center py-20 text-muted-foreground">
                                     <TableCell className="border-none flex flex-col items-center gap-4">
-                                        <History className="w-16 h-16 opacity-10" />
+                                        <RetroHistory className="w-16 h-16 opacity-10" />
                                         <p className="font-bold text-lg text-center">Tidak ada transaksi ditemukan</p>
                                     </TableCell>
                                 </TableRow>
@@ -350,7 +330,7 @@ export default memo(function TransactionsPage() {
                                             onClick={() => handleRowClick(tx)}
                                         >
                                             <TableCell className="font-medium w-[15%]">{tx.invoice_number}</TableCell>
-                                            <TableCell className="text-xs text-gray-500 w-[15%]">
+                                            <TableCell className="text-xs text-muted-foreground w-[15%]">
                                                 {formatDateTime(tx.created_at)}
                                             </TableCell>
                                             <TableCell className="text-xs w-[10%]">{tx.cashier_name || '-'}</TableCell>
@@ -372,8 +352,8 @@ export default memo(function TransactionsPage() {
                                                 <Badge className={cn(
                                                     "font-black text-[10px] uppercase h-5",
                                                     tx.status === 'completed'
-                                                        ? "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400 shadow-none"
-                                                        : "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 shadow-none"
+                                                        ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400 shadow-none"
+                                                        : "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400 shadow-none"
                                                 )}>
                                                     {tx.status === 'completed' ? 'Selesai' : 'Void'}
                                                 </Badge>
@@ -395,17 +375,17 @@ export default memo(function TransactionsPage() {
                                                         {printingId === tx.id ? (
                                                             <div className="w-4 h-4 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                                                         ) : (
-                                                            <Printer className="w-4 h-4" />
+                                                            <RetroPrinter className="w-4 h-4" />
                                                         )}
                                                     </Button>
                                                     {hasRole('admin', 'supervisor') && tx.status === 'completed' && (
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                            className="h-8 w-8 text-red-500 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-950/30"
                                                             onClick={(e) => handleVoidFromTable(e, tx)}
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <RetroTrash className="w-4 h-4" />
                                                         </Button>
                                                     )}
                                                 </div>
@@ -419,9 +399,9 @@ export default memo(function TransactionsPage() {
                 </div>
             </Card>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-950 rounded-2xl shadow-sm border border-transparent">
-                <div className="text-sm font-bold text-gray-500">
-                    Memperlihatkan <span className="text-gray-900 dark:text-gray-100">{Math.min(transactions.length, pageSize)}</span> dari <span className="text-gray-900 dark:text-gray-100">{totalTransactions}</span> transaksi
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card dark:bg-background rounded-2xl shadow-sm border border-transparent">
+                <div className="text-sm font-bold text-muted-foreground">
+                    Memperlihatkan <span className="text-foreground dark:text-foreground">{Math.min(transactions.length, pageSize)}</span> dari <span className="text-foreground dark:text-foreground">{totalTransactions}</span> transaksi
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -429,7 +409,7 @@ export default memo(function TransactionsPage() {
                         size="icon"
                         onClick={() => setPage(p => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="h-10 w-10 border-none bg-gray-50 dark:bg-gray-900"
+                        className="h-10 w-10 border-none bg-background dark:bg-background"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </Button>
@@ -467,15 +447,15 @@ export default memo(function TransactionsPage() {
                         size="icon"
                         onClick={() => setPage(p => Math.min(Math.ceil(totalTransactions / pageSize), p + 1))}
                         disabled={page >= Math.ceil(totalTransactions / pageSize) || totalTransactions === 0}
-                        className="h-10 w-10 border-none bg-gray-50 dark:bg-gray-900"
+                        className="h-10 w-10 border-none bg-background dark:bg-background"
                     >
                         <ChevronRightIcon className="w-5 h-5" />
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-500">Baris:</span>
+                    <span className="text-sm font-bold text-muted-foreground">Baris:</span>
                     <Select value={String(pageSize)} onValueChange={val => { setPageSize(Number(val)); setPage(1); }}>
-                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-gray-50 dark:bg-gray-900 shadow-inner">
+                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-background dark:bg-background shadow-inner">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -488,7 +468,7 @@ export default memo(function TransactionsPage() {
             </div>
 
             <Dialog open={showDetail} onOpenChange={handleCloseDetail}>
-                <DialogContent className="sm:max-w-2xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
+                <DialogContent className="sm:max-w-2xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Detail Transaksi</DialogTitle>
                         <DialogDescription>Memuat atau menampilkan detail transaksi penjualan</DialogDescription>
@@ -496,22 +476,22 @@ export default memo(function TransactionsPage() {
                     {isLoadingDetail ? (
                         <div className="flex flex-col items-center justify-center flex-1 gap-4">
                             <div className="w-10 h-10 border-4 border-primary-50 border-t-primary-600 rounded-full animate-spin"></div>
-                            <p className="text-sm font-bold text-gray-500">Memuat detail transaksi...</p>
+                            <p className="text-sm font-bold text-muted-foreground">Memuat detail transaksi...</p>
                         </div>
                     ) : detailError ? (
                         <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center px-6">
                             <div className="alert-adaptive-error flex-col p-8 items-center text-center max-w-sm">
                                 <AlertCircle className="w-12 h-12 mb-2" />
                                 <p className="text-lg">{(detailError as any)?.message || 'Gagal memuat detail'}</p>
-                                <Button onClick={handleCloseDetail} variant="outline" className="h-10 px-8 font-bold mt-4 bg-white dark:bg-gray-800">Tutup</Button>
+                                <Button onClick={handleCloseDetail} variant="outline" className="h-10 px-8 font-bold mt-4 bg-card dark:bg-card">Tutup</Button>
                             </div>
                         </div>
                     ) : !selectedTx ? null : (
                         <>
-                            <DialogHeader className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-b dark:border-gray-800 shrink-0">
+                            <DialogHeader className="p-6 bg-background/50 dark:bg-background/50 border-b dark:border-border shrink-0">
                                 <div className="flex justify-between items-start">
                                     <div className="space-y-1">
-                                        <DialogTitle className="text-2xl font-black text-gray-900 dark:text-gray-100">Detail Transaksi</DialogTitle>
+                                        <DialogTitle className="text-2xl font-black text-foreground dark:text-foreground">Detail Transaksi</DialogTitle>
                                         <DialogDescription className="font-sans text-primary-700 dark:text-primary-400 font-bold bg-primary-50 dark:bg-primary-950/30 px-2 py-0.5 rounded-md inline-block">
                                             {selectedTx.invoice_number}
                                         </DialogDescription>
@@ -530,7 +510,7 @@ export default memo(function TransactionsPage() {
                                 </div>
                             </DialogHeader>
 
-                            <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950">
+                            <div className="flex-1 overflow-y-auto min-h-0 bg-card dark:bg-background">
                                 <div className="p-6 space-y-8">
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="space-y-4">
@@ -540,7 +520,7 @@ export default memo(function TransactionsPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <InfoItem
-                                                    icon={paymentMethodConfig[selectedTx.payment_method]?.icon || Wallet}
+                                                    icon={paymentMethodConfig[selectedTx.payment_method]?.icon || RetroWallet}
                                                     label="Metode"
                                                     value={paymentLabel(selectedTx.payment_method)}
                                                 />
@@ -556,39 +536,39 @@ export default memo(function TransactionsPage() {
                                                     <User className="w-3 h-3" /> Info Pembeli
                                                 </label>
                                                 <div className="space-y-1">
-                                                    <p className="text-sm font-black text-gray-900 dark:text-gray-100">{selectedTx.customer_name || 'Pembeli Anonim'}</p>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{selectedTx.customer_address || '-'}</p>
+                                                    <p className="text-sm font-black text-foreground dark:text-foreground">{selectedTx.customer_name || 'Pembeli Anonim'}</p>
+                                                    <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed">{selectedTx.customer_address || '-'}</p>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Daftar Item</label>
-                                        <div className="border dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm">
-                                            <Table className="text-sm">
-                                                <TableHeader className="bg-gray-50 dark:bg-gray-900">
-                                                    <TableRow className="dark:border-gray-800">
-                                                        <TableHead className="font-black text-[10px] h-10">PRODUK</TableHead>
-                                                        <TableHead className="text-center font-black text-[10px] h-10">QTY</TableHead>
-                                                        <TableHead className="text-right font-black text-[10px] h-10">HARGA</TableHead>
-                                                        <TableHead className="text-right font-black text-[10px] h-10">SUBTOTAL</TableHead>
+                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Daftar Item</label>
+                                        <div className="border dark:border-border rounded-2xl overflow-hidden shadow-sm">
+                                            <Table className="text-sm zebra-rows">
+                                                <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                                                    <TableRow className="border-b border-border">
+                                                        <TableHead className="font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">PRODUK</TableHead>
+                                                        <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">QTY</TableHead>
+                                                        <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">HARGA</TableHead>
+                                                        <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">SUBTOTAL</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
-                                                <TableBody className="divide-y dark:divide-gray-800">
+                                                <TableBody>
                                                     {selectedTx.items?.map((item: any, i: number) => (
-                                                        <TableRow key={i} className="dark:border-gray-800 hover:bg-transparent">
+                                                        <TableRow key={i} className="border-b border-border hover:bg-muted/30 transition-colors">
                                                             <TableCell>
-                                                                <div className="font-bold text-gray-900 dark:text-gray-100">{item.product_name}</div>
+                                                                <div className="font-bold text-foreground dark:text-foreground">{item.product_name}</div>
                                                                 {item.discount > 0 && (
                                                                     <div className="text-[10px] font-black text-orange-500 dark:text-orange-400 uppercase px-1.5 bg-orange-50 dark:bg-orange-950/30 inline-block rounded mt-1">
                                                                         Disc: -{formatCurrency(item.discount)}/item
                                                                     </div>
                                                                 )}
                                                             </TableCell>
-                                                            <TableCell className="text-center font-black text-gray-500 dark:text-gray-400">{item.quantity}</TableCell>
-                                                            <TableCell className="text-right text-gray-500 dark:text-gray-400">{formatCurrency(item.price)}</TableCell>
-                                                            <TableCell className="text-right font-black text-gray-900 dark:text-gray-100">{formatCurrency(item.subtotal)}</TableCell>
+                                                            <TableCell className="text-center font-black text-muted-foreground dark:text-muted-foreground">{item.quantity}</TableCell>
+                                                            <TableCell className="text-right text-muted-foreground dark:text-muted-foreground">{formatCurrency(item.price)}</TableCell>
+                                                            <TableCell className="text-right font-black text-foreground dark:text-foreground">{formatCurrency(item.subtotal)}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -600,20 +580,20 @@ export default memo(function TransactionsPage() {
                                         <div className="space-y-4">
                                             {selectedTx.payment_history && selectedTx.payment_history.length > 0 && (
                                                 <div className="space-y-3">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Riwayat Cicilan</label>
-                                                    <div className="max-h-40 overflow-y-auto border dark:border-gray-800 rounded-2xl p-4 bg-gray-50/50 dark:bg-gray-900/50">
+                                                    <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Riwayat Cicilan</label>
+                                                    <div className="max-h-40 overflow-y-auto border dark:border-border rounded-2xl p-4 bg-background/50 dark:bg-background/50">
                                                         <div className="space-y-4">
                                                             {selectedTx.payment_history.map((ph: any, i: number) => (
                                                                 <div key={i} className="flex justify-between items-start gap-3">
                                                                     <div className="space-y-0.5">
-                                                                        <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-tighter">
+                                                                        <p className="text-[10px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-tighter">
                                                                             {formatDate(ph.payment_date)}
                                                                         </p>
-                                                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{paymentLabel(ph.payment_method)}</p>
+                                                                        <p className="text-xs font-bold text-muted-foreground dark:text-muted-foreground">{paymentLabel(ph.payment_method)}</p>
                                                                     </div>
                                                                     <div className="text-right">
                                                                         <p className="text-sm font-black text-green-600 dark:text-green-400">{formatCurrency(ph.amount)}</p>
-                                                                        <p className="text-[9px] font-medium text-gray-400 dark:text-gray-500 italic">{ph.notes || '-'}</p>
+                                                                        <p className="text-[9px] font-medium text-muted-foreground dark:text-muted-foreground italic">{ph.notes || '-'}</p>
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -625,13 +605,13 @@ export default memo(function TransactionsPage() {
                                                 <Card className="bg-yellow-50/50 dark:bg-yellow-950/20 border-yellow-100 dark:border-yellow-900/30 shadow-none">
                                                     <CardContent className="p-4 space-y-1">
                                                         <label className="text-[10px] font-black text-yellow-600 uppercase tracking-widest">Catatan</label>
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">{selectedTx.payment_notes}</p>
+                                                        <p className="text-sm text-muted-foreground dark:text-muted-foreground leading-relaxed font-medium">{selectedTx.payment_notes}</p>
                                                     </CardContent>
                                                 </Card>
                                             )}
                                         </div>
 
-                                        <div className="bg-gray-50/80 dark:bg-gray-900/80 rounded-3xl p-6 space-y-4 border border-gray-100 dark:border-gray-800">
+                                        <div className="bg-background/80 dark:bg-background/80 rounded-3xl p-6 space-y-4 border border-border dark:border-border">
                                             <div className="space-y-2">
                                                 <TotalRow label="Subtotal" value={formatCurrency(selectedTx.subtotal)} />
                                                 {selectedTx.tax_amount > 0 && (
@@ -641,24 +621,24 @@ export default memo(function TransactionsPage() {
                                                     <TotalRow label="Diskon Total" value={`-${formatCurrency(selectedTx.discount_amount)}`} color="text-orange-500 dark:text-orange-400" />
                                                 )}
                                             </div>
-                                            <Separator className="bg-gray-200 dark:bg-gray-800" />
+                                            <Separator className="bg-muted dark:bg-card" />
                                             <div className="flex justify-between items-center py-2">
-                                                <span className="text-base font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">TOTAL</span>
+                                                <span className="text-base font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">TOTAL</span>
                                                 <span className={cn(
                                                     "text-3xl font-black tracking-tight",
-                                                    selectedTx.status === 'voided' ? "text-red-400 line-through" : "text-gray-900 dark:text-gray-100"
+                                                    selectedTx.status === 'voided' ? "text-red-400 line-through" : "text-foreground dark:text-foreground"
                                                 )}>
                                                     {formatCurrency(selectedTx.total)}
                                                 </span>
                                             </div>
-                                            <Separator className="bg-gray-200 dark:bg-gray-800" />
+                                            <Separator className="bg-muted dark:bg-card" />
                                             <div className="space-y-2 pt-2">
                                                 <TotalRow label="Terbayar" value={formatCurrency(selectedTx.total_paid || selectedTx.amount_paid)} color="text-green-600 dark:text-green-400" />
                                                 {selectedTx.remaining_balance > 0 && (
                                                     <TotalRow label="Sisa Tagihan" value={formatCurrency(selectedTx.remaining_balance)} color="text-orange-600 dark:text-orange-400" />
                                                 )}
                                                 {selectedTx.change_amount > 0 && selectedTx.payment_status === 'lunas' && (
-                                                    <TotalRow label="Kembali" value={formatCurrency(selectedTx.change_amount)} color="text-blue-600 dark:text-blue-400" />
+                                                    <TotalRow label="Kembali" value={formatCurrency(selectedTx.change_amount)} color="text-primary dark:text-primary" />
                                                 )}
                                             </div>
                                         </div>
@@ -667,7 +647,7 @@ export default memo(function TransactionsPage() {
                                 </div>
                             </div>
 
-                            <DialogFooter className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-t dark:border-gray-800 flex items-center justify-between gap-4 shrink-0">
+                            <DialogFooter className="p-6 bg-background/50 dark:bg-background/50 border-t dark:border-border flex items-center justify-between gap-4 shrink-0">
                                 <div className="flex gap-2 mr-auto">
                                     {hasRole('admin', 'supervisor') && selectedTx.status === 'completed' && (
                                         <Button
@@ -685,9 +665,9 @@ export default memo(function TransactionsPage() {
                                             <Plus className="w-5 h-5" /> Cicilan Baru
                                         </Button>
                                     )}
-                                    <Button variant="outline" onClick={handleCloseDetail} className="h-11 px-6 font-bold dark:border-gray-800">Tutup</Button>
+                                    <Button variant="outline" onClick={handleCloseDetail} className="h-11 px-6 font-bold dark:border-border">Tutup</Button>
                                     <Button onClick={handlePrintFromDetail} className="h-11 px-6 font-bold gap-2 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">
-                                        <Printer className="w-5 h-5" /> Cetak Struk
+                                        <RetroPrinter className="w-5 h-5" /> Cetak Struk
                                     </Button>
                                 </div>
                             </DialogFooter>
@@ -734,18 +714,18 @@ export default memo(function TransactionsPage() {
 function InfoItem({ icon: Icon, label, value, className }: any) {
     return (
         <div className={cn("space-y-1", className)}>
-            <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-1.5 px-0.5">
+            <label className="text-[10px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 px-0.5">
                 <Icon className="w-3 h-3" /> {label}
             </label>
-            <p className="text-[13px] font-black text-gray-900 dark:text-gray-100">{value}</p>
+            <p className="text-[13px] font-black text-foreground dark:text-foreground">{value}</p>
         </div>
     );
 }
 
-function TotalRow({ label, value, color = "text-gray-900" }: any) {
+function TotalRow({ label, value, color = "text-foreground" }: any) {
     return (
         <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-tighter text-xs">{label}</span>
+            <span className="text-muted-foreground dark:text-muted-foreground font-bold uppercase tracking-tighter text-xs">{label}</span>
             <span className={cn("font-black", color)}>{value}</span>
         </div>
     );

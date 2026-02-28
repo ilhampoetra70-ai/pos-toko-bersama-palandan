@@ -58,7 +58,7 @@ function verifyToken(token) {
 }
 
 // Public API paths yang tidak butuh autentikasi
-const PUBLIC_API_PATHS = new Set(['/health', '/auth/login', '/store']);
+const PUBLIC_API_PATHS = new Set(['/health', '/auth/login', '/store', '/products/search']);
 
 function requireAuth(req, res, next) {
   // Lewati autentikasi untuk endpoint publik

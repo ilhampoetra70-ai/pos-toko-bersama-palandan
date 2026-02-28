@@ -1,16 +1,6 @@
 import { useState } from 'react';
-import {
-    Download,
-    Upload,
-    FileSpreadsheet,
-    AlertTriangle,
-    CheckCircle2,
-    X,
-    Loader2,
-    ArrowRight,
-    ShieldAlert,
-    Info
-} from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, CheckCircle2, X, Loader2, ArrowRight, ShieldAlert, Info } from 'lucide-react';
+import { RetroAlert } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -106,15 +96,15 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-gray-950 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
+            <div className="bg-card dark:bg-background rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b dark:border-border flex items-center justify-between bg-background dark:bg-background">
                     <div>
-                        <h3 className="font-black text-xl text-gray-900 dark:text-gray-100 uppercase tracking-tight">Eksper / Impor Excel</h3>
-                        <p className="text-xs text-gray-500 font-medium">Pengolahan data produk massal</p>
+                        <h3 className="font-black text-xl text-foreground dark:text-foreground uppercase tracking-tight">Eksper / Impor Excel</h3>
+                        <p className="text-xs text-muted-foreground font-medium">Pengolahan data produk massal</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-all font-black"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -126,7 +116,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                             "p-4 rounded-2xl flex items-center gap-3 border shadow-sm animate-in slide-in-from-top-2",
                             result.type === 'success' ? "bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900/50 dark:text-emerald-400" : "bg-red-50 border-red-100 text-red-700 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400"
                         )}>
-                            {result.type === 'success' ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 flex-shrink-0" />}
+                            {result.type === 'success' ? <CheckCircle2 className="w-5 h-5 flex-shrink-0" /> : <RetroAlert className="w-5 h-5 flex-shrink-0" />}
                             <span className="text-xs font-bold">{result.message}</span>
                         </div>
                     )}
@@ -139,13 +129,13 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                                     <h4 className="font-black uppercase tracking-tight text-primary-700">Preview Impor</h4>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border dark:border-gray-800 shadow-sm text-center">
+                                    <div className="bg-card dark:bg-background p-4 rounded-xl border dark:border-border shadow-sm text-center">
                                         <div className="text-3xl font-black text-emerald-600">{preview.newProducts.length}</div>
-                                        <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest mt-1">Produk Baru</div>
+                                        <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Produk Baru</div>
                                     </div>
-                                    <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border dark:border-gray-800 shadow-sm text-center">
-                                        <div className="text-3xl font-black text-blue-600">{preview.needBarcode.length}</div>
-                                        <div className="text-[10px] font-black uppercase text-gray-500 tracking-widest mt-1">Auto Barcode</div>
+                                    <div className="bg-card dark:bg-background p-4 rounded-xl border dark:border-border shadow-sm text-center">
+                                        <div className="text-3xl font-black text-primary">{preview.needBarcode.length}</div>
+                                        <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Auto Barcode</div>
                                     </div>
                                 </div>
                             </div>
@@ -162,13 +152,13 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
 
                             {preview.invalidRows.length > 0 && (
                                 <div className="bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-2xl p-4 flex gap-4">
-                                    <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                                    <RetroAlert className="w-6 h-6 text-red-600 flex-shrink-0" />
                                     <div className="space-y-1">
                                         <p className="text-xs font-black text-red-700 uppercase tracking-tight">{preview.invalidRows.length} BARIS TIDAK VALID</p>
                                         <p className="text-[10px] font-bold text-red-600 leading-relaxed uppercase tracking-widest">Ada kesalahan data pada {preview.invalidRows.length} baris di file Excel Anda.</p>
                                         <div className="pt-2">
                                             {preview.invalidRows.slice(0, 3).map((r, i) => (
-                                                <div key={i} className="text-[9px] font-mono text-red-500 bg-white/50 dark:bg-black/20 px-2 py-1 rounded mt-1">Baris {r.row}: {r.reason}</div>
+                                                <div key={i} className="text-[9px] font-mono text-red-500 bg-card/50 dark:bg-black/20 px-2 py-1 rounded mt-1">Baris {r.row}: {r.reason}</div>
                                             ))}
                                         </div>
                                     </div>
@@ -196,7 +186,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                                     <Button
                                         onClick={handleDownloadTemplate}
                                         disabled={downloadingTemplate}
-                                        className="w-full bg-white text-primary-600 hover:bg-white/90 h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm"
+                                        className="w-full bg-card text-primary-600 hover:bg-card/90 h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-sm"
                                     >
                                         {downloadingTemplate ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : null}
                                         Download Template Master
@@ -205,15 +195,15 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                             </Card>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card className="border-none shadow-sm bg-gray-50 dark:bg-gray-900 rounded-2xl flex flex-col justify-between">
+                                <Card className="border-none shadow-sm bg-background dark:bg-background rounded-2xl flex flex-col justify-between">
                                     <CardHeader className="pb-3">
-                                        <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Ekspor Data</CardTitle>
+                                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Ekspor Data</CardTitle>
                                     </CardHeader>
                                     <CardContent className="pb-6">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">Simpan semua produk Anda ke dalam format .xlsx</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Simpan semua produk Anda ke dalam format .xlsx</p>
                                     </CardContent>
                                     <CardFooter className="pt-0">
-                                        <Button onClick={handleExport} disabled={exporting} variant="outline" className="w-full h-11 rounded-xl font-black uppercase tracking-widest text-[10px] border-none bg-white dark:bg-gray-800 shadow-sm gap-2">
+                                        <Button onClick={handleExport} disabled={exporting} variant="outline" className="w-full h-11 rounded-xl font-black uppercase tracking-widest text-[10px] border-none bg-card dark:bg-card shadow-sm gap-2">
                                             {exporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                                             Export Excel
                                         </Button>
@@ -236,23 +226,23 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                                 </Card>
                             </div>
 
-                            <div className="p-4 bg-gray-50/50 dark:bg-gray-900/50 rounded-2xl border dark:border-gray-800 space-y-3">
+                            <div className="p-4 bg-background/50 dark:bg-background/50 rounded-2xl border dark:border-border space-y-3">
                                 <div className="flex items-center gap-2">
                                     <Info className="w-4 h-4 text-primary-500" />
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Informasi Impor</span>
+                                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Informasi Impor</span>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest">Kolom "Barcode" wajib diisi</span>
+                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Kolom "Barcode" wajib diisi</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest">Baris dengan barcode ganda akan dilewati</span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Baris dengan barcode ganda akan dilewati</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-widest">Disarankan maksimal 1000 baris per file</span>
+                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Disarankan maksimal 1000 baris per file</span>
                                     </div>
                                 </div>
                             </div>
@@ -261,8 +251,8 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                 </div>
 
                 {!preview && (
-                    <div className="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-                        <Button variant="ghost" onClick={onClose} className="w-full h-12 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-all">
+                    <div className="p-6 border-t dark:border-border bg-background dark:bg-background">
+                        <Button variant="ghost" onClick={onClose} className="w-full h-12 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-all">
                             Tutup Window
                         </Button>
                     </div>

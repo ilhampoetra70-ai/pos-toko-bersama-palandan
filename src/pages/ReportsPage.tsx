@@ -12,17 +12,8 @@ import {
     useStockTrailReport,
     useSettings
 } from '@/lib/queries';
-import {
-    BarChart3,
-    TrendingUp,
-    ArrowLeftRight,
-    FileText,
-    Calendar,
-    Printer,
-    Activity,
-    RefreshCw,
-    Layout
-} from 'lucide-react';
+import { ArrowLeftRight, Calendar, Activity, Layout } from 'lucide-react';
+import { RetroChart, RetroMoney, RetroReceipt, RetroPrinter, RetroRefresh } from '../components/RetroIcons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,10 +27,10 @@ import ComparisonReportTab from '../components/reports/ComparisonReportTab';
 import ComprehensiveReportTab from '../components/reports/ComprehensiveReportTab';
 
 const TABS = [
-    { id: 'sales', label: 'Ringkasan Penjualan', icon: BarChart3 },
-    { id: 'profit', label: 'Laporan Laba', icon: TrendingUp },
+    { id: 'sales', label: 'Ringkasan Penjualan', icon: RetroChart },
+    { id: 'profit', label: 'Laporan Laba', icon: RetroMoney },
     { id: 'comparison', label: 'Perbandingan Periode', icon: ArrowLeftRight },
-    { id: 'comprehensive', label: 'Laporan Lengkap', icon: FileText },
+    { id: 'comprehensive', label: 'Laporan Lengkap', icon: RetroReceipt },
 ];
 
 function getToday() {
@@ -60,6 +51,7 @@ export default memo(function ReportsPage() {
     const [exporting, setExporting] = useState(false);
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [includeStockTrail, setIncludeStockTrail] = useState(true);
+    const [aiInsightCache, setAiInsightCache] = useState<any>(null);
     const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
     const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,6 +109,29 @@ export default memo(function ReportsPage() {
     useEffect(() => {
         setStoreName(settings.store_name || '');
     }, [settings]);
+
+    // Fetch the most recently generated AI insight (any time range) for print reports
+    useEffect(() => {
+        window.api.getAiInsightCache().then((r: any) => {
+            if (!r.success || !r.data) return;
+            const d = { ...r.data };
+            // Normalize semua format lama ke paragraphs[]
+            if (!d.paragraphs && d.summary) {
+                const parts = [d.summary];
+                if (d.stock_recommendations?.length) parts.push(d.stock_recommendations.join('. '));
+                if (d.slow_moving_recommendations?.length) parts.push(d.slow_moving_recommendations.join('. '));
+                if (d.operational_recommendations?.length) parts.push(d.operational_recommendations.join('. '));
+                d.paragraphs = parts;
+                d.highlights = d.top_priorities || [];
+            }
+            if (!d.paragraphs && d.narrative) {
+                d.paragraphs = d.narrative.split(/\n+/).filter((p: string) => p.trim());
+            }
+            if (d.paragraphs?.length) {
+                setAiInsightCache({ ...d, created_at: r.created_at });
+            }
+        }).catch(() => { /* ignore */ });
+    }, []);
 
 
 
@@ -182,9 +197,9 @@ export default memo(function ReportsPage() {
         if (activeTab === 'sales' && salesData) return buildSalesPlainText(salesData, hourlyData, dateFrom, dateTo, stockAuditData, trailData);
         if (activeTab === 'profit' && profitData) return buildProfitPlainText(profitData, dateFrom, dateTo, stockAuditData, trailData);
         if (activeTab === 'comparison' && comparisonData) return buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateFrom2, dateTo2, stockAuditData, trailData);
-        if (activeTab === 'comprehensive' && comprehensiveData) return buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData, trailData);
+        if (activeTab === 'comprehensive' && comprehensiveData) return buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData, trailData, aiInsightCache);
         return null;
-    }, [activeTab, salesData, profitData, comparisonData, comprehensiveData, hourlyData, stockAuditData, stockTrailDetailData, dateFrom, dateTo, dateFrom2, dateTo2, includeStockTrail]);
+    }, [activeTab, salesData, profitData, comparisonData, comprehensiveData, hourlyData, stockAuditData, stockTrailDetailData, dateFrom, dateTo, dateFrom2, dateTo2, includeStockTrail, aiInsightCache]);
 
     const buildExportHTML = useCallback(() => {
         if (activeTab === 'sales' && salesData) return buildSalesHTML();
@@ -192,7 +207,7 @@ export default memo(function ReportsPage() {
         if (activeTab === 'comparison' && comparisonData) return buildComparisonHTML();
         if (activeTab === 'comprehensive' && comprehensiveData) return buildComprehensiveHTML();
         return null;
-    }, [activeTab, salesData, profitData, comparisonData, comprehensiveData, stockTrailDetailData, stockAuditData, includeStockTrail]);
+    }, [activeTab, salesData, profitData, comparisonData, comprehensiveData, stockTrailDetailData, stockAuditData, includeStockTrail, aiInsightCache]);
 
     const wrapReport = (title: string, dateRange: string, body: string) => {
         const now = new Date().toLocaleString('id-ID');
@@ -211,7 +226,7 @@ export default memo(function ReportsPage() {
     table th{background-color:#f8f9fa;font-weight:bold;text-transform:uppercase;font-size:10px;color:#666}
     .report-footer{margin-top:30px;padding-top:10px;border-top:1px solid #ddd;font-size:9px;color:#999}
     h3{margin-top:25px;border-left:4px solid #333;padding-left:10px;font-size:14px}
-    </style></head><body><div class="report-header">${storeName ? `<div>${storeName}</div>` : ''}<h1>${title}</h1><h2>${dateRange}</h2></div>${body}<div class="report-footer">Dicetak pada ${now}</div></body></html>`;
+    </style></head><body><div class="report-header">${storeName ? `<div style="font-size:24px;font-weight:900;text-transform:uppercase;margin-bottom:4px">${storeName}</div>` : ''}<h1>${title}</h1><h2>${dateRange}</h2></div>${body}<div class="report-footer">Dicetak pada ${now}</div></body></html>`;
     };
 
     const buildSalesHTML = () => {
@@ -222,6 +237,29 @@ export default memo(function ReportsPage() {
         const methodLabel = (m: string) => ({ cash: 'Tunai', debit: 'Debit', qris: 'QRIS', transfer: 'Transfer' }[m] || m || '-');
 
         const txLog: any[] = salesData.transactionLog || [];
+
+        // Customer rankings derived from transaction log
+        const customerByName: { name: string; count: number; total: number }[] = Object.values(
+            txLog.reduce((acc: any, tx: any) => {
+                const key = (tx.customer_name || '').trim();
+                if (!key) return acc;
+                if (!acc[key]) acc[key] = { name: key, count: 0, total: 0 };
+                acc[key].count++;
+                acc[key].total += tx.total || 0;
+                return acc;
+            }, {})
+        ).sort((a: any, b: any) => b.total - a.total).slice(0, 15) as any;
+
+        const customerByAddress: { address: string; count: number; total: number }[] = Object.values(
+            txLog.reduce((acc: any, tx: any) => {
+                const key = (tx.customer_address || '').trim();
+                if (!key) return acc;
+                if (!acc[key]) acc[key] = { address: key, count: 0, total: 0 };
+                acc[key].count++;
+                acc[key].total += tx.total || 0;
+                return acc;
+            }, {})
+        ).sort((a: any, b: any) => b.total - a.total).slice(0, 15) as any;
 
         const body = `
             <div class="summary-cards">
@@ -256,6 +294,50 @@ export default memo(function ReportsPage() {
                         </tr>`).join('')}
                 </tbody>
             </table>
+
+            ${customerByName.length > 0 || customerByAddress.length > 0 ? `
+            <h3>Pemeringkatan Pelanggan</h3>
+            <table style="width:100%">
+                <thead>
+                    <tr>
+                        <th colspan="4" style="text-align:center;background:#f0f4ff;border-right:1px solid #ddd;width:50%">Berdasarkan Nama Pembeli</th>
+                        <th colspan="4" style="text-align:center;background:#f0fff4;width:50%">Berdasarkan Alamat Pembeli</th>
+                    </tr>
+                    <tr>
+                        <th style="width:20px;padding:4px">#</th>
+                        <th style="padding:4px">Nama</th>
+                        <th style="text-align:center;width:25px;padding:4px">Tx</th>
+                        <th style="text-align:right;border-right:1px solid #ddd;padding:4px;width:75px">Total Belanja</th>
+                        <th style="width:20px;padding:4px;padding-left:8px">#</th>
+                        <th style="padding:4px">Alamat</th>
+                        <th style="text-align:center;width:25px;padding:4px">Tx</th>
+                        <th style="text-align:right;padding:4px;width:75px">Total Belanja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Array.from({ length: Math.max(customerByName.length, customerByAddress.length, 1) }).map((_, i) => {
+            const nameC = customerByName[i];
+            const addrC = customerByAddress[i];
+
+            const nameTds = nameC
+                ? `<td style="color:#888;padding:4px">${i + 1}</td>
+                   <td style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;padding:4px">${nameC.name}</td>
+                   <td style="text-align:center;padding:4px">${nameC.count}x</td>
+                   <td style="text-align:right;font-weight:bold;border-right:1px solid #ddd;padding:4px;white-space:nowrap">${formatCurrency(nameC.total)}</td>`
+                : `<td style="color:#888;padding:4px">-</td><td colspan="3" style="text-align:center;color:#999;border-right:1px solid #ddd">-</td>`;
+
+            const addrTds = addrC
+                ? `<td style="color:#888;padding:4px;padding-left:8px">${i + 1}</td>
+                   <td style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;padding:4px">${addrC.address}</td>
+                   <td style="text-align:center;padding:4px">${addrC.count}x</td>
+                   <td style="text-align:right;font-weight:bold;padding:4px;white-space:nowrap">${formatCurrency(addrC.total)}</td>`
+                : `<td style="color:#888;padding:4px;padding-left:8px">-</td><td colspan="3" style="text-align:center;color:#999">-</td>`;
+
+            return `<tr>${nameTds}${addrTds}</tr>`;
+        }).join('')}
+    </tbody>
+</table>
+` : ''}
 
             <h3>Log Transaksi${txLog.length > 0 ? ` (${txLog.length} transaksi)` : ''}</h3>
             ${txLog.length > 0 ? `
@@ -324,6 +406,30 @@ export default memo(function ReportsPage() {
                 </table>
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
             ` : ''}
+            ${aiInsightCache && (aiInsightCache as any).paragraphs?.length ? (() => {
+                const paras: string[] = (aiInsightCache as any).paragraphs;
+                return `
+                <div style="margin-top:32px;border:2px solid #4f46e5;border-radius:10px;overflow:hidden;page-break-inside:avoid">
+                    <div style="background:#4f46e5;padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+                        <span style="color:#fff;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em">✦ AI Insight Bisnis</span>
+                        ${aiInsightCache.created_at ? `<span style="color:rgba(255,255,255,0.65);font-size:9px">Digenerate: ${new Date(aiInsightCache.created_at).toLocaleString('id-ID')}</span>` : ''}
+                    </div>
+                    ${aiInsightCache.highlights && aiInsightCache.highlights.length > 0 ? `
+                        <div style="background:#f0f0ff;border-bottom:1px solid #d0d0ee;padding:14px 18px">
+                            <div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#4f46e5;margin-bottom:10px">Sorotan Utama</div>
+                            ${aiInsightCache.highlights.map((h: string, i: number) => `
+                                <div style="display:flex;align-items:flex-start;gap:8px;margin:7px 0">
+                                    <span style="min-width:20px;height:20px;background:#4f46e5;color:#fff;border-radius:50%;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
+                                    <span style="font-size:11px;line-height:1.5;color:#1a1a1a">${h}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div style="padding:16px 18px;line-height:1.9;font-size:11px;color:#333">
+                        ${paras.map((p: string, i: number) => `<p style="margin:0 0 12px 0${i === 0 ? ';font-weight:600;font-size:12px' : ''};text-align:justify">${p}</p>`).join('')}
+                    </div>
+                </div>`;
+            })() : ''}
         `;
         return wrapReport('Ringkasan Penjualan', `${dateFrom} s/d ${dateTo}`, body);
     };
@@ -618,6 +724,30 @@ export default memo(function ReportsPage() {
                 ${stockTrailDetailData.length > 50 ? `<p style="font-size:9px;color:#999;margin-top:4px">* ${stockTrailDetailData.length - 50} entri lainnya tidak ditampilkan. Gunakan halaman Mutasi Stok untuk laporan lengkap.</p>` : ''}
             ` : ''
             }
+            ${aiInsightCache && aiInsightCache.paragraphs?.length ? (() => {
+                const paras: string[] = aiInsightCache.paragraphs;
+                return `
+                <div style="margin-top:32px;border:2px solid #4f46e5;border-radius:10px;overflow:hidden;page-break-inside:avoid">
+                    <div style="background:#4f46e5;padding:12px 18px;display:flex;align-items:center;justify-content:space-between">
+                        <span style="color:#fff;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em">✦ AI Insight Bisnis</span>
+                        ${aiInsightCache.created_at ? `<span style="color:rgba(255,255,255,0.65);font-size:9px">Digenerate: ${new Date(aiInsightCache.created_at).toLocaleString('id-ID')}</span>` : ''}
+                    </div>
+                    ${aiInsightCache.highlights && aiInsightCache.highlights.length > 0 ? `
+                        <div style="background:#f0f0ff;border-bottom:1px solid #d0d0ee;padding:14px 18px">
+                            <div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#4f46e5;margin-bottom:10px">Sorotan Utama</div>
+                            ${aiInsightCache.highlights.map((h: string, i: number) => `
+                                <div style="display:flex;align-items:flex-start;gap:8px;margin:7px 0">
+                                    <span style="min-width:20px;height:20px;background:#4f46e5;color:#fff;border-radius:50%;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
+                                    <span style="font-size:11px;line-height:1.5;color:#1a1a1a">${h}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div style="padding:16px 18px;line-height:1.9;font-size:11px;color:#333">
+                        ${paras.map((p: string, i: number) => `<p style="margin:0 0 12px 0${i === 0 ? ';font-weight:600;font-size:12px' : ''};text-align:justify">${p}</p>`).join('')}
+                    </div>
+                </div>`;
+            })() : ''}
 `;
         return wrapReport('Laporan Lengkap', `${dateFrom} s / d ${dateTo} `, body);
     };
@@ -631,7 +761,7 @@ export default memo(function ReportsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={() => setShowPrintConfig(true)} disabled={exporting || loading} className="flex items-center gap-2 px-4 py-2 border border-border bg-card hover:bg-muted text-card-foreground rounded-lg shadow-sm font-semibold text-sm transition-colors">
-                        <Printer className="w-4 h-4" /> Cetak / Export
+                        <RetroPrinter className="w-4 h-4" /> Cetak / Export
                     </Button>
                 </div>
             </div>
@@ -642,7 +772,7 @@ export default memo(function ReportsPage() {
                     ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
                     : statusMsg.type === 'error'
                         ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-                        : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
+                        : 'bg-primary dark:bg-primary/20 border-primary dark:border-primary text-primary-foreground dark:text-primary'
                     } `}>
                     <span className="flex-1">{statusMsg.text}</span>
                     <button onClick={() => setStatusMsg(null)} className="opacity-60 hover:opacity-100 text-lg leading-none">&times;</button>
@@ -707,7 +837,7 @@ export default memo(function ReportsPage() {
                         )}
 
                         <Button onClick={handleFilter} disabled={loading} size="sm" className="flex items-center gap-2 h-9 px-4 bg-primary-600 text-white hover:bg-primary-700 rounded-lg shadow-sm text-xs font-bold transition-colors">
-                            {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            {loading ? <RetroRefresh className="w-3.5 h-3.5 animate-spin" /> : <RetroRefresh className="w-3.5 h-3.5" />}
                             {loading ? 'Memuat...' : 'Proses'}
                         </Button>
                     </div>
@@ -718,7 +848,7 @@ export default memo(function ReportsPage() {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
                         <div className="w-12 h-12 border-4 border-primary-50 border-t-primary-600 rounded-full animate-spin"></div>
-                        <p className="text-gray-500 font-bold">Menyusun data laporan...</p>
+                        <p className="text-muted-foreground font-bold">Menyusun data laporan...</p>
                     </div>
                 ) : (
                     <>
@@ -762,9 +892,9 @@ export default memo(function ReportsPage() {
 
                         {!salesData && !profitData && !comparisonData && !comprehensiveData && (
                             <div className="flex flex-col items-center justify-center py-32 text-center space-y-4 opacity-30">
-                                <Layout className="w-20 h-20 text-gray-300" />
+                                <Layout className="w-20 h-20 text-muted-foreground" />
                                 <div>
-                                    <p className="text-xl font-bold text-gray-900">Belum Ada Data</p>
+                                    <p className="text-xl font-bold text-foreground">Belum Ada Data</p>
                                     <p className="text-sm font-medium">Atur periode tanggal dan klik "Proses Laporan"</p>
                                 </div>
                             </div>

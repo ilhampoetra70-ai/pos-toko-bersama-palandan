@@ -6,22 +6,8 @@ import ProductCard from '../components/ProductCard';
 import PaymentModal from '../components/PaymentModal';
 import BarcodeScanner from '../components/BarcodeScanner';
 import ReceiptIframe from '../components/ReceiptIframe';
-import {
-  Search,
-  Scan,
-  User as UserIcon,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  CreditCard,
-  Printer,
-  Check,
-  Loader2,
-  Package,
-  ShoppingCart,
-  ShoppingBag,
-  Trash2
-} from 'lucide-react';
+import { Search, Scan, User as UserIcon, ChevronDown, ChevronUp, ChevronRight, Check, Loader2, AlertCircle } from 'lucide-react';
+import { RetroWallet, RetroPrinter, RetroBox, RetroCart, RetroBag, RetroTrash } from '../components/RetroIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -93,10 +79,20 @@ export default function CashierPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [showCustomerInfo, setShowCustomerInfo] = useState(false);
+  const [errorDialog, setErrorDialog] = useState({ show: false, title: '', message: '' });
+  const [lastAddedId, setLastAddedId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const triggerAddAnimation = (productId: number) => {
+    setLastAddedId(productId);
+    setTimeout(() => setLastAddedId(null), 600);
+  };
 
   const addToCart = useCallback((product: Product) => {
     if (product.stock <= 0) return;
+
+    let animateId: number | null = null;
+    let maxStockHit = false;
 
     setCart(prev => {
       const existing = prev.findIndex(item => item.product_id === product.id);
@@ -105,9 +101,13 @@ export default function CashierPage() {
         if (updated[existing].quantity < product.stock) {
           updated[existing].quantity += 1;
           updated[existing].subtotal = (updated[existing].price - updated[existing].discount) * updated[existing].quantity;
+          animateId = product.id;
+        } else {
+          maxStockHit = true;
         }
         return updated;
       }
+      animateId = product.id;
       return [...prev, {
         product_id: product.id,
         product_name: product.name,
@@ -120,6 +120,13 @@ export default function CashierPage() {
         max_stock: product.stock
       }];
     });
+
+    if (animateId !== null) triggerAddAnimation(animateId);
+    if (maxStockHit) setErrorDialog({
+      show: true,
+      title: 'Stok Maksimum',
+      message: `Stok produk "${product.name}" hanya tersedia ${product.stock} ${product.unit}.`
+    });
   }, []);
 
   const updateCartQty = useCallback((index: number, qty: number) => {
@@ -127,12 +134,26 @@ export default function CashierPage() {
       setCart(prev => prev.filter((_, i) => i !== index));
       return;
     }
+
+    let animateId: number | null = null;
+    let maxStockItem: CartItem | null = null;
+
     setCart(prev => {
       const updated = [...prev];
       const item = updated[index];
+      const prevQty = item.quantity;
       item.quantity = Math.min(qty, item.max_stock);
       item.subtotal = (item.price - item.discount) * item.quantity;
+      if (item.quantity > prevQty) animateId = item.product_id;
+      if (qty > item.max_stock) maxStockItem = { ...item };
       return updated;
+    });
+
+    if (animateId !== null) triggerAddAnimation(animateId);
+    if (maxStockItem) setErrorDialog({
+      show: true,
+      title: 'Stok Maksimum',
+      message: `Stok produk "${(maxStockItem as CartItem).product_name}" hanya tersedia ${(maxStockItem as CartItem).max_stock} ${(maxStockItem as CartItem).unit}.`
     });
   }, []);
 
@@ -190,7 +211,11 @@ export default function CashierPage() {
     if (result.success && result.data) {
       addToCart(result.data);
     } else {
-      alert(`Produk dengan barcode "${code}" tidak ditemukan`);
+      setErrorDialog({
+        show: true,
+        title: 'Produk Tidak Ditemukan',
+        message: `Produk dengan barcode "${code}" tidak ditemukan dalam database.`
+      });
     }
     searchRef.current?.focus();
   };
@@ -217,13 +242,28 @@ export default function CashierPage() {
 
   const doPrint = async (tx: any) => {
     setPrinting(true);
-    const result = await window.api.printReceipt(tx);
-    setPrinting(false);
-    if (!result.success) {
-      alert('Print gagal: ' + (result.error || 'Unknown error'));
+    try {
+      const result = await window.api.printReceipt(tx);
+      setPrinting(false);
+      if (!result.success) {
+        setErrorDialog({
+          show: true,
+          title: 'Gagal Mencetak',
+          message: 'Print gagal: ' + (result.error || 'Terjadi kesalahan tidak dikenal')
+        });
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      // Jika IPC sendiri throw exception, pastikan UI tidak stuck di state printing
+      setPrinting(false);
+      setErrorDialog({
+        show: true,
+        title: 'Gagal Mencetak',
+        message: 'Print gagal: ' + (err?.message || 'Terjadi kesalahan tidak terduga')
+      });
       return false;
     }
-    return true;
   };
 
   const handlePayment = async (paymentData: any) => {
@@ -272,8 +312,11 @@ export default function CashierPage() {
           setReceiptHtml('');
           setPrintDone(false);
           setShowTxSuccess(true);
-          loadReceiptPreview(tx);
-          const ok = await doPrint(tx);
+          // Jalankan print dan preview paralel. Gunakan allSettled agar
+          // jika salah satu gagal, yang lainnya tetap selesai (tidak fail-fast).
+          const results = await Promise.allSettled([doPrint(tx), loadReceiptPreview(tx)]);
+          const printResult = results[0];
+          const ok = printResult.status === 'fulfilled' && printResult.value === true;
           if (ok) setPrintDone(true);
           return;
         }
@@ -284,7 +327,11 @@ export default function CashierPage() {
         loadReceiptPreview(tx);
       },
       onError: (err: any) => {
-        alert('Gagal menyimpan transaksi: ' + (err.message || 'Unknown error'));
+        setErrorDialog({
+          show: true,
+          title: 'Gagal Menyimpan',
+          message: 'Transaksi gagal disimpan: ' + (err.message || 'Terjadi kesalahan tidak dikenal')
+        });
       }
     });
   };
@@ -309,16 +356,16 @@ export default function CashierPage() {
     <div className="flex h-[calc(100vh-3rem)] gap-0">
 
       {/* ── Left: Product Grid ── */}
-      <section className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-950">
+      <section className="flex-1 flex flex-col min-w-0 bg-background dark:bg-background">
 
         {/* Search + controls area */}
-        <div className="p-4 border-b border-gray-200/50 dark:border-gray-800/50 flex flex-col gap-3 bg-white/80 dark:bg-gray-900/30 shrink-0">
+        <div className="p-4 border-b border-border/50 dark:border-border/50 flex flex-col gap-3 bg-card/80 dark:bg-background/30 shrink-0">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 ref={searchRef}
-                className="w-full h-12 pl-10 pr-24 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 font-medium focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
+                className="w-full h-12 pl-10 pr-24 bg-card dark:bg-background border border-border dark:border-border rounded-xl text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground font-medium focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
                 placeholder="Cari nama produk atau scan barcode..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -327,7 +374,7 @@ export default function CashierPage() {
               />
               {!isLoadingProducts && products.length > 0 && (
                 <div className="absolute right-[4.5rem] top-1/2 -translate-y-1/2">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-600 font-bold tabular-nums">
+                  <span className="text-[10px] text-muted-foreground dark:text-muted-foreground font-bold tabular-nums">
                     {products.length}
                   </span>
                 </div>
@@ -335,7 +382,7 @@ export default function CashierPage() {
             </div>
             <button
               onClick={() => setShowScanner(true)}
-              className="h-12 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-600 transition-all shrink-0 font-medium text-sm"
+              className="h-12 px-4 bg-card dark:bg-background border border-border dark:border-border rounded-xl flex items-center gap-2 text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground hover:border-border dark:hover:border-gray-600 transition-all shrink-0 font-medium text-sm"
               title="Scan Barcode (F2)"
             >
               <Scan className="w-4 h-4" />
@@ -351,7 +398,7 @@ export default function CashierPage() {
                 "px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors",
                 !filterCat
                   ? "bg-primary-600 text-white shadow-lg shadow-primary-600/20"
-                  : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-700"
+                  : "bg-card dark:bg-background border border-border dark:border-border text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground hover:border-border dark:hover:border-gray-700"
               )}
             >
               Semua
@@ -364,7 +411,7 @@ export default function CashierPage() {
                   "px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors",
                   filterCat === String(cat.id)
                     ? "bg-primary-600 text-white shadow-lg shadow-primary-600/20"
-                    : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-400 dark:hover:border-gray-700"
+                    : "bg-card dark:bg-background border border-border dark:border-border text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground hover:border-border dark:hover:border-gray-700"
                 )}
               >
                 {cat.name}
@@ -380,12 +427,15 @@ export default function CashierPage() {
               <div className="col-span-full py-20 text-center">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto opacity-20" />
               </div>
-            ) : products.map(product => (
-              <ProductCard key={product.id} product={product} onClick={addToCart} />
-            ))}
+            ) : products.map(product => {
+              const cartQty = cart.find(c => c.product_id === product.id)?.quantity || 0;
+              return (
+                <ProductCard key={product.id} product={product} onClick={addToCart} cartQty={cartQty} />
+              )
+            })}
             {!isLoadingProducts && products.length === 0 && (
-              <div className="col-span-full text-center py-20 text-gray-400 dark:text-gray-600">
-                <Package className="w-14 h-14 mx-auto mb-3 opacity-15" />
+              <div className="col-span-full text-center py-20 text-muted-foreground dark:text-muted-foreground">
+                <RetroBox className="w-14 h-14 mx-auto mb-3 opacity-15" />
                 <p className="font-semibold text-sm">Tidak ada produk ditemukan</p>
                 {search && <p className="text-xs mt-1">Coba kata kunci lain</p>}
               </div>
@@ -395,18 +445,18 @@ export default function CashierPage() {
       </section>
 
       {/* ── Right: Cart Panel ── */}
-      <aside className="w-[360px] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col shrink-0 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.15)] dark:shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.5)]">
+      <aside className="w-[360px] bg-card dark:bg-background border-l border-border dark:border-border flex flex-col shrink-0 shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.15)] dark:shadow-[-10px_0_30px_-15px_rgba(0,0,0,0.5)]">
 
         {/* Cart Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center shrink-0">
+        <div className="p-4 border-b border-border dark:border-border flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-primary-500 dark:text-primary-400">
-              <ShoppingCart className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-muted dark:bg-card flex items-center justify-center text-primary-500 dark:text-primary-400">
+              <RetroCart className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-bold text-sm text-gray-900 dark:text-gray-100">Pesanan Baru</h2>
+              <h2 className="font-bold text-sm text-foreground dark:text-foreground">Pesanan Baru</h2>
               {totalQty > 0 && (
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium tabular-nums">
+                <div className="text-[10px] text-muted-foreground dark:text-muted-foreground font-medium tabular-nums">
                   {totalQty} unit &middot; {cart.length} item
                 </div>
               )}
@@ -415,24 +465,24 @@ export default function CashierPage() {
           {cart.length > 0 && (
             <button
               onClick={clearCart}
-              className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10 text-muted-foreground dark:text-muted-foreground hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center transition-colors"
               title="Kosongkan keranjang"
             >
-              <Trash2 className="w-4 h-4" />
+              <RetroTrash className="w-4 h-4" />
             </button>
           )}
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <Cart items={cart} onUpdateQty={updateCartQty} onRemove={removeFromCart} onUpdateDiscount={updateCartDiscount} />
+          <Cart items={cart} onUpdateQty={updateCartQty} onRemove={removeFromCart} onUpdateDiscount={updateCartDiscount} lastAddedId={lastAddedId} />
         </div>
 
         {/* Customer Info */}
         <button
           onClick={() => setShowCustomerInfo(!showCustomerInfo)}
-          className="w-full px-4 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 flex justify-between items-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0"
+          className="w-full px-4 py-3 border-t border-border dark:border-border bg-background/50 dark:bg-background/50 flex justify-between items-center hover:bg-muted dark:hover:bg-card transition-colors shrink-0"
         >
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground">
             <UserIcon className="w-4 h-4" />
             <span className="text-xs font-semibold">
               {customerName ? customerName : 'Tambah Data Pelanggan'}
@@ -442,20 +492,20 @@ export default function CashierPage() {
             )}
           </div>
           {showCustomerInfo
-            ? <ChevronUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            : <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
+            : <ChevronRight className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" />
           }
         </button>
         {showCustomerInfo && (
-          <div className="px-4 pb-3 space-y-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shrink-0 animate-in slide-in-from-top-1 duration-200">
+          <div className="px-4 pb-3 space-y-2 bg-card dark:bg-background border-b border-border dark:border-border shrink-0 animate-in slide-in-from-top-1 duration-200">
             <input
-              className="w-full h-9 px-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-1 focus:ring-primary-500 transition-all"
+              className="w-full h-9 px-3 bg-background dark:bg-card border border-border dark:border-border rounded-lg text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary-500 transition-all"
               placeholder="Nama Pembeli (opsional)"
               value={customerName}
               onChange={e => setCustomerName(e.target.value.slice(0, 50))}
             />
             <textarea
-              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none"
+              className="w-full px-3 py-2 bg-background dark:bg-card border border-border dark:border-border rounded-lg text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary-500 transition-all resize-none"
               placeholder="Alamat (opsional)"
               value={customerAddress}
               onChange={e => setCustomerAddress(e.target.value.slice(0, 100))}
@@ -465,23 +515,23 @@ export default function CashierPage() {
         )}
 
         {/* Checkout Box */}
-        <div className="p-5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col gap-3 shrink-0 rounded-t-2xl shadow-[0_-8px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.4)] relative z-20">
+        <div className="p-5 border-t border-border dark:border-border bg-card dark:bg-background flex flex-col gap-3 shrink-0 rounded-t-2xl shadow-[0_-8px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.4)] relative z-20">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Subtotal ({totalQty} Item)</span>
-            <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200 tabular-nums">{formatCurrency(subtotal)}</span>
+            <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">Subtotal ({totalQty} Item)</span>
+            <span className="text-sm font-bold font-mono text-foreground dark:text-foreground tabular-nums">{formatCurrency(subtotal)}</span>
           </div>
 
           {taxEnabled && (
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">PPN ({taxRate}%)</span>
-              <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-200 tabular-nums">{formatCurrency(taxAmount)}</span>
+              <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">PPN ({taxRate}%)</span>
+              <span className="text-sm font-bold font-mono text-foreground dark:text-foreground tabular-nums">{formatCurrency(taxAmount)}</span>
             </div>
           )}
 
           <div className="flex justify-between items-center">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Diskon Global</span>
+            <span className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">Diskon Global</span>
             <div className="flex items-center gap-1">
-              <span className="text-xs text-gray-400 dark:text-gray-500">-Rp</span>
+              <span className="text-xs text-muted-foreground dark:text-muted-foreground">-Rp</span>
               <input
                 type="number"
                 className="w-24 text-right bg-transparent text-sm font-bold text-primary-600 dark:text-primary-400 border-b border-dashed border-primary-400/40 outline-none focus:border-primary-500 transition-colors tabular-nums"
@@ -493,10 +543,10 @@ export default function CashierPage() {
             </div>
           </div>
 
-          <div className="w-full h-px bg-gray-100 dark:bg-gray-800 my-1" />
+          <div className="w-full h-px bg-muted dark:bg-card my-1" />
 
           <div className="flex justify-between items-end mb-2">
-            <span className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Total Tagihan</span>
+            <span className="text-xs font-black uppercase tracking-widest text-muted-foreground dark:text-muted-foreground">Total Tagihan</span>
             <span className="text-3xl font-black text-primary-600 dark:text-primary-400 tracking-tighter leading-none tabular-nums">
               {formatCurrency(total)}
             </span>
@@ -509,23 +559,23 @@ export default function CashierPage() {
               "w-full h-14 rounded-2xl flex items-center justify-center gap-3",
               "font-black text-base transition-all active:scale-[0.98]",
               cart.length === 0 || total <= 0
-                ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                ? "bg-muted dark:bg-card text-muted-foreground dark:text-muted-foreground cursor-not-allowed"
                 : "bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/20"
             )}
           >
-            <CreditCard className="w-5 h-5" />
+            <RetroWallet className="w-5 h-5" />
             BAYAR SEKARANG
           </button>
 
           <div className="grid grid-cols-3 text-center">
-            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
-              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">Ctrl+K</kbd> Cari
+            <span className="text-[9px] font-mono text-muted-foreground dark:text-muted-foreground">
+              <kbd className="border border-border dark:border-border px-1 rounded text-[8px]">Ctrl+K</kbd> Cari
             </span>
-            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
-              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">F2</kbd> Scan
+            <span className="text-[9px] font-mono text-muted-foreground dark:text-muted-foreground">
+              <kbd className="border border-border dark:border-border px-1 rounded text-[8px]">F2</kbd> Scan
             </span>
-            <span className="text-[9px] font-mono text-gray-400 dark:text-gray-600">
-              <kbd className="border border-gray-200 dark:border-gray-700 px-1 rounded text-[8px]">Space</kbd> Bayar
+            <span className="text-[9px] font-mono text-muted-foreground dark:text-muted-foreground">
+              <kbd className="border border-border dark:border-border px-1 rounded text-[8px]">Space</kbd> Bayar
             </span>
           </div>
         </div>
@@ -547,8 +597,8 @@ export default function CashierPage() {
 
       {/* Combined Transaction Success + Receipt Preview Dialog */}
       <Dialog open={showTxSuccess && !!lastTx} onOpenChange={handleCloseSuccess}>
-        <DialogContent className="sm:max-w-xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
-          <div className="p-6 border-b dark:border-gray-800 shrink-0">
+        <DialogContent className="sm:max-w-xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
+          <div className="p-6 border-b dark:border-border shrink-0">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center shrink-0">
                 <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -561,7 +611,7 @@ export default function CashierPage() {
               </div>
             </div>
 
-            <div className="alert-adaptive-success rounded-xl px-5 py-4 border dark:border-gray-800 grid grid-cols-2 gap-4">
+            <div className="alert-adaptive-success rounded-xl px-5 py-4 border dark:border-border grid grid-cols-2 gap-4">
               <div>
                 <div className="text-[10px] text-green-700/70 dark:text-green-400/70 uppercase font-black mb-1">Total</div>
                 <div className="text-2xl font-black text-green-700 dark:text-green-400">{formatCurrency(lastTx?.total)}</div>
@@ -576,13 +626,13 @@ export default function CashierPage() {
           </div>
 
           {(printMode === 'preview' || printMode === 'auto_print') && (
-            <div className="flex-1 overflow-y-auto min-h-0 bg-gray-100 dark:bg-gray-900 p-6 flex justify-center">
+            <div className="flex-1 overflow-y-auto min-h-0 bg-muted dark:bg-background p-6 flex justify-center">
               {receiptHtml ? (
-                <div className="bg-white shadow-lg rounded-sm overflow-hidden border dark:border-transparent h-fit">
+                <div className="bg-card shadow-lg rounded-sm overflow-hidden border dark:border-transparent h-fit">
                   <ReceiptIframe html={receiptHtml} width="320px" />
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-12 text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">
                   <Loader2 className="w-8 h-8 animate-spin opacity-50" />
                   <p className="text-sm font-medium">Memuat preview struk...</p>
                 </div>
@@ -590,7 +640,7 @@ export default function CashierPage() {
             </div>
           )}
 
-          <div className="p-4 border-t dark:border-gray-800 flex gap-3 bg-gray-50 dark:bg-gray-900 shrink-0">
+          <div className="p-4 border-t dark:border-border flex gap-3 bg-background dark:bg-background shrink-0">
             <Button variant="outline" onClick={handleCloseSuccess} className="flex-1 h-11">
               Transaksi Baru
             </Button>
@@ -607,7 +657,7 @@ export default function CashierPage() {
                 ) : printDone ? (
                   <Check className="w-4 h-4" />
                 ) : (
-                  <Printer className="w-4 h-4" />
+                  <RetroPrinter className="w-4 h-4" />
                 )}
                 {printing ? 'Mencetak...' : printDone ? 'Tercetak' : 'Cetak Struk'}
               </Button>
@@ -623,11 +673,31 @@ export default function CashierPage() {
                 ) : printDone ? (
                   <Check className="w-4 h-4" />
                 ) : (
-                  <Printer className="w-4 h-4 mr-1 animate-pulse" />
+                  <RetroPrinter className="w-4 h-4 mr-1 animate-pulse" />
                 )}
                 {printing ? 'Mencetak...' : printDone ? 'Tercetak' : 'Mengirim ke printer...'}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Alert Dialog */}
+      <Dialog open={errorDialog.show} onOpenChange={(open) => !open && setErrorDialog(prev => ({ ...prev, show: false }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 dark:text-red-500 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              {errorDialog.title}
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-muted-foreground dark:text-muted-foreground">
+              {errorDialog.message}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setErrorDialog(prev => ({ ...prev, show: false }))} variant="default" className="w-full sm:w-auto">
+              Tutup
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

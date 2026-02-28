@@ -31,11 +31,11 @@ const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
-        <div className="bg-white dark:bg-gray-950 border dark:border-gray-800 rounded-2xl shadow-xl p-4 text-xs animate-in zoom-in-95">
-            <p className="font-black text-gray-900 dark:text-gray-100 mb-2 uppercase tracking-widest">{d.name}</p>
+        <div className="bg-card dark:bg-background border dark:border-border rounded-2xl shadow-xl p-4 text-xs animate-in zoom-in-95">
+            <p className="font-black text-foreground dark:text-foreground mb-2 uppercase tracking-widest">{d.name}</p>
             <div className="space-y-1">
                 <p className="font-bold text-primary-600 dark:text-primary-400">Total: Rp {d.total?.toLocaleString('id-ID')}</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{d.count} transaksi</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{d.count} transaksi</p>
             </div>
         </div>
     );
@@ -49,13 +49,13 @@ export default function PaymentPieChart({ data }: PaymentPieChartProps) {
     const chartData = data.map(p => ({
         ...p,
         name: LABELS[p.payment_method] || p.payment_method,
-        color: COLORS[p.payment_method] || '#94a3b8',
+        color: COLORS[p.payment_method] || 'hsl(var(--muted-foreground))',
     }));
 
     return (
-        <Card className="border-none shadow-sm bg-white dark:bg-gray-950 rounded-[2rem] overflow-hidden">
+        <Card className="border-none shadow-sm bg-card dark:bg-background rounded-[2rem] overflow-hidden">
             <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Metode Pembayaran</CardTitle>
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Metode Pembayaran</CardTitle>
             </CardHeader>
             <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -71,7 +71,7 @@ export default function PaymentPieChart({ data }: PaymentPieChartProps) {
                             paddingAngle={5}
                             stroke="none"
                             label={renderLabel}
-                            style={{ fontSize: '10px', fontWeight: 700, fill: '#94a3b8' }}
+                            style={{ fontSize: '10px', fontWeight: 700, fill: 'hsl(var(--muted-foreground))' }}
                         >
                             {chartData.map((entry, i) => (
                                 <Cell key={i} fill={entry.color} className="outline-none" />

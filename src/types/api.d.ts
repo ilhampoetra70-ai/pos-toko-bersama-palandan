@@ -355,6 +355,13 @@ export interface PrinterInfo {
     options?: Record<string, string>;
 }
 
+// ─── AI Insight ───────────────────────────────────────────────────────────────
+
+export interface AiInsightData {
+    narrative: string;
+    highlights: string[];
+}
+
 // ─── Window API Interface ──────────────────────────────────────────────────────
 
 export interface WindowApi {
@@ -497,6 +504,22 @@ export interface WindowApi {
     dbSetBackupDir(): Promise<{ success: boolean; path?: string; error?: string }>;
     dbExportTransactions(filters?: TransactionFilters): Promise<{ success: boolean; path?: string; count?: number; error?: string }>;
     dbExportSummaryPdf(): Promise<{ success: boolean; path?: string; error?: string }>;
+
+    // AI Insight
+    getAiStatus(): Promise<{ state: string; progressPercent: number; downloadedMB: number; totalMB: number; errorMsg: string | null; customModelPath: string | null }>;
+    startAiDownload(): Promise<{ success: boolean; error?: string }>;
+    cancelAiDownload(): Promise<{ success: boolean; error?: string }>;
+    generateAiInsight(forceRefresh?: boolean, days?: number): Promise<{ success: boolean; data?: AiInsightData; from_cache?: boolean; created_at?: string; status?: string; error?: string }>;
+    getAiInsightCache(days?: number): Promise<{ success: boolean; data?: AiInsightData; created_at?: string; status?: string }>;
+    getLlmPreset(): Promise<string>;
+    saveLlmPreset(preset: string): Promise<{ success: boolean; error?: string }>;
+    browseAiModelFile(): Promise<{ success: boolean; filePath?: string; status?: string; error?: string }>;
+    clearAiCustomModelPath(): Promise<{ success: boolean; error?: string }>;
+    // AI API Settings
+    getAiApiSettings(): Promise<{ success: boolean; mode: string; provider: string; apiKey: string; model: string; baseUrl: string }>;
+    saveAiApiSettings(settings: { mode: string; provider: string; apiKey: string; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
+    testAiApiConnection(settings: { provider: string; apiKey: string; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
+    onAiDownloadProgress(callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void): () => void;
 
 }
 

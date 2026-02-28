@@ -290,7 +290,7 @@ export function buildComparisonPlainText(comparisonData, dateFrom, dateTo, dateF
   return lines.join('\n');
 }
 
-export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData, stockTrailData) {
+export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo, stockAuditData, stockTrailData, aiInsightData) {
   const c = comprehensiveData;
   const lines = [];
 
@@ -437,6 +437,37 @@ export function buildComprehensivePlainText(comprehensiveData, dateFrom, dateTo,
     lines.push(center('LOG MUTASI STOK (HISTORI PERGERAKAN)'));
     lines.push(line('-'));
     lines.push(...buildStockTrailSection(stockTrailData));
+  }
+
+  // AI Insight section
+  if (aiInsightData && aiInsightData.narrative) {
+    lines.push(line('-'));
+    lines.push(center('AI INSIGHT BISNIS'));
+    lines.push(line('-'));
+    lines.push('');
+    if (aiInsightData.highlights && aiInsightData.highlights.length > 0) {
+      lines.push('  SOROTAN UTAMA:');
+      aiInsightData.highlights.forEach((h, i) => {
+        lines.push(`    ${i + 1}. ${h}`);
+      });
+      lines.push('');
+    }
+    // Word-wrap narrative to fit within WIDTH
+    const narrativeParagraphs = aiInsightData.narrative.split('\n').filter(p => p.trim());
+    for (const para of narrativeParagraphs) {
+      const words = para.split(' ');
+      let currentLine = '  ';
+      for (const word of words) {
+        if ((currentLine + word).length > WIDTH - 2) {
+          lines.push(currentLine.trimEnd());
+          currentLine = '  ' + word + ' ';
+        } else {
+          currentLine += word + ' ';
+        }
+      }
+      if (currentLine.trim()) lines.push(currentLine.trimEnd());
+      lines.push('');
+    }
   }
 
   lines.push(line('='));

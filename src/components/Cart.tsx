@@ -1,6 +1,7 @@
 import { memo, useState } from 'react';
 import { formatCurrency } from '../utils/format';
-import { ShoppingCart, Trash2, Minus, Plus } from 'lucide-react';
+import { Minus, Plus } from 'lucide-react';
+import { RetroCart, RetroTrash } from '../components/RetroIcons';
 import { cn } from '@/lib/utils';
 
 interface CartItem {
@@ -20,9 +21,10 @@ interface CartProps {
   onUpdateQty: (index: number, qty: number) => void;
   onRemove: (index: number) => void;
   onUpdateDiscount: (index: number, disc: number) => void;
+  lastAddedId?: number | null;
 }
 
-const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount }: CartProps) {
+const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount, lastAddedId }: CartProps) {
   const [expandedDiscount, setExpandedDiscount] = useState<Set<number>>(new Set());
 
   const toggleDiscount = (idx: number) => {
@@ -41,9 +43,9 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar">
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-gray-400 dark:text-gray-500">
-          <ShoppingCart className="w-12 h-12 opacity-20" />
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-300 dark:text-gray-600">Keranjang kosong</p>
+        <div className="flex flex-col items-center justify-center h-full gap-3 py-16 text-muted-foreground dark:text-muted-foreground">
+          <RetroCart className="w-12 h-12 opacity-20" />
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground dark:text-muted-foreground">Belum ada produk</p>
         </div>
       ) : (
         <div className={cn(
@@ -55,7 +57,10 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
             <div
               key={item.product_id || idx}
               className={cn(
-                "bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 relative overflow-hidden transition-all duration-150",
+                "border border-border dark:border-border/50 relative overflow-hidden transition-all duration-300",
+                item.product_id === lastAddedId
+                  ? "bg-green-100 dark:bg-green-900/40"
+                  : "bg-background dark:bg-card/50",
                 (density === 'spacious' || density === 'compact') && "flex flex-col group",
                 density === 'spacious' && "rounded-xl p-3 gap-3",
                 density === 'compact' && "rounded-lg p-2 gap-1.5",
@@ -72,22 +77,29 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                 <>
                   <div className="flex justify-between items-start pl-2">
                     <div>
-                      <h4 className={cn(
-                        "font-bold leading-tight",
-                        density === 'spacious' ? "text-sm text-gray-800 dark:text-gray-200" : "text-xs text-gray-800 dark:text-gray-200"
-                      )}>
-                        {item.product_name}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className={cn(
+                          "font-bold leading-tight",
+                          density === 'spacious' ? "text-sm text-foreground dark:text-foreground" : "text-xs text-foreground dark:text-foreground"
+                        )}>
+                          {item.product_name}
+                        </h4>
+                        {item.quantity >= item.max_stock && (
+                          <span className="text-[10px] font-bold text-red-500 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 rounded-full shrink-0">
+                            Stok maks
+                          </span>
+                        )}
+                      </div>
                       <div className={cn(
                         "font-mono mt-1",
-                        density === 'spacious' ? "text-[11px] text-gray-500 dark:text-gray-400 block" : "hidden"
+                        density === 'spacious' ? "text-[11px] text-muted-foreground dark:text-muted-foreground block" : "hidden"
                       )}>
                         {formatCurrency(item.price)} / {item.unit || 'pcs'}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className={cn(
-                        "font-black text-gray-900 dark:text-gray-100",
+                        "font-black text-foreground dark:text-foreground",
                         density === 'spacious' ? "text-sm" : "text-xs"
                       )}>
                         {formatCurrency(item.subtotal)}
@@ -109,7 +121,7 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                             <input
                               type="number"
                               className={cn(
-                                "px-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-gray-800 dark:text-gray-200 outline-none focus:border-primary-500 ml-1",
+                                "px-1 bg-card dark:bg-background border border-border dark:border-border rounded text-foreground dark:text-foreground outline-none focus:border-primary-500 ml-1",
                                 density === 'spacious' ? "w-16 h-6 text-[10px]" : "w-14 h-5 text-[9px]"
                               )}
                               value={item.discount || ''}
@@ -134,7 +146,8 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                     </div>
 
                     <div className={cn(
-                      "flex items-center bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700",
+                      "flex items-center bg-card dark:bg-background rounded-lg border border-border dark:border-border transition-transform duration-300",
+                      item.product_id === lastAddedId ? "scale-110 shadow-md" : "scale-100",
                       density === 'spacious' ? "p-1" : "p-0.5"
                     )}>
                       <button
@@ -143,19 +156,19 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                           else onUpdateQty(idx, item.quantity - 1);
                         }}
                         className={cn(
-                          "flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-300 transition-colors",
+                          "flex items-center justify-center rounded-md hover:bg-muted dark:hover:bg-muted text-muted-foreground dark:text-muted-foreground transition-colors",
                           density === 'spacious' ? "w-8 h-8" : "w-7 h-7"
                         )}
                       >
                         {item.quantity === 1
-                          ? <Trash2 className={cn("text-red-500 dark:text-red-400", density === 'spacious' ? "w-4 h-4" : "w-3.5 h-3.5")} />
+                          ? <RetroTrash className={cn("text-red-500 dark:text-red-400", density === 'spacious' ? "w-4 h-4" : "w-3.5 h-3.5")} />
                           : <Minus className={density === 'spacious' ? "w-4 h-4" : "w-3.5 h-3.5"} />
                         }
                       </button>
                       <input
                         type="number"
                         className={cn(
-                          "text-center font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 dark:text-gray-100",
+                          "text-center font-bold tabular-nums bg-transparent border-none outline-none text-foreground dark:text-foreground",
                           density === 'spacious' ? "w-9 text-sm" : "w-8 text-xs"
                         )}
                         value={item.quantity}
@@ -165,7 +178,7 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                       <button
                         onClick={() => onUpdateQty(idx, item.quantity + 1)}
                         className={cn(
-                          "flex items-center justify-center rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-300 transition-colors",
+                          "flex items-center justify-center rounded-md hover:bg-muted dark:hover:bg-muted text-muted-foreground dark:text-muted-foreground transition-colors",
                           density === 'spacious' ? "w-8 h-8" : "w-7 h-7"
                         )}
                       >
@@ -181,9 +194,16 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                 <>
                   {/* Nama dan diskon */}
                   <div className="flex flex-col flex-1 min-w-0 pl-2">
-                    <h4 className="font-bold text-[11px] text-gray-800 dark:text-gray-200 leading-none truncate">
-                      {item.product_name}
-                    </h4>
+                    <div className="flex items-center gap-1">
+                      <h4 className="font-bold text-[11px] text-foreground dark:text-foreground leading-none truncate">
+                        {item.product_name}
+                      </h4>
+                      {item.quantity >= item.max_stock && (
+                        <span className="shrink-0 text-[8px] font-bold text-red-500 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-1 rounded-sm leading-tight">
+                          Stok maks
+                        </span>
+                      )}
+                    </div>
                     {item.discount > 0 && (
                       <span className="text-[9px] text-orange-500 dark:text-orange-400 mt-0.5 leading-none">
                         Disc: -{formatCurrency(item.discount)}
@@ -192,36 +212,39 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
                   </div>
 
                   {/* Stepper */}
-                  <div className="flex items-center bg-white dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 shrink-0">
+                  <div className={cn(
+                    "flex items-center bg-card dark:bg-background rounded-md border border-border dark:border-border shrink-0 transition-transform duration-300",
+                    item.product_id === lastAddedId ? "scale-110 shadow-sm mx-1" : "scale-100"
+                  )}>
                     <button
                       onClick={() => {
                         if (item.quantity === 1) onRemove(idx);
                         else onUpdateQty(idx, item.quantity - 1);
                       }}
-                      className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-300 transition-colors"
+                      className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted dark:hover:bg-muted text-muted-foreground dark:text-muted-foreground transition-colors"
                     >
                       {item.quantity === 1
-                        ? <Trash2 className="w-3 h-3 text-red-500 dark:text-red-400" />
+                        ? <RetroTrash className="w-3 h-3 text-red-500 dark:text-red-400" />
                         : <Minus className="w-3 h-3" />
                       }
                     </button>
                     <input
                       type="number"
-                      className="w-7 text-[11px] text-center font-bold tabular-nums bg-transparent border-none outline-none text-gray-900 dark:text-gray-100"
+                      className="w-7 text-[11px] text-center font-bold tabular-nums bg-transparent border-none outline-none text-foreground dark:text-foreground"
                       value={item.quantity}
                       onChange={e => onUpdateQty(idx, parseInt(e.target.value) || 0)}
                       min="1"
                     />
                     <button
                       onClick={() => onUpdateQty(idx, item.quantity + 1)}
-                      className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-300 transition-colors"
+                      className="w-6 h-6 flex items-center justify-center rounded-sm hover:bg-muted dark:hover:bg-muted text-muted-foreground dark:text-muted-foreground transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
 
                   {/* Subtotal */}
-                  <div className="font-black text-xs text-gray-900 dark:text-gray-100 shrink-0 min-w-[60px] text-right">
+                  <div className="font-black text-xs text-foreground dark:text-foreground shrink-0 min-w-[60px] text-right">
                     {formatCurrency(item.subtotal)}
                   </div>
                 </>
@@ -229,8 +252,9 @@ const Cart = memo(function Cart({ items, onUpdateQty, onRemove, onUpdateDiscount
             </div>
           ))}
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 });
 

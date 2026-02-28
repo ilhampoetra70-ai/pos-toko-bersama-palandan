@@ -9,6 +9,7 @@ import { UserRole } from './lib/types';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const MockupPage = lazy(() => import('./pages/MockupPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CashierPage = lazy(() => import('./pages/CashierPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -20,6 +21,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const DatabasePage = lazy(() => import('./pages/DatabasePage'));
 const DebtManagementPage = lazy(() => import('./pages/DebtManagementPage'));
+const InsightPage = lazy(() => import('./pages/InsightPage'));
 
 const PageLoader = () => (
     <div className="flex items-center justify-center h-64">
@@ -34,7 +36,7 @@ interface ProtectedRouteProps {
 
 function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
     const { user, loading } = useAuth();
-    if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-lg text-gray-500">Loading...</div></div>;
+    if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-lg text-muted-foreground">Loading...</div></div>;
     if (!user) return <Navigate to="/login" replace />;
     if (roles && !roles.includes(user.role as UserRole)) return <Navigate to="/" replace />;
     return children as React.ReactElement;
@@ -44,7 +46,7 @@ export default function App() {
     const { user, loading } = useAuth();
 
     if (loading) {
-        return <div className="flex items-center justify-center h-screen"><div className="text-lg text-gray-500">Loading...</div></div>;
+        return <div className="flex items-center justify-center h-screen"><div className="text-lg text-muted-foreground">Loading...</div></div>;
     }
 
     return (
@@ -52,6 +54,7 @@ export default function App() {
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+                    <Route path="/mockup" element={<MockupPage />} />
                     <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                         <Route index element={<DashboardPage />} />
                         <Route path="cashier" element={<CashierPage />} />
@@ -88,6 +91,7 @@ export default function App() {
                                 <SettingsPage />
                             </ProtectedRoute>
                         } />
+                        <Route path="insight" element={<InsightPage />} />
                     </Route>
                 </Routes>
             </Suspense>

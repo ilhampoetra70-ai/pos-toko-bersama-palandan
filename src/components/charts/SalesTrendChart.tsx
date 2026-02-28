@@ -22,12 +22,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl shadow-lg p-3 text-xs">
-            <p className="font-bold text-gray-700 dark:text-gray-300 mb-1.5">{label}</p>
+        <div className="bg-card dark:bg-background border border-border dark:border-border rounded-xl shadow-lg p-3 text-xs">
+            <p className="font-bold text-muted-foreground dark:text-muted-foreground mb-1.5">{label}</p>
             <p className="font-black text-primary-600 dark:text-primary-400 tabular-nums">
                 Rp {d.total?.toLocaleString('id-ID')}
             </p>
-            <p className="text-gray-400 mt-0.5 tabular-nums">{d.count} transaksi</p>
+            <p className="text-muted-foreground mt-0.5 tabular-nums">{d.count} transaksi</p>
         </div>
     );
 };
@@ -62,9 +62,9 @@ export default function SalesTrendChart({ data, hideCard = false }: SalesTrendCh
         <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data} margin={{ top: 10, right: 4, left: 4, bottom: 0 }} barCategoryGap="30%">
                 <CartesianGrid
-                    vertical={false}
-                    strokeWidth={1.5}
-                    className="stroke-gray-300 dark:stroke-gray-600"
+                    strokeDasharray="3 3"
+                    strokeWidth={2}
+                    className="stroke-gray-300 dark:stroke-gray-700"
                 />
                 <XAxis
                     dataKey="date"
@@ -101,9 +101,9 @@ export default function SalesTrendChart({ data, hideCard = false }: SalesTrendCh
     if (hideCard) return chart;
 
     return (
-        <Card className="border-none shadow-sm bg-white dark:bg-gray-950 rounded-[2rem] overflow-hidden">
+        <Card className="border-none shadow-sm bg-card dark:bg-background rounded-[2rem] overflow-hidden">
             <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">
                     Tren Penjualan Harian
                 </CardTitle>
             </CardHeader>

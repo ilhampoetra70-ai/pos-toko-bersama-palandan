@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Product } from '@/lib/types';
 import { esc } from '@/lib/escape';
-import { X, Printer, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Loader2, CheckCircle2 } from 'lucide-react';
+import { RetroPrinter, RetroAlert } from '../components/RetroIcons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -152,15 +153,15 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-gray-950 rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
+            <div className="bg-card dark:bg-background rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b dark:border-border flex items-center justify-between bg-background dark:bg-background">
                     <div>
-                        <h3 className="font-black text-xl text-gray-900 dark:text-gray-100 uppercase tracking-tight">Cetak Batch</h3>
-                        <p className="text-xs text-gray-500 font-medium">{validProducts.length} label siap diproses</p>
+                        <h3 className="font-black text-xl text-foreground dark:text-foreground uppercase tracking-tight">Cetak Batch</h3>
+                        <p className="text-xs text-muted-foreground font-medium">{validProducts.length} label siap diproses</p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-all font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-all font-black"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -172,16 +173,16 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
                             <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{validProducts.length}</div>
                             <div className="text-[10px] font-black text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">Total Label</div>
                         </div>
-                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-4 text-center border border-blue-100 dark:border-blue-900/50">
-                            <div className="text-3xl font-black text-blue-600 dark:text-blue-400">{validProducts.length}</div>
-                            <div className="text-[10px] font-black text-blue-700 dark:text-blue-500 uppercase tracking-widest">Total Halaman</div>
+                        <div className="bg-primary dark:bg-primary/30 rounded-2xl p-4 text-center border border-primary dark:border-primary/50">
+                            <div className="text-3xl font-black text-primary dark:text-primary">{validProducts.length}</div>
+                            <div className="text-[10px] font-black text-primary dark:text-primary uppercase tracking-widest">Total Halaman</div>
                         </div>
                     </div>
 
                     {skippedCount > 0 && (
                         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4">
                             <div className="flex items-center gap-3 text-amber-700 dark:text-amber-400">
-                                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                <RetroAlert className="w-5 h-5 flex-shrink-0" />
                                 <p className="text-xs font-bold leading-tight">
                                     <span className="font-black">{skippedCount} produk</span> dilewati karena tidak memiliki data barcode yang valid.
                                 </p>
@@ -191,16 +192,16 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
 
                     {validProducts.length > 0 && (
                         <div className="space-y-4">
-                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Pratinjau Format</div>
+                            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Pratinjau Format</div>
                             <div
-                                className="mx-auto bg-white border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-2xl p-4 flex flex-col items-center justify-between shadow-inner"
+                                className="mx-auto bg-card border-2 border-dashed border-border dark:border-border rounded-2xl p-4 flex flex-col items-center justify-between shadow-inner"
                                 style={{ width: '180px', height: '140px' }}
                             >
-                                <div className="text-[10px] font-black text-center truncate w-full uppercase tracking-tighter text-gray-900">
+                                <div className="text-[10px] font-black text-center truncate w-full uppercase tracking-tighter text-foreground">
                                     {validProducts[0].name}
                                 </div>
                                 {rendering ? (
-                                    <div className="flex flex-col items-center gap-2 text-gray-400 opacity-50">
+                                    <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-50">
                                         <Loader2 className="w-6 h-6 animate-spin" />
                                         <span className="text-[8px] font-black">RENDERING...</span>
                                     </div>
@@ -208,7 +209,7 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
                                     <canvas ref={sampleCanvasRef} className="max-w-full" />
                                 )}
                             </div>
-                            <p className="text-[10px] font-black text-gray-400 text-center uppercase tracking-widest">
+                            <p className="text-[10px] font-black text-muted-foreground text-center uppercase tracking-widest">
                                 40 x 30 mm • Thermal Label Stock
                             </p>
                         </div>
@@ -216,18 +217,18 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
 
                     {validProducts.length > 1 && (
                         <div className="space-y-3">
-                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Daftar Item ({validProducts.length})</div>
-                            <div className="max-h-48 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-2xl border dark:border-gray-800 divide-y dark:divide-gray-800 shadow-inner">
+                            <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Daftar Item ({validProducts.length})</div>
+                            <div className="max-h-48 overflow-y-auto bg-background dark:bg-background rounded-2xl border dark:border-border divide-y dark:divide-gray-800 shadow-inner">
                                 {validProducts.slice(0, 50).map((p) => (
-                                    <div key={p.id} className="px-4 py-3 flex justify-between items-center group hover:bg-white dark:hover:bg-gray-800 transition-colors">
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate flex-1 mr-4">{p.name}</span>
+                                    <div key={p.id} className="px-4 py-3 flex justify-between items-center group hover:bg-card dark:hover:bg-card transition-colors">
+                                        <span className="text-xs font-bold text-muted-foreground dark:text-muted-foreground truncate flex-1 mr-4">{p.name}</span>
                                         <Badge variant="outline" className="font-mono text-[9px] font-black opacity-50 group-hover:opacity-100 transition-opacity">
                                             {p.barcode}
                                         </Badge>
                                     </div>
                                 ))}
                                 {validProducts.length > 50 && (
-                                    <div className="px-4 py-3 text-[10px] text-gray-400 font-black text-center uppercase tracking-widest bg-gray-100/50 dark:bg-gray-800/50">
+                                    <div className="px-4 py-3 text-[10px] text-muted-foreground font-black text-center uppercase tracking-widest bg-muted/50 dark:bg-card/50">
                                         ...dan {validProducts.length - 50} PRODUK lainnya
                                     </div>
                                 )}
@@ -236,9 +237,9 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
                     )}
 
                     {validProducts.length === 0 && (
-                        <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-3xl border dark:border-gray-800 flex flex-col items-center gap-4">
-                            <AlertTriangle className="w-12 h-12 text-gray-200 dark:text-gray-800" />
-                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-loose text-center px-8">
+                        <div className="text-center py-12 bg-background dark:bg-background rounded-3xl border dark:border-border flex flex-col items-center gap-4">
+                            <RetroAlert className="w-12 h-12 text-muted-foreground dark:text-foreground" />
+                            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest leading-loose text-center px-8">
                                 Tidak ditemukan data barcode yang valid pada pilihan produk Anda.
                             </p>
                         </div>
@@ -247,16 +248,16 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
 
                 {printError && (
                     <div className="px-6 pb-4 -mt-2">
-                        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-2xl text-xs font-medium">
-                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-2xl text-xs font-medium">
+                            <RetroAlert className="w-4 h-4 shrink-0" />
                             <span>{printError}</span>
                         </div>
                     </div>
                 )}
-                <div className="p-6 border-t dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex gap-4">
+                <div className="p-6 border-t dark:border-border bg-background dark:bg-background flex gap-4">
                     <button
                         onClick={onClose}
-                        className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-500 hover:bg-gray-100 transition-all"
+                        className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-widest text-muted-foreground hover:bg-muted transition-all"
                     >
                         Batal
                     </button>
@@ -272,7 +273,7 @@ export default function BatchBarcodeModal({ products, onClose }: BatchBarcodeMod
                             </>
                         ) : (
                             <>
-                                <Printer className="w-4 h-4" />
+                                <RetroPrinter className="w-4 h-4" />
                                 <span>Cetak {validProducts.length} Label</span>
                             </>
                         )}

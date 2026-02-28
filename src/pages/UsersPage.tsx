@@ -1,20 +1,6 @@
 import { useState, useEffect, memo } from 'react';
-import {
-  UserPlus,
-  Users,
-  Shield,
-  UserCheck,
-  UserX,
-  Edit3,
-  Trash2,
-  Eye,
-  EyeOff,
-  MoreVertical,
-  CheckCircle2,
-  XCircle,
-  Search,
-  Key
-} from 'lucide-react';
+import { UserPlus, Shield, UserCheck, UserX, Edit3, Eye, EyeOff, MoreVertical, CheckCircle2, XCircle, Search, Key } from 'lucide-react';
+import { RetroUsers, RetroTrash } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +44,7 @@ export default memo(function UsersPage() {
   const [form, setForm] = useState({ username: '', password: '', name: '', role: 'cashier', showPassword: false });
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [userToDelete, setUserToDelete] = useState<any>(null);
 
   useEffect(() => { loadUsers(); }, []);
 
@@ -110,9 +97,12 @@ export default memo(function UsersPage() {
     loadUsers();
   };
 
-  const handleDelete = async (user: any) => {
-    if (!confirm(`Hapus user "${user.name}"?`)) return;
-    await window.api.deleteUser(user.id);
+  const handleDelete = (user: any) => setUserToDelete(user);
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    await window.api.deleteUser(userToDelete.id);
+    setUserToDelete(null);
     loadUsers();
   };
 
@@ -122,17 +112,17 @@ export default memo(function UsersPage() {
   );
 
   const roleConfig = {
-    admin: { label: 'Admin', color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400' },
-    supervisor: { label: 'Supervisor', color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400' },
-    cashier: { label: 'Cashier', color: 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400' }
+    admin: { label: 'Admin', color: 'bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400' },
+    supervisor: { label: 'Supervisor', color: 'bg-primary text-primary-foreground dark:bg-primary/30 dark:text-primary' },
+    cashier: { label: 'Cashier', color: 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400' }
   } as any;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Pengguna</h2>
-          <p className="text-sm text-gray-500 font-medium">Manajemen hak akses dan akun karyawan</p>
+          <h2 className="text-3xl font-black text-foreground dark:text-foreground tracking-tight">Pengguna</h2>
+          <p className="text-sm text-muted-foreground font-medium">Manajemen hak akses dan akun karyawan</p>
         </div>
         <Button onClick={() => { resetForm(); setShowForm(true); }} className="h-11 px-6 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 gap-2 font-bold">
           <UserPlus className="w-5 h-5" /> Tambah User
@@ -142,10 +132,10 @@ export default memo(function UsersPage() {
       <Card className="border-none shadow-sm">
         <CardContent className="p-4">
           <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+            <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-3.5" />
             <Input
               placeholder="Cari user berdasarkan nama atau username..."
-              className="pl-10 h-11 bg-gray-50/50 dark:bg-gray-800/50 border-none shadow-inner"
+              className="pl-10 h-11 bg-background/50 dark:bg-card/50 border-none shadow-inner"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -153,34 +143,34 @@ export default memo(function UsersPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-gray-50/80 dark:bg-gray-900 border-b dark:border-gray-800 sticky top-0 z-10 backdrop-blur-sm">
-            <TableRow className="border-b-2">
-              <TableHead className="font-black text-[11px] uppercase tracking-widest py-4">Nama & Username</TableHead>
-              <TableHead className="font-black text-[11px] uppercase tracking-widest">Jabatan / Role</TableHead>
-              <TableHead className="font-black text-[11px] uppercase tracking-widest text-center">Status</TableHead>
-              <TableHead className="font-black text-[11px] uppercase tracking-widest text-right">Aksi</TableHead>
+      <Card className="border border-border shadow-sm overflow-hidden">
+        <Table className="zebra-rows">
+          <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+            <TableRow className="border-b border-border">
+              <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Nama & Username</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Jabatan / Role</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground text-center">Status</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground text-right">Aksi</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y text-sm">
+          <TableBody className="text-sm">
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-20 text-gray-400">
-                  <Users className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
+                  <RetroUsers className="w-16 h-16 mx-auto mb-4 opacity-10" />
                   <p className="font-bold text-lg">Tidak ada pengguna ditemukan</p>
                 </TableCell>
               </TableRow>
             ) : filteredUsers.map(user => (
-              <TableRow key={user.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors h-16">
+              <TableRow key={user.id} className="hover:bg-muted/30 transition-colors h-16 border-b border-border">
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-black text-gray-400 dark:text-gray-500 group-hover:bg-primary-50 dark:group-hover:bg-primary-950/30 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors uppercase">
+                    <div className="w-10 h-10 rounded-full bg-muted dark:bg-card flex items-center justify-center font-black text-muted-foreground dark:text-muted-foreground group-hover:bg-primary-50 dark:group-hover:bg-primary-950/30 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors uppercase">
                       {user.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-black text-gray-900 dark:text-gray-100">{user.name}</div>
-                      <div className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">@{user.username}</div>
+                      <div className="font-black text-foreground dark:text-foreground">{user.name}</div>
+                      <div className="text-[10px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">@{user.username}</div>
                     </div>
                   </div>
                 </TableCell>
@@ -197,8 +187,8 @@ export default memo(function UsersPage() {
                     className={cn(
                       "font-black text-[10px] uppercase h-7 px-3 rounded-full",
                       user.active
-                        ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/40"
-                        : "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/40"
+                        ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-900/40"
+                        : "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/40"
                     )}
                   >
                     {user.active ? <UserCheck className="w-3.5 h-3.5 mr-1.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />}
@@ -211,7 +201,7 @@ export default memo(function UsersPage() {
                       <Edit3 className="w-4 h-4" />
                     </Button>
                     <Button variant="ghost" size="icon" className="text-red-500 h-9 w-9 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={() => handleDelete(user)}>
-                      <Trash2 className="w-4 h-4" />
+                      <RetroTrash className="w-4 h-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -222,15 +212,15 @@ export default memo(function UsersPage() {
       </Card>
 
       <Dialog open={showForm} onOpenChange={resetForm}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white dark:bg-gray-950 border-none flex flex-col">
-          <DialogHeader className="p-6 border-b dark:border-gray-800 shrink-0 bg-gray-50/50 dark:bg-gray-900/50">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-card dark:bg-background border-none flex flex-col">
+          <DialogHeader className="p-6 border-b dark:border-border shrink-0 bg-background/50 dark:bg-background/50">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center text-primary-600 dark:text-primary-400">
-                <Users className="w-6 h-6" />
+                <RetroUsers className="w-6 h-6" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-black text-gray-900 dark:text-gray-100">{editing ? 'Edit Pengguna' : 'Tambah Pengguna'}</DialogTitle>
-                <DialogDescription className="text-gray-500 font-medium">Kelola kredensial dan hak akses pengguna</DialogDescription>
+                <DialogTitle className="text-xl font-black text-foreground dark:text-foreground">{editing ? 'Edit Pengguna' : 'Tambah Pengguna'}</DialogTitle>
+                <DialogDescription className="text-muted-foreground font-medium">Kelola kredensial dan hak akses pengguna</DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -245,9 +235,9 @@ export default memo(function UsersPage() {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Username</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Username</label>
                 <Input
-                  className="h-11 bg-gray-50 dark:bg-gray-900 border-none shadow-inner"
+                  className="h-11 bg-background dark:bg-background border-none shadow-inner"
                   value={form.username}
                   onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
                   required
@@ -257,9 +247,9 @@ export default memo(function UsersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nama Lengkap</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Nama Lengkap</label>
                 <Input
-                  className="h-11 bg-gray-50 dark:bg-gray-900 border-none shadow-inner"
+                  className="h-11 bg-background dark:bg-background border-none shadow-inner"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   required
@@ -268,14 +258,14 @@ export default memo(function UsersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">
                   Password {editing && '(Kosongkan jika tidak diubah)'}
                 </label>
                 <div className="relative">
-                  <Key className="w-4 h-4 text-gray-400 absolute left-3 top-3.5" />
+                  <Key className="w-4 h-4 text-muted-foreground absolute left-3 top-3.5" />
                   <Input
                     type={form.showPassword ? 'text' : 'password'}
-                    className="pl-10 h-11 bg-gray-50 dark:bg-gray-900 border-none shadow-inner"
+                    className="pl-10 h-11 bg-background dark:bg-background border-none shadow-inner"
                     value={form.password}
                     onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                     {...(!editing && { required: true })}
@@ -286,17 +276,17 @@ export default memo(function UsersPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => setForm(f => ({ ...f, showPassword: !f.showPassword }))}
-                    className="absolute right-1.5 top-1.5 h-8 w-8 hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                    className="absolute right-1.5 top-1.5 h-8 w-8 hover:bg-card dark:hover:bg-card transition-colors"
                   >
-                    {form.showPassword ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                    {form.showPassword ? <EyeOff className="w-4 h-4 text-muted-foreground" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Hak Akses / Role</label>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Hak Akses / Role</label>
                 <Select value={form.role} onValueChange={val => setForm(f => ({ ...f, role: val }))}>
-                  <SelectTrigger className="h-11 bg-gray-50 dark:bg-gray-900 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-800">
+                  <SelectTrigger className="h-11 bg-background dark:bg-background border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-foreground/10">
                     <SelectValue placeholder="Pilih Role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -308,13 +298,28 @@ export default memo(function UsersPage() {
               </div>
             </div>
 
-            <DialogFooter className="p-6 bg-gray-50/50 dark:bg-gray-900/50 border-t dark:border-gray-800 gap-3 shrink-0">
-              <Button type="button" variant="outline" onClick={resetForm} className="h-11 px-6 font-bold flex-1 border-gray-200 dark:border-gray-800">Batal</Button>
+            <DialogFooter className="p-6 bg-background/50 dark:bg-background/50 border-t dark:border-border gap-3 shrink-0">
+              <Button type="button" variant="outline" onClick={resetForm} className="h-11 px-6 font-bold flex-1 border-border dark:border-border">Batal</Button>
               <Button type="submit" className="h-11 px-8 font-black bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20 flex-1">
                 <CheckCircle2 className="w-4 h-4 mr-2" /> Simpan Data
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-black">Hapus Pengguna</DialogTitle>
+            <DialogDescription>
+              Yakin ingin menghapus <strong>{userToDelete?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setUserToDelete(null)} className="font-bold">Batal</Button>
+            <Button onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white font-black">Hapus</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

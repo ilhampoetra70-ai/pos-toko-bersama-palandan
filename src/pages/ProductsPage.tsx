@@ -16,27 +16,8 @@ import { formatCurrency } from '../utils/format';
 import ExcelManager from '../components/ExcelManager';
 import BarcodePreviewModal from '../components/BarcodePreviewModal';
 import BatchBarcodeModal from '../components/BatchBarcodeModal';
-import {
-    Package,
-    Plus,
-    FileSpreadsheet,
-    Search,
-    Filter,
-    Download,
-    Trash2,
-    Edit,
-    Barcode,
-    ChevronDown,
-    ChevronLeft,
-    ChevronRight,
-    MoreVertical,
-    History,
-    AlertCircle,
-    RefreshCw,
-    LayoutGrid,
-    Settings2,
-    Check
-} from 'lucide-react';
+import { Plus, FileSpreadsheet, Search, Filter, Download, Edit, Barcode, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, AlertCircle, LayoutGrid, Settings2, Check } from 'lucide-react';
+import { RetroBox, RetroTrash, RetroHistory, RetroRefresh } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,12 +56,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const CATEGORY_COLORS = [
-    { text: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-400/10' },
-    { text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-400/10' },
-    { text: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10' },
+    { text: 'text-primary-700 dark:text-primary-300', bg: 'bg-primary/10 dark:bg-primary/20' },
+    { text: 'text-orange-800 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-400/10' },
+    { text: 'text-purple-800 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10' },
     { text: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-50 dark:bg-yellow-400/10' },
     { text: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-400/10' },
-    { text: 'text-cyan-600 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-400/10' },
+    { text: 'text-cyan-800 dark:text-cyan-400', bg: 'bg-cyan-50 dark:bg-cyan-400/10' },
 ];
 
 // Format number with dot separator (1000 → 1.000)
@@ -113,6 +94,10 @@ export default function ProductsPage() {
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [barcodePreviewProduct, setBarcodePreviewProduct] = useState<any>(null);
     const [showBatchBarcode, setShowBatchBarcode] = useState(false);
+    const [productToDelete, setProductToDelete] = useState<any>(null);
+    const [catToDelete, setCatToDelete] = useState<any>(null);
+    const [catError, setCatError] = useState('');
+    const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -311,8 +296,14 @@ export default function ProductsPage() {
         }
     };
 
-    const handleDelete = async (product: any) => {
-        if (!confirm(`Hapus produk "${product.name}"?`)) return;
+    const handleDelete = (product: any) => {
+        setProductToDelete(product);
+    };
+
+    const confirmDeleteProduct = () => {
+        if (!productToDelete) return;
+        const product = productToDelete;
+        setProductToDelete(null);
         deleteProductMutation.mutate(product.id, {
             onSuccess: () => {
                 if (expandedProduct === product.id) {
@@ -324,18 +315,25 @@ export default function ProductsPage() {
 
     const handleCatSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setCatError('');
         createCategoryMutation.mutate(catForm.name, {
             onSuccess: () => {
                 setCatForm({ name: '', description: '' });
             },
             onError: (err: any) => {
-                alert('Gagal: ' + err.message);
+                setCatError('Gagal: ' + err.message);
             }
         });
     };
 
-    const handleDeleteCategory = async (cat: any) => {
-        if (!confirm(`Hapus kategori "${cat.name}"?`)) return;
+    const handleDeleteCategory = (cat: any) => {
+        setCatToDelete(cat);
+    };
+
+    const confirmDeleteCategory = () => {
+        if (!catToDelete) return;
+        const cat = catToDelete;
+        setCatToDelete(null);
         deleteCategoryMutation.mutate(cat.id);
     };
 
@@ -356,9 +354,13 @@ export default function ProductsPage() {
         );
     }, []);
 
-    const handleBulkDelete = async () => {
+    const handleBulkDelete = () => {
         if (selectedProducts.length === 0) return;
-        if (!confirm(`Hapus ${selectedProducts.length} produk yang dipilih?`)) return;
+        setShowBulkDeleteDialog(true);
+    };
+
+    const confirmBulkDelete = () => {
+        setShowBulkDeleteDialog(false);
         bulkDeleteMutation.mutate(selectedProducts);
     };
 
@@ -376,8 +378,8 @@ export default function ProductsPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Produk</h2>
-                    <p className="text-sm text-gray-500 font-medium">Kelola inventaris dan katalog produk</p>
+                    <h2 className="text-3xl font-black text-foreground dark:text-foreground tracking-tight">Produk</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Kelola inventaris dan katalog produk</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {canEdit && (
@@ -403,9 +405,9 @@ export default function ProductsPage() {
                 <CardContent className="p-4">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1">
-                            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
+                            <Search className="w-5 h-5 text-muted-foreground absolute left-3 top-3" />
                             <Input
-                                className="pl-10 h-11 bg-gray-50/50 border-none shadow-inner"
+                                className="pl-10 h-11 bg-background/50 border-none shadow-inner"
                                 placeholder="Cari produk berdasarkan nama atau barcode..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
@@ -413,9 +415,9 @@ export default function ProductsPage() {
                         </div>
                         <div className="w-full md:w-64">
                             <Select value={filterCategory} onValueChange={setFilterCategory}>
-                                <SelectTrigger className="h-11 bg-gray-50/50 border-none shadow-inner data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                                <SelectTrigger className="h-11 bg-background/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                                     <div className="flex items-center gap-2">
-                                        <Filter className="w-4 h-4 text-gray-400" />
+                                        <Filter className="w-4 h-4 text-muted-foreground" />
                                         <SelectValue placeholder="Semua Kategori" />
                                     </div>
                                 </SelectTrigger>
@@ -435,7 +437,7 @@ export default function ProductsPage() {
                 <div className="bg-primary-600 text-white rounded-2xl p-4 shadow-lg shadow-primary-600/20 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center font-bold">
+                            <div className="w-10 h-10 bg-card/20 rounded-xl flex items-center justify-center font-bold">
                                 {selectedProducts.length}
                             </div>
                             <p className="font-bold">Produk dipilih</p>
@@ -446,10 +448,10 @@ export default function ProductsPage() {
                                 Print Labels
                             </Button>
                             <Button variant="destructive" size="sm" onClick={handleBulkDelete} className="font-bold gap-2">
-                                <Trash2 className="w-4 h-4" />
+                                <RetroTrash className="w-4 h-4" />
                                 Hapus
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedProducts([])} className="text-white hover:bg-white/10 decoration-white">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedProducts([])} className="text-white hover:bg-card/10 decoration-white">
                                 Batal
                             </Button>
                         </div>
@@ -460,47 +462,47 @@ export default function ProductsPage() {
             <Card className="border-none shadow-sm overflow-hidden">
                 <div className="h-[calc(100vh-420px)] overflow-y-auto custom-scrollbar">
                     <Table className="zebra-rows">
-                        <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 sticky top-0 z-10 backdrop-blur-sm">
-                            <TableRow className="border-b-2">
+                        <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                            <TableRow className="border-b border-border">
                                 {canEdit && (
                                     <TableHead className="w-12 text-center">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4 rounded-md border-gray-300 text-primary-600 focus:ring-primary-500"
+                                            className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
                                             checked={products.length > 0 && selectedProducts.length === products.length}
                                             onChange={toggleSelectAll}
                                         />
                                     </TableHead>
                                 )}
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
                                     Barcode {sortConfig.key === 'barcode' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
                                     Nama Produk {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
+                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
                                     Kategori {sortConfig.key === 'category_name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
                                 {hasRole('admin', 'supervisor') && (
-                                    <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
+                                    <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
                                         Modal {sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                     </TableHead>
                                 )}
-                                <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
                                     Harga {sortConfig.key === 'price' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="text-right font-black text-[11px] uppercase tracking-widest cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
+                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
                                     Stok {sortConfig.key === 'stock' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="text-center font-black text-[11px] uppercase tracking-widest">Unit</TableHead>
-                                {canEdit && <TableHead className="text-right font-black text-[11px] uppercase tracking-widest">Aksi</TableHead>}
+                                <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Unit</TableHead>
+                                {canEdit && <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Aksi</TableHead>}
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="divide-y">
+                        <TableBody>
                             {products.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={10} className="text-center py-20 text-gray-400">
-                                        <Package className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                                    <TableCell colSpan={10} className="text-center py-20 text-muted-foreground">
+                                        <RetroBox className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                         <p className="font-bold text-lg">Tidak ada produk ditemukan</p>
                                         <p className="text-sm">Silakan tambah produk baru atau sesuaikan filter</p>
                                     </TableCell>
@@ -508,22 +510,22 @@ export default function ProductsPage() {
                             ) : products.map(p => (
                                 <React.Fragment key={p.id}>
                                     <TableRow className={cn(
-                                        "hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors",
+                                        "hover:bg-muted/30 transition-colors border-b border-border",
                                         selectedProducts.includes(p.id) && "bg-primary-50 dark:bg-primary-900/10",
-                                        expandedProduct === p.id && "bg-blue-50/50 dark:bg-blue-900/10"
+                                        expandedProduct === p.id && "bg-primary/50 dark:bg-primary/10"
                                     )}>
                                         {canEdit && (
                                             <TableCell className="text-center">
                                                 <input
                                                     type="checkbox"
-                                                    className="w-4 h-4 rounded-md border-gray-300 text-primary-600 focus:ring-primary-500"
+                                                    className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
                                                     checked={selectedProducts.includes(p.id)}
                                                     onChange={() => toggleSelectProduct(p.id)}
                                                 />
                                             </TableCell>
                                         )}
-                                        <TableCell className="font-sans text-xs text-gray-500">{p.barcode || '-'}</TableCell>
-                                        <TableCell className="font-bold text-gray-900 dark:text-gray-100">{p.name}</TableCell>
+                                        <TableCell className="font-sans text-xs text-muted-foreground">{p.barcode || '-'}</TableCell>
+                                        <TableCell className="font-bold text-foreground dark:text-foreground">{p.name}</TableCell>
                                         <TableCell>
                                             <span className={cn(
                                                 "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
@@ -534,7 +536,7 @@ export default function ProductsPage() {
                                             </span>
                                         </TableCell>
                                         {hasRole('admin', 'supervisor') && (
-                                            <TableCell className="text-right text-gray-500 font-medium">{formatCurrency(p.cost)}</TableCell>
+                                            <TableCell className="text-right text-muted-foreground font-medium">{formatCurrency(p.cost)}</TableCell>
                                         )}
                                         <TableCell className="text-right font-black text-primary-700 dark:text-primary-400">{formatCurrency(p.price)}</TableCell>
                                         <TableCell className="text-right">
@@ -542,10 +544,10 @@ export default function ProductsPage() {
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => toggleStockHistory(p.id)}
-                                                className={cn("font-black gap-1.5 h-7", p.stock <= 5 ? "text-red-600 bg-red-50 hover:bg-red-100" : "text-gray-900")}
+                                                className={cn("font-black gap-1.5 h-7", p.stock <= 5 ? "text-red-800 bg-red-50 hover:bg-red-100" : "text-foreground")}
                                             >
                                                 {p.stock}
-                                                <History className={cn("w-3 h-3 transition-transform", expandedProduct === p.id && "rotate-180")} />
+                                                <RetroHistory className={cn("w-3 h-3 transition-transform", expandedProduct === p.id && "rotate-180")} />
                                             </Button>
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -568,8 +570,8 @@ export default function ProductsPage() {
                                                         <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
                                                             <Edit className="w-4 h-4" /> Edit
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-600 focus:text-red-600 focus:bg-red-50">
-                                                            <Trash2 className="w-4 h-4" /> Hapus
+                                                        <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-800 focus:text-red-600 focus:bg-red-50">
+                                                            <RetroTrash className="w-4 h-4" /> Hapus
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -577,7 +579,7 @@ export default function ProductsPage() {
                                         )}
                                     </TableRow>
                                     {expandedProduct === p.id && (
-                                        <TableRow className="bg-blue-50/30 dark:bg-blue-900/5">
+                                        <TableRow className="bg-primary/30 dark:bg-primary/5">
                                             <TableCell colSpan={10} className="p-0 border-b">
                                                 <StockHistoryPanelWrapper
                                                     productId={p.id}
@@ -593,9 +595,9 @@ export default function ProductsPage() {
                 </div>
             </Card>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-950 rounded-2xl shadow-sm border border-transparent">
-                <div className="text-sm font-bold text-gray-500">
-                    Showing <span className="text-gray-900">{Math.min(products.length, pageSize)}</span> of <span className="text-gray-900">{totalProducts}</span> items
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card dark:bg-background rounded-2xl shadow-sm border border-transparent">
+                <div className="text-sm font-bold text-muted-foreground">
+                    Showing <span className="text-foreground">{Math.min(products.length, pageSize)}</span> of <span className="text-foreground">{totalProducts}</span> items
                 </div>
                 <div className="flex items-center gap-2">
                     <Button
@@ -645,9 +647,9 @@ export default function ProductsPage() {
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-500">Rows:</span>
+                    <span className="text-sm font-bold text-muted-foreground">Rows:</span>
                     <Select value={String(pageSize)} onValueChange={val => { setPageSize(Number(val)); setPage(1); }}>
-                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-gray-100/50 data-[state=open]:bg-white dark:data-[state=open]:bg-gray-900">
+                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-muted/50 data-[state=open]:bg-card dark:data-[state=open]:bg-background">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -660,13 +662,13 @@ export default function ProductsPage() {
             </div>
 
             <Dialog open={showForm} onOpenChange={resetForm}>
-                <DialogContent className="sm:max-w-lg h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
+                <DialogContent className="sm:max-w-lg h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="p-6 pb-4 border-b shrink-0">
                         <DialogTitle className="text-xl font-black">{editing ? 'Edit Produk' : 'Produk Baru'}</DialogTitle>
                         <DialogDescription>Isi detail produk dengan lengkap</DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto min-h-0 bg-white dark:bg-gray-950">
+                    <div className="flex-1 overflow-y-auto min-h-0 bg-card dark:bg-background">
                         <form id="product-form" onSubmit={handleSubmit} className="p-6 space-y-5">
                             {error && (
                                 <div className="alert-adaptive-error">
@@ -711,12 +713,12 @@ export default function ProductsPage() {
                                         </div>
                                         <Input
                                             type="text"
-                                            className={cn("h-11 font-bold", !isManualCost && "bg-gray-100 text-gray-500 cursor-not-allowed")}
+                                            className={cn("h-11 font-bold", !isManualCost && "bg-muted text-muted-foreground cursor-not-allowed")}
                                             value={formatNumberLocal(form.cost)}
                                             onChange={e => handleNumberChange('cost', e.target.value)}
                                             readOnly={!isManualCost}
                                         />
-                                        {!isManualCost && <p className="text-[9px] font-bold text-gray-400">OTOMATIS (MARGIN {defaultMargin}%)</p>}
+                                        {!isManualCost && <p className="text-[9px] font-bold text-muted-foreground">OTOMATIS (MARGIN {defaultMargin}%)</p>}
                                     </div>
                                 )}
                                 <div className="space-y-1.5">
@@ -750,7 +752,7 @@ export default function ProductsPage() {
                         </form>
                     </div>
 
-                    <DialogFooter className="p-6 border-t bg-gray-50/50 shrink-0 gap-2">
+                    <DialogFooter className="p-6 border-t bg-background/50 shrink-0 gap-2">
                         <Button type="button" variant="ghost" onClick={resetForm} className="h-12 font-bold flex-1">Batal</Button>
                         <Button type="submit" form="product-form" className="h-12 font-bold flex-1 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">Simpan Produk</Button>
                     </DialogFooter>
@@ -758,7 +760,7 @@ export default function ProductsPage() {
             </Dialog>
 
             <Dialog open={showCatForm} onOpenChange={() => setShowCatForm(false)}>
-                <DialogContent className="sm:max-w-md p-0 overflow-hidden flex flex-col bg-white dark:bg-gray-950">
+                <DialogContent className="sm:max-w-md p-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="p-6 border-b shrink-0">
                         <DialogTitle className="text-xl font-black">Kelola Kategori</DialogTitle>
                         <DialogDescription>Tambah atau hapus kategori produk</DialogDescription>
@@ -766,30 +768,36 @@ export default function ProductsPage() {
 
                     <div className="p-6 space-y-4 flex-1 overflow-y-auto">
                         <form onSubmit={handleCatSubmit} className="flex gap-2">
-                            <Input className="flex-1 h-11" placeholder="Nama kategori baru..." value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} required />
+                            <Input className="flex-1 h-11" placeholder="Nama kategori baru..." value={catForm.name} onChange={e => { setCatForm(f => ({ ...f, name: e.target.value })); setCatError(''); }} required />
                             <Button type="submit" className="h-11 font-bold bg-primary-600 hover:bg-primary-700 shadow-md shadow-primary-600/10">
                                 <Plus className="w-4 h-4 mr-2" /> Tambah
                             </Button>
                         </form>
+                        {catError && (
+                            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded-xl text-xs font-bold">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                <span>{catError}</span>
+                            </div>
+                        )}
 
-                        <ScrollArea className="h-64 border rounded-2xl p-3 bg-gray-50/30">
+                        <ScrollArea className="h-64 border rounded-2xl p-3 bg-background/30">
                             <div className="space-y-2">
                                 {categories.map(cat => (
-                                    <div key={cat.id} className="flex items-center justify-between p-3.5 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm group">
-                                        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{cat.name}</span>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
-                                            <Trash2 className="w-4 h-4" />
+                                    <div key={cat.id} className="flex items-center justify-between p-3.5 bg-card dark:bg-background rounded-xl border border-border dark:border-border shadow-sm group">
+                                        <span className="text-sm font-bold text-muted-foreground dark:text-muted-foreground">{cat.name}</span>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="h-8 w-8 text-red-400 hover:text-red-800 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
+                                            <RetroTrash className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 ))}
                                 {categories.length === 0 && (
-                                    <div className="text-center py-10 text-gray-400 italic text-sm font-medium">Belum ada kategori</div>
+                                    <div className="text-center py-10 text-muted-foreground italic text-sm font-medium">Belum ada kategori</div>
                                 )}
                             </div>
                         </ScrollArea>
                     </div>
 
-                    <DialogFooter className="p-4 border-t bg-gray-50/50 shrink-0">
+                    <DialogFooter className="p-4 border-t bg-background/50 shrink-0">
                         <Button variant="ghost" onClick={() => setShowCatForm(false)} className="w-full font-bold h-11">Tutup</Button>
                     </DialogFooter>
                 </DialogContent>
@@ -798,6 +806,51 @@ export default function ProductsPage() {
             {showExcel && <ExcelManager onClose={() => setShowExcel(false)} />}
             {barcodePreviewProduct && <BarcodePreviewModal product={barcodePreviewProduct} onClose={() => setBarcodePreviewProduct(null)} />}
             {showBatchBarcode && <BatchBarcodeModal products={products.filter(p => selectedProducts.includes(p.id))} onClose={() => setShowBatchBarcode(false)} />}
+
+            <Dialog open={!!productToDelete} onOpenChange={() => setProductToDelete(null)}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="font-black">Hapus Produk</DialogTitle>
+                        <DialogDescription>
+                            Yakin ingin menghapus produk <strong>{productToDelete?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setProductToDelete(null)} className="font-bold">Batal</Button>
+                        <Button onClick={confirmDeleteProduct} className="bg-red-600 hover:bg-red-700 text-white font-black">Hapus</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!catToDelete} onOpenChange={() => setCatToDelete(null)}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="font-black">Hapus Kategori</DialogTitle>
+                        <DialogDescription>
+                            Yakin ingin menghapus kategori <strong>{catToDelete?.name}</strong>? Produk dalam kategori ini tidak akan ikut terhapus.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setCatToDelete(null)} className="font-bold">Batal</Button>
+                        <Button onClick={confirmDeleteCategory} className="bg-red-600 hover:bg-red-700 text-white font-black">Hapus</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="font-black">Hapus Massal</DialogTitle>
+                        <DialogDescription>
+                            Yakin ingin menghapus <strong>{selectedProducts.length} produk</strong> yang dipilih? Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowBulkDeleteDialog(false)} className="font-bold">Batal</Button>
+                        <Button onClick={confirmBulkDelete} className="bg-red-600 hover:bg-red-700 text-white font-black">Hapus {selectedProducts.length} Produk</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -812,17 +865,17 @@ const StockHistoryPanel = React.memo(function StockHistoryPanel({ history, loadi
     const displayedHistory = showSales ? history : history.filter((h: any) => h.event_type !== 'sale');
 
     return (
-        <div className="p-6 bg-white dark:bg-gray-900 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="p-6 bg-card dark:bg-background animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-xl text-blue-600"><History className="w-5 h-5" /></div>
+                    <div className="p-2 bg-primary/10 rounded-xl text-primary-700 dark:text-primary-400"><RetroHistory className="w-5 h-5" /></div>
                     <div>
-                        <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">Riwayat Perubahan Stok</h4>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{productName}</p>
+                        <h4 className="text-sm font-bold text-foreground dark:text-foreground">Riwayat Perubahan Stok</h4>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{productName}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-xs font-black text-gray-500 cursor-pointer bg-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors">
+                    <label className="flex items-center gap-2 text-xs font-black text-muted-foreground cursor-pointer bg-muted px-3 py-1.5 rounded-full hover:bg-muted transition-colors">
                         <input type="checkbox" className="rounded w-3.5 h-3.5" checked={showSales} onChange={e => setShowSales(e.target.checked)} />
                         TAMPILKAN PENJUALAN
                     </label>
@@ -830,39 +883,39 @@ const StockHistoryPanel = React.memo(function StockHistoryPanel({ history, loadi
             </div>
 
             <div className="border rounded-2xl overflow-hidden shadow-sm">
-                <Table>
-                    <TableHeader className="bg-gray-50">
-                        <TableRow>
-                            <TableHead className="font-black text-[10px] h-10">WAKTU</TableHead>
-                            <TableHead className="font-black text-[10px] h-10">AKSI</TableHead>
-                            <TableHead className="text-right font-black text-[10px] h-10 text-blue-600">AWAL</TableHead>
-                            <TableHead className="text-right font-black text-[10px] h-10 text-orange-600">PERUBAHAN</TableHead>
-                            <TableHead className="text-right font-black text-[10px] h-10 text-green-600">AKHIR</TableHead>
-                            <TableHead className="font-black text-[10px] h-10">USER/SUMBER</TableHead>
+                <Table className="zebra-rows">
+                    <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                        <TableRow className="border-b border-border">
+                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">WAKTU</TableHead>
+                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">AKSI</TableHead>
+                            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-3 text-primary">AWAL</TableHead>
+                            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-3 text-orange-600">PERUBAHAN</TableHead>
+                            <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-3 text-green-600">AKHIR</TableHead>
+                            <TableHead className="font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">USER/SUMBER</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-10"><RefreshCw className="w-5 h-5 animate-spin mx-auto opacity-20" /></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="text-center py-10"><RetroRefresh className="w-5 h-5 animate-spin mx-auto opacity-20" /></TableCell></TableRow>
                         ) : displayedHistory.length === 0 ? (
-                            <TableRow><TableCell colSpan={6} className="text-center py-10 text-gray-400 font-medium italic">Tidak ada catatan riwayat</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-medium italic">Tidak ada catatan riwayat</TableCell></TableRow>
                         ) : displayedHistory.map((h: any, i: number) => (
-                            <TableRow key={i} className="hover:bg-gray-50/50">
-                                <TableCell className="text-xs font-medium text-gray-500">{new Date(h.created_at).toLocaleString('id-ID')}</TableCell>
+                            <TableRow key={i} className="hover:bg-muted/30 transition-colors border-b border-border">
+                                <TableCell className="text-xs font-medium text-muted-foreground">{new Date(h.created_at).toLocaleString('id-ID')}</TableCell>
                                 <TableCell>
                                     <Badge className={cn(
                                         "font-bold text-[9px] uppercase tracking-tighter px-1.5 h-5",
-                                        h.event_type === 'sale' ? "bg-purple-100 text-purple-700 hover:bg-purple-100 shadow-none" : "bg-blue-100 text-blue-700 hover:bg-blue-100 shadow-none"
+                                        h.event_type === 'sale' ? "bg-purple-100 text-purple-800 hover:bg-purple-100 shadow-none" : "bg-primary text-primary-foreground hover:bg-primary shadow-none"
                                     )}>
                                         {h.event_type}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-right font-bold text-xs text-gray-400">{h.quantity_before}</TableCell>
+                                <TableCell className="text-right font-bold text-xs text-muted-foreground">{h.quantity_before}</TableCell>
                                 <TableCell className={cn("text-right font-black text-xs", h.quantity_change > 0 ? "text-green-600" : "text-red-600")}>
                                     {h.quantity_change > 0 ? `+${h.quantity_change}` : h.quantity_change}
                                 </TableCell>
-                                <TableCell className="text-right font-black text-xs text-gray-900 dark:text-gray-100">{h.quantity_after}</TableCell>
-                                <TableCell className="text-xs text-gray-500 font-medium">
+                                <TableCell className="text-right font-black text-xs text-foreground dark:text-foreground">{h.quantity_after}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground font-medium">
                                     {h.user_name || 'System'} <span className="opacity-50">— {h.reference_id || 'manual'}</span>
                                 </TableCell>
                             </TableRow>

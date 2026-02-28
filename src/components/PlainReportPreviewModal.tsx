@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { X, Printer, Save, FileText, FileCode } from 'lucide-react';
+import { X, Save, FileCode } from 'lucide-react';
+import { RetroPrinter, RetroReceipt } from '../components/RetroIcons';
 import { cn } from '@/lib/utils';
 
 interface PlainReportPreviewModalProps {
@@ -13,9 +14,9 @@ export default function PlainReportPreviewModal({ text, onClose, onPrint, onSave
     return (
         <div className="fixed inset-0 bg-black/80 flex flex-col z-50 animate-in fade-in duration-300">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-8 py-5 flex items-center justify-between shrink-0 shadow-lg z-10">
+            <div className="bg-card dark:bg-background border-b border-border dark:border-border px-8 py-5 flex items-center justify-between shrink-0 shadow-lg z-10">
                 <div className="flex items-center gap-6">
-                    <h2 className="text-xl font-black text-gray-900 dark:text-gray-100 tracking-tight flex items-center gap-3">
+                    <h2 className="text-xl font-black text-foreground dark:text-foreground tracking-tight flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center">
                             <FileCode className="w-6 h-6 text-primary-600" />
                         </div>
@@ -28,9 +29,9 @@ export default function PlainReportPreviewModal({ text, onClose, onPrint, onSave
                         <Button
                             onClick={onPrint}
                             variant="outline"
-                            className="h-12 px-6 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm"
+                            className="h-12 px-6 font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border-border dark:border-border rounded-2xl shadow-sm"
                         >
-                            <Printer className="w-4 h-4" />
+                            <RetroPrinter className="w-4 h-4" />
                             CETAK DATA
                         </Button>
                     )}
@@ -45,28 +46,28 @@ export default function PlainReportPreviewModal({ text, onClose, onPrint, onSave
                         </Button>
                     )}
 
-                    <div className="w-px h-8 bg-gray-200 dark:bg-gray-800 mx-1" />
+                    <div className="w-px h-8 bg-muted dark:bg-card mx-1" />
 
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all group font-black"
+                        className="w-10 h-10 flex items-center justify-center rounded-2xl hover:bg-muted dark:hover:bg-card transition-all group font-black"
                     >
-                        <X className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+                        <X className="w-6 h-6 text-muted-foreground group-hover:text-red-500 transition-colors" />
                     </button>
                 </div>
             </div>
 
             {/* Preview area */}
-            <div className="flex-1 overflow-auto bg-gray-500/20 dark:bg-gray-900/50 p-10 flex items-start justify-center backdrop-blur-md">
-                <div className="bg-white dark:bg-gray-950 p-12 shadow-[0_30px_60px_rgba(0,0,0,0.3)] rounded-2xl min-w-[600px] max-w-4xl border dark:border-gray-800">
-                    <pre className="font-mono text-sm leading-tight text-gray-900 dark:text-gray-100 whitespace-pre overflow-x-auto">
+            <div className="flex-1 overflow-auto bg-foreground/20 dark:bg-background/50 p-10 flex items-start justify-center backdrop-blur-md">
+                <div className="bg-card dark:bg-background p-12 shadow-[0_30px_60px_rgba(0,0,0,0.3)] rounded-2xl min-w-[600px] max-w-4xl border dark:border-border">
+                    <pre className="font-mono text-sm leading-tight text-foreground dark:text-foreground whitespace-pre overflow-x-auto">
                         {text}
                     </pre>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 px-6 py-3 text-center shrink-0">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-600">
+            <div className="bg-card dark:bg-background border-t border-border dark:border-border px-6 py-3 text-center shrink-0">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground dark:text-muted-foreground">
                     Format: Plain Text | Lebar: 80 Karakter (Standard Dot Matrix)
                 </span>
             </div>

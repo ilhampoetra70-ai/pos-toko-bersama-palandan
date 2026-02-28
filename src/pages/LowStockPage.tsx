@@ -7,17 +7,8 @@ import {
     useSettings,
     useUpdateProductWithAudit
 } from '@/lib/queries';
-import {
-    Package,
-    Download,
-    RefreshCw,
-    AlertTriangle,
-    Check,
-    X,
-    ShoppingCart,
-    TrendingUp,
-    Layout
-} from 'lucide-react';
+import { Download, Check, X, Layout } from 'lucide-react';
+import { RetroBox, RetroRefresh, RetroAlert, RetroCart, RetroMoney } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,9 +40,12 @@ import {
 
 export default function LowStockPage() {
     const { user } = useAuth();
-    const [threshold, setThreshold] = useState(5);
+    const [threshold, setThreshold] = useState(10);
     const [orderQty, setOrderQty] = useState<Record<number, number>>({});
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [updateResult, setUpdateResult] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Queries
     const { data: settings = {} as any } = useSettings();
@@ -66,6 +60,16 @@ export default function LowStockPage() {
             calculatedCost: (p.cost && p.cost > 0) ? p.cost : Math.round(p.price * costMultiplier)
         }));
     }, [rawProducts, settings.default_margin_percent]);
+
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+    const paginatedProducts = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return products.slice(startIndex, startIndex + itemsPerPage);
+    }, [products, currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [threshold]);
 
     const handleQtyChange = (productId: number, value: string) => {
         setOrderQty(prev => ({
@@ -125,13 +129,13 @@ export default function LowStockPage() {
             refetchProducts();
 
             if (successCount === productsToUpdate.length) {
-                alert(`✅ Berhasil update stok ${successCount} produk!`);
+                setUpdateResult(`✅ Berhasil update stok ${successCount} produk!`);
             } else {
-                alert(`⚠️ Update selesai: ${successCount}/${productsToUpdate.length} produk berhasil.`);
+                setUpdateResult(`⚠️ Update selesai: ${successCount}/${productsToUpdate.length} produk berhasil.`);
             }
         } catch (err: any) {
             console.error('Failed to update stock:', err);
-            alert('❌ Gagal update stok: ' + (err.message || 'Unknown error'));
+            setUpdateResult('❌ Gagal update stok: ' + (err.message || 'Unknown error'));
         }
     };
 
@@ -164,7 +168,7 @@ export default function LowStockPage() {
     return (
         <div className="space-y-6">
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent className="max-w-2xl bg-white dark:bg-gray-900">
+                <DialogContent className="max-w-2xl bg-card dark:bg-background">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-black">Konfirmasi Update Stok</DialogTitle>
                         <DialogDescription>
@@ -172,21 +176,21 @@ export default function LowStockPage() {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="max-h-[40vh] overflow-y-auto border dark:border-gray-800 rounded-xl mt-4">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
-                                    <TableHead className="font-bold">PRODUK</TableHead>
-                                    <TableHead className="text-center font-bold">LAMA</TableHead>
-                                    <TableHead className="text-center font-bold">TAMBAH</TableHead>
-                                    <TableHead className="text-center font-bold">BARU</TableHead>
+                    <div className="max-h-[40vh] overflow-y-auto border border-border rounded-xl mt-4">
+                        <Table className="zebra-rows">
+                            <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
+                                <TableRow className="border-b border-border">
+                                    <TableHead className="font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">PRODUK</TableHead>
+                                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">LAMA</TableHead>
+                                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">TAMBAH</TableHead>
+                                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-3 text-muted-foreground">BARU</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {productsToUpdate.map((item: any) => (
-                                    <TableRow key={item.id}>
+                                    <TableRow key={item.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                                         <TableCell className="font-bold">{item.name}</TableCell>
-                                        <TableCell className="text-center text-gray-500">{item.currentStock}</TableCell>
+                                        <TableCell className="text-center text-muted-foreground">{item.currentStock}</TableCell>
                                         <TableCell className="text-center text-green-600 font-bold">+{item.addQty}</TableCell>
                                         <TableCell className="text-center text-primary-600 font-black">{item.newStock}</TableCell>
                                     </TableRow>
@@ -203,7 +207,7 @@ export default function LowStockPage() {
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={updating} className="font-bold">Batal</Button>
                         <Button onClick={handleUpdateStock} disabled={updating} className="bg-primary-600 hover:bg-primary-700 font-black shadow-lg shadow-primary-600/20 gap-2 min-w-[140px]">
-                            {updating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            {updating ? <RetroRefresh className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                             {updating ? 'Menyimpan...' : 'Konfirmasi'}
                         </Button>
                     </DialogFooter>
@@ -213,12 +217,12 @@ export default function LowStockPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Stok Rendah</h2>
-                    <p className="text-sm text-gray-500 font-medium">Monitoring stok produk di bawah ambang batas (≤ {threshold})</p>
+                    <h2 className="text-3xl font-black text-foreground dark:text-foreground tracking-tight">Stok Rendah</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Monitoring stok produk di bawah ambang batas (≤ {threshold})</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <Card className="border-none shadow-sm flex items-center h-11 px-3 bg-gray-50 dark:bg-gray-800">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-3">Ambang Batas:</label>
+                    <Card className="border-none shadow-sm flex items-center h-11 px-3 bg-background dark:bg-card">
+                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mr-3">Ambang Batas:</label>
                         <Select
                             value={threshold.toString()}
                             onValueChange={(v) => {
@@ -246,105 +250,170 @@ export default function LowStockPage() {
                         disabled={productsToUpdate.length === 0}
                         className="h-11 px-6 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 font-black gap-2"
                     >
-                        <ShoppingCart className="w-4 h-4" /> Update Stok ({productsToUpdate.length})
+                        <RetroCart className="w-4 h-4" /> Update Stok ({productsToUpdate.length})
                     </Button>
                 </div>
             </div>
+
+            {updateResult && (
+                <div className={`flex items-center gap-3 p-4 rounded-2xl border text-sm font-bold animate-in fade-in slide-in-from-top-2 ${updateResult.startsWith('✅')
+                    ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50'
+                    : updateResult.startsWith('⚠️')
+                        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50'
+                        : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50'
+                    }`}>
+                    <span>{updateResult}</span>
+                    <button onClick={() => setUpdateResult('')} className="ml-auto text-current opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <StatCard
                     title="Produk Perlu Restok"
                     value={products.length.toString()}
-                    icon={AlertTriangle}
+                    icon={RetroAlert}
                     color="orange"
                 />
                 <StatCard
                     title="Total Nilai Restok"
                     value={formatCurrency(totalOrderValue)}
-                    icon={TrendingUp}
+                    icon={RetroMoney}
                     color="blue"
                 />
             </div>
 
             {/* Table */}
-            <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-900">
-                <CardContent className="p-0">
+            <Card className="border border-border shadow-sm overflow-hidden bg-card dark:bg-background">
+                <CardContent className="p-0 bg-card dark:bg-background">
                     {isLoadingProducts ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
-                            <RefreshCw className="w-10 h-10 text-primary-600 animate-spin" />
-                            <p className="text-gray-500 font-bold">Memindai stok gudang...</p>
+                            <RetroRefresh className="w-10 h-10 text-primary-600 animate-spin" />
+                            <p className="text-muted-foreground font-bold">Memindai stok gudang...</p>
                         </div>
                     ) : products.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 text-center space-y-4 opacity-30">
                             <Check className="w-20 h-20 text-green-500" />
                             <div>
-                                <p className="text-2xl font-black text-gray-900 dark:text-gray-100">Semua Stok Aman!</p>
+                                <p className="text-2xl font-black text-foreground dark:text-foreground">Semua Stok Aman!</p>
                                 <p className="text-sm font-medium">Tidak ada produk di bawah ambang batas ≤ {threshold}</p>
                             </div>
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50/30 dark:bg-gray-800/20 border-b dark:border-gray-800">
-                                    <TableHead className="font-black text-[10px] uppercase dark:text-gray-400 pl-6 h-14 w-16">NO</TableHead>
-                                    <TableHead className="font-black text-[10px] uppercase dark:text-gray-400">NAMA PRODUK</TableHead>
-                                    <TableHead className="text-center font-black text-[10px] uppercase dark:text-gray-400">STOK</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400">H. JUAL</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400">H. MODAL</TableHead>
-                                    <TableHead className="text-center font-black text-[10px] uppercase dark:text-gray-400 w-32">TAMBAH</TableHead>
-                                    <TableHead className="text-right font-black text-[10px] uppercase dark:text-gray-400 pr-6">SUBTOTAL</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody className="divide-y">
-                                {products.map((product: any, index: number) => (
-                                    <TableRow key={product.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all border-gray-100 dark:border-gray-800 h-16">
-                                        <TableCell className="pl-6 text-xs font-black text-gray-400">{index + 1}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-black text-gray-900 dark:text-gray-100">{product.name}</span>
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{product.category_name || '-'}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge className={cn(
-                                                "font-black text-xs px-3 shadow-none",
-                                                product.stock === 0 ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-400" :
-                                                    product.stock <= 3 ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-400" :
-                                                        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400"
-                                            )}>
-                                                {product.stock} {product.unit}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold text-gray-500">{formatCurrency(product.price)}</TableCell>
-                                        <TableCell className="text-right font-bold text-gray-500">{formatCurrency(product.calculatedCost)}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Input
-                                                type="number"
-                                                min="0"
-                                                value={orderQty[product.id] || 0}
-                                                onChange={(e) => handleQtyChange(product.id, e.target.value)}
-                                                className="w-24 h-9 bg-gray-50 border-none shadow-inner font-bold text-center mx-auto"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="text-right pr-6 font-black text-gray-900 dark:text-gray-100">
-                                            {formatCurrency((orderQty[product.id] || 0) * product.calculatedCost)}
-                                        </TableCell>
+                        <div className="flex flex-col bg-card dark:bg-background">
+                            <Table className="zebra-rows">
+                                <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm pointer-events-none">
+                                    <TableRow className="border-b border-border">
+                                        <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground pl-6 w-16">NO</TableHead>
+                                        <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">NAMA PRODUK</TableHead>
+                                        <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">STOK</TableHead>
+                                        <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">H. JUAL</TableHead>
+                                        <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">H. MODAL</TableHead>
+                                        <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground w-32">TAMBAH</TableHead>
+                                        <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground pr-6">SUBTOTAL</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                            <tfoot className="bg-gray-900 text-white font-black">
-                                <TableRow className="h-16">
-                                    <TableCell colSpan={5} className="text-right pl-6 border-none uppercase tracking-widest text-[10px] text-gray-400">Total Purchase Request:</TableCell>
-                                    <TableCell className="text-center border-none text-lg">
+                                </TableHeader>
+                                <TableBody className="[&_td]:py-1.5">
+                                    {paginatedProducts.map((product: any, idx: number) => {
+                                        const globalIndex = (currentPage - 1) * itemsPerPage + idx + 1;
+                                        return (
+                                            <TableRow
+                                                key={product.id}
+                                                className="group hover:bg-muted/30 transition-colors border-b border-border"
+                                            >
+                                                <TableCell className="pl-6 text-xs font-black text-muted-foreground">{globalIndex}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-black text-xs text-foreground dark:text-foreground truncate">{product.name}</span>
+                                                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter shrink-0">{product.category_name || '-'}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge className={cn(
+                                                        "font-black text-[10px] px-2 py-0 h-5 shadow-none",
+                                                        product.stock === 0 ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-400" :
+                                                            product.stock <= 3 ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-400" :
+                                                                "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-400"
+                                                    )}>
+                                                        {product.stock} {product.unit}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-xs text-muted-foreground">{formatCurrency(product.price)}</TableCell>
+                                                <TableCell className="text-right font-bold text-xs text-muted-foreground">{formatCurrency(product.calculatedCost)}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        value={orderQty[product.id] || 0}
+                                                        onChange={(e) => handleQtyChange(product.id, e.target.value)}
+                                                        className="w-20 h-7 bg-background border-none shadow-inner font-bold text-center mx-auto text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6 font-black text-sm text-foreground dark:text-foreground">
+                                                    {formatCurrency((orderQty[product.id] || 0) * product.calculatedCost)}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-6 py-3 border-t dark:border-border bg-muted/30">
+                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                                        Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, products.length)} dari {products.length} Produk
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                            disabled={currentPage === 1}
+                                            className="h-8 px-3 font-bold text-xs"
+                                        >
+                                            Sebelumnya
+                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                <Button
+                                                    key={page}
+                                                    variant={currentPage === page ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={cn(
+                                                        "h-8 w-8 p-0 font-black text-xs",
+                                                        currentPage === page ? "bg-primary text-white" : ""
+                                                    )}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="h-8 px-3 font-bold text-xs"
+                                        >
+                                            Selanjutnya
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-foreground text-background text-white font-black rounded-b-xl overflow-hidden">
+                                <div className="flex h-12 items-center px-6">
+                                    <div className="flex-1 text-right pr-4 uppercase tracking-widest text-[10px] text-muted-foreground">Total Purchase Request:</div>
+                                    <div className="w-32 text-center text-md">
                                         {products.reduce((sum, p) => sum + (orderQty[p.id] || 0), 0)}
-                                    </TableCell>
-                                    <TableCell className="text-right pr-6 border-none text-xl text-primary-400">
+                                    </div>
+                                    <div className="w-48 text-right text-lg text-primary-400 relative">
                                         {formatCurrency(totalOrderValue)}
-                                    </TableCell>
-                                </TableRow>
-                            </tfoot>
-                        </Table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -354,19 +423,19 @@ export default function LowStockPage() {
 
 function StatCard({ title, value, icon: Icon, color }: any) {
     const colors = {
-        blue: "bg-blue-500 shadow-blue-500/20",
+        blue: "bg-primary shadow-blue-500/20",
         orange: "bg-orange-500 shadow-orange-500/20",
     } as any;
 
     return (
-        <Card className="border-none shadow-sm hover:shadow-md transition-all bg-white dark:bg-gray-900 group">
+        <Card className="border-none shadow-sm hover:shadow-md transition-all bg-card dark:bg-background group">
             <CardContent className="p-5 flex items-center gap-4">
                 <div className={cn("p-3 rounded-2xl text-white shadow-lg transition-transform group-hover:scale-110", colors[color])}>
                     <Icon className="w-6 h-6" />
                 </div>
                 <div className="space-y-0.5">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{title}</p>
-                    <p className="text-xl font-black text-gray-900 dark:text-gray-100">{value}</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{title}</p>
+                    <p className="text-xl font-black text-foreground dark:text-foreground">{value}</p>
                 </div>
             </CardContent>
         </Card>

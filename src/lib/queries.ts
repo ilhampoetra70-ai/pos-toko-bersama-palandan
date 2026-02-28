@@ -53,6 +53,30 @@ export const stockTrailKeys = {
     allList: (filters: any) => [...stockTrailKeys.all, 'list', filters] as const,
 };
 
+export const aiKeys = {
+    all: ['ai'] as const,
+    status: () => [...aiKeys.all, 'status'] as const,
+    cache: () => [...aiKeys.all, 'cache'] as const,
+};
+
+// --- AI Insight Hooks ---
+export const useAiStatus = () =>
+    useQuery({
+        queryKey: aiKeys.status(),
+        queryFn: () => window.api.getAiStatus(),
+        refetchInterval: (query) => {
+            const data = query.state.data as any;
+            return data?.state === 'downloading' ? 2000 : false;
+        },
+        refetchOnWindowFocus: false,
+    });
+
+export const useAiInsight = () =>
+    useMutation({
+        mutationFn: ({ forceRefresh, days }: { forceRefresh: boolean; days: number }) =>
+            window.api.generateAiInsight(forceRefresh, days),
+    });
+
 // --- API Fetchers ---
 export const productApi = {
     getAll: (filters?: any) => window.api.getProducts(filters),
@@ -143,7 +167,7 @@ export const useLowStockProducts = (threshold: number) =>
         queryKey: productKeys.lowStock(threshold),
         queryFn: async () => {
             const res = await window.api.getLowStockProducts(threshold);
-            return res.success ? (res.data || []) : [];
+            return Array.isArray(res) ? res : (res.success ? (res.data || []) : []);
         }
     });
 
@@ -291,7 +315,12 @@ export const useTransactionDetail = (id: number | null) => {
         queryKey: transactionKeys.detail(id!),
         queryFn: async () => {
             const res = await transactionApi.getById(id!);
-            return res.success ? res.data : null;
+            // Backend main.js mengembalikan objek transaksi secara langsung tanpa dibungkus
+            // { success: true, data: ... }. Penanganan ini disesuaikan untuk meng-handle
+            // baik apabila dibungkus maupun diekspor langsung.
+            if (!res) return null;
+            if (res.success !== undefined) return res.success ? res.data : null;
+            return res; // Objek transaksi langsung
         },
         enabled: !!id,
     });
