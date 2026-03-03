@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import PrintConfigModal from '../components/PrintConfigModal';
 import { buildSalesPlainText, buildProfitPlainText, buildComparisonPlainText, buildComprehensivePlainText } from '../utils/plainTextReport';
+import { getToday, formatCurrencyFull as formatCurrency, formatNumber } from '../utils/format';
 import {
     useSalesReport,
     useProfitReport,
@@ -33,10 +34,17 @@ const TABS = [
     { id: 'comprehensive', label: 'Laporan Lengkap', icon: RetroReceipt },
 ];
 
-function getToday() {
+function getTodayWithSettings(settings: any): string {
     const d = new Date();
-    const offset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - offset).toISOString().slice(0, 10);
+    const configuredOffset = settings?.timezone_offset;
+    let offsetHours: number;
+    if (configuredOffset && configuredOffset !== 'auto') {
+        offsetHours = parseFloat(configuredOffset);
+    } else {
+        offsetHours = -(d.getTimezoneOffset() / 60);
+    }
+    const localMs = d.getTime() + (offsetHours * 3600000);
+    return new Date(localMs).toISOString().slice(0, 10);
 }
 
 export default memo(function ReportsPage() {
@@ -53,6 +61,7 @@ export default memo(function ReportsPage() {
     const [includeStockTrail, setIncludeStockTrail] = useState(true);
     const [aiInsightCache, setAiInsightCache] = useState<any>(null);
     const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const [hasFetched, setHasFetched] = useState(false);
     const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const showStatus = useCallback((text: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -65,23 +74,26 @@ export default memo(function ReportsPage() {
     const {
         data: salesData,
         isLoading: isLoadingSales,
+        isError: isErrorSales,
         refetch: refetchSales
-    } = useSalesReport({ date_from: dateFrom, date_to: dateTo });
+    } = useSalesReport({ date_from: dateFrom, date_to: dateTo }, hasFetched);
 
     const {
         data: profitData,
         isLoading: isLoadingProfit,
+        isError: isErrorProfit,
         refetch: refetchProfit
-    } = useProfitReport({ date_from: dateFrom, date_to: dateTo });
+    } = useProfitReport({ date_from: dateFrom, date_to: dateTo }, hasFetched);
 
     const {
         data: comparisonData,
         isLoading: isLoadingComparison,
+        isError: isErrorComparison,
         refetch: refetchComparison
     } = useComparisonReport({
         date_from: dateFrom, date_to: dateTo,
         date_from_2: dateFrom2, date_to_2: dateTo2
-    });
+    }, hasFetched);
 
     const {
         data: comprehensiveData,
@@ -89,7 +101,7 @@ export default memo(function ReportsPage() {
         isError: isErrorComprehensive,
         error: errorComprehensive,
         refetch: refetchComprehensive
-    } = useComprehensiveReport({ date_from: dateFrom, date_to: dateTo });
+    } = useComprehensiveReport({ date_from: dateFrom, date_to: dateTo }, hasFetched);
 
     const { data: settings = {} } = useSettings();
 
@@ -98,7 +110,18 @@ export default memo(function ReportsPage() {
     const { data: stockTrailDetailData } = useStockTrailReport({ date_from: dateFrom, date_to: dateTo });
 
     // Derived states
-    const loading = isLoadingSales || isLoadingProfit || isLoadingComparison || isLoadingComprehensive;
+    const loading = (
+        (activeTab === 'sales' && isLoadingSales) ||
+        (activeTab === 'profit' && isLoadingProfit) ||
+        (activeTab === 'comparison' && isLoadingComparison) ||
+        (activeTab === 'comprehensive' && isLoadingComprehensive)
+    ) && hasFetched;
+    const hasError = (
+        (activeTab === 'sales' && isErrorSales) ||
+        (activeTab === 'profit' && isErrorProfit) ||
+        (activeTab === 'comparison' && isErrorComparison) ||
+        (activeTab === 'comprehensive' && isErrorComprehensive)
+    ) && hasFetched;
     const hourlyData = salesData?.hourlyBreakdown;
     const transactionsData =
         salesData?.transactionLog ??
@@ -108,6 +131,14 @@ export default memo(function ReportsPage() {
 
     useEffect(() => {
         setStoreName(settings.store_name || '');
+    }, [settings]);
+
+    useEffect(() => {
+        if (settings && Object.keys(settings).length > 0) {
+            const today = getTodayWithSettings(settings);
+            setDateFrom(today);
+            setDateTo(today);
+        }
     }, [settings]);
 
     // Fetch the most recently generated AI insight (any time range) for print reports
@@ -136,15 +167,17 @@ export default memo(function ReportsPage() {
 
 
     const handleFilter = () => {
+        if (activeTab === 'comparison' && (!dateFrom2 || !dateTo2)) {
+            showStatus('Silakan isi tanggal Periode B', 'error');
+            return;
+        }
+        if (!hasFetched) {
+            setHasFetched(true);
+            return;
+        }
         if (activeTab === 'sales') refetchSales();
         else if (activeTab === 'profit') refetchProfit();
-        else if (activeTab === 'comparison') {
-            if (!dateFrom2 || !dateTo2) {
-                showStatus('Silakan isi tanggal Periode B', 'error');
-                return;
-            }
-            refetchComparison();
-        }
+        else if (activeTab === 'comparison') refetchComparison();
         else if (activeTab === 'comprehensive') refetchComprehensive();
     };
 
@@ -232,8 +265,6 @@ export default memo(function ReportsPage() {
     const buildSalesHTML = () => {
         if (!salesData) return null;
 
-        const formatCurrency = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
-        const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
         const methodLabel = (m: string) => ({ cash: 'Tunai', debit: 'Debit', qris: 'QRIS', transfer: 'Transfer' }[m] || m || '-');
 
         const txLog: any[] = salesData.transactionLog || [];
@@ -436,15 +467,13 @@ export default memo(function ReportsPage() {
 
     const buildProfitHTML = () => {
         if (!profitData) return null;
-        const formatCurrency = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
-        const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
         const body = `
             <div class="summary-cards">
-                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL LABA</div><div style="font-size:18px;font-weight:900;color:green">${formatCurrency(profitData.total_profit)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">PENDAPATAN</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.total_revenue)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL MODAL</div><div style="font-size:18px;font-weight:900">${formatCurrency(profitData.total_cost)}</div></div>
-                <div class="summary-card"><div style="font-weight:bold;color:#666">MARGIN</div><div style="font-size:18px;font-weight:900">${((profitData.total_profit / profitData.total_revenue) * 100).toFixed(1)}%</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL LABA</div><div style="font-size:18px;font-weight:900;color:green">${formatCurrency((profitData as any).totals?.profit || 0)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">PENDAPATAN</div><div style="font-size:18px;font-weight:900">${formatCurrency((profitData as any).totals?.revenue || 0)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">TOTAL MODAL</div><div style="font-size:18px;font-weight:900">${formatCurrency((profitData as any).totals?.cost || 0)}</div></div>
+                <div class="summary-card"><div style="font-weight:bold;color:#666">MARGIN</div><div style="font-size:18px;font-weight:900">${((profitData as any).totals?.revenue || 0) > 0 ? ((((profitData as any).totals?.profit || 0) / ((profitData as any).totals?.revenue || 0)) * 100).toFixed(1) : '0.0'}%</div></div>
             </div>
                     ${(profitData.transactionLog && profitData.transactionLog.length > 0) ? `
                 <h3>Log Transaksi Aktual (${profitData.transactionLog.length} transaksi)</h3>
@@ -518,8 +547,6 @@ export default memo(function ReportsPage() {
 
     const buildComparisonHTML = () => {
         if (!comparisonData) return null;
-        const formatCurrency = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
-        const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
         const body = `
     <h3>Komparasi Periode</h3>
@@ -600,8 +627,6 @@ export default memo(function ReportsPage() {
     const buildComprehensiveHTML = () => {
         if (!comprehensiveData) return null;
         const { sales, profit, hourly, transactionLog } = comprehensiveData;
-        const formatCurrency = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
-        const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
 
         const body = `
     <h3>Ringkasan Eksekutif</h3>
@@ -609,9 +634,9 @@ export default memo(function ReportsPage() {
                 <div class="summary-card"><div>PENDAPATAN</div><div style="font-weight:900">${formatCurrency(sales.summary.revenue)}</div></div>
                 <div class="summary-card"><div>TRANSAKSI</div><div style="font-weight:900">${formatNumber(sales.summary.count)}</div></div>
                 <div class="summary-card"><div>RATA-RATA</div><div style="font-weight:900">${formatCurrency(sales.summary.average)}</div></div>
-                <div class="summary-card"><div>LABA KOTOR</div><div style="font-weight:900;color:green">${formatCurrency(profit.total_profit)}</div></div>
-                <div class="summary-card"><div>MARGIN</div><div style="font-weight:900;color:blue">${((profit.total_profit / profit.total_revenue) * 100).toFixed(1)}%</div></div>
-                <div class="summary-card"><div>TOTAL MODAL</div><div style="font-weight:900">${formatCurrency(profit.total_cost)}</div></div>
+                <div class="summary-card"><div>LABA KOTOR</div><div style="font-weight:900;color:green">${formatCurrency((profit as any).totals?.profit || 0)}</div></div>
+                <div class="summary-card"><div>MARGIN</div><div style="font-weight:900;color:blue">${((profit as any).totals?.revenue || 0) > 0 ? ((((profit as any).totals?.profit || 0) / ((profit as any).totals?.revenue || 0)) * 100).toFixed(1) : '0.0'}%</div></div>
+                <div class="summary-card"><div>TOTAL MODAL</div><div style="font-weight:900">${formatCurrency((profit as any).totals?.cost || 0)}</div></div>
             </div>
             
             <h3>Metode Pembayaran</h3>
@@ -849,6 +874,16 @@ export default memo(function ReportsPage() {
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
                         <div className="w-12 h-12 border-4 border-primary-50 border-t-primary-600 rounded-full animate-spin"></div>
                         <p className="text-muted-foreground font-bold">Menyusun data laporan...</p>
+                    </div>
+                ) : hasError ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+                        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-full">
+                            <RetroChart className="w-10 h-10 text-red-400" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="font-bold text-foreground">Gagal memuat laporan</p>
+                            <p className="text-sm text-muted-foreground">Terjadi kesalahan saat mengambil data. Coba ubah periode dan klik Proses lagi.</p>
+                        </div>
                     </div>
                 ) : (
                     <>

@@ -325,6 +325,7 @@ export default memo(function SettingsPage() {
                         <SelectContent>
                           <SelectItem value="58">58mm (Kecil)</SelectItem>
                           <SelectItem value="80">80mm (Standar)</SelectItem>
+                          <SelectItem value="cf">9.5×11" (Continuous Form)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

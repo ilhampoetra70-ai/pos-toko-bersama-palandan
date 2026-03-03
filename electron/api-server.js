@@ -294,8 +294,8 @@ function createAPIServer(database, port = 3001) {
           // Inject Dynamic Favicon/Icon — escape attribute values
           const safeIconType = escHtml(
             appLogo && appLogo.startsWith('data:image/svg') ? 'image/svg+xml' :
-            appLogo && appLogo.startsWith('data:image/png') ? 'image/png' :
-            appLogo && appLogo.endsWith('.svg') ? 'image/svg+xml' : 'image/x-icon'
+              appLogo && appLogo.startsWith('data:image/png') ? 'image/png' :
+                appLogo && appLogo.endsWith('.svg') ? 'image/svg+xml' : 'image/x-icon'
           );
           const safeAppLogo = escHtml(appLogo);
 
@@ -522,6 +522,17 @@ function createAPIServer(database, port = 3001) {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  apiRouter.put('/products/:id/restore', (req, res) => {
+    try {
+      const product = db.restoreProduct(parseInt(req.params.id));
+      invalidateCache('products');
+      invalidateCache('dashboard');
+      res.json({ success: true, data: product });
+    } catch (err) {
+      res.status(400).json({ success: false, error: err.message });
     }
   });
 

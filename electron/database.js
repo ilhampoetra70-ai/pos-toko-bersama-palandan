@@ -315,6 +315,7 @@ function runMigrations() {
     addColumnIfNotExists('stock_audit_log', 'reason', 'TEXT');
     addColumnIfNotExists('stock_audit_log', 'user_id', 'INTEGER');
     addColumnIfNotExists('stock_audit_log', 'user_name', 'TEXT');
+    addColumnIfNotExists('users', 'logged_out_at', 'INTEGER NOT NULL DEFAULT 0');
 
     addIndexIfNotExists('idx_products_barcode', 'products', 'barcode');
     addIndexIfNotExists('idx_products_name', 'products', 'name');
@@ -402,7 +403,9 @@ function runMigrations() {
 }
 
 // ─── Users ──────────────────────────────────────────────
-function getUsers() { return all('SELECT * FROM users ORDER BY name'); }
+function getUsers() {
+    return all('SELECT id, username, name, role, active, last_login, created_at FROM users ORDER BY name');
+}
 function getUserById(id) { return get('SELECT * FROM users WHERE id = ?', [id]); }
 function getUserByUsername(username) { return get('SELECT * FROM users WHERE username = ?', [username]); }
 
@@ -415,6 +418,22 @@ function createUser(user) {
 }
 
 function updateUser(id, user) {
+    // Guard: cegah menonaktifkan admin terakhir yang aktif
+    if (user.active === 0) {
+        const target = getUserById(id);
+        if (target?.role === 'admin') {
+            const otherActiveAdmins = get(
+                'SELECT COUNT(*) as c FROM users WHERE role = ? AND active = 1 AND id != ?',
+                ['admin', id]
+            )?.c || 0;
+            if (otherActiveAdmins === 0) {
+                throw new Error(
+                    'Tidak dapat menonaktifkan admin terakhir yang aktif. ' +
+                    'Pastikan ada admin lain yang aktif terlebih dahulu.'
+                );
+            }
+        }
+    }
     const sets = [];
     const params = [];
     if (user.username !== undefined) { sets.push('username=?'); params.push(user.username); }
@@ -434,7 +453,24 @@ function updateUserLastLogin(id) {
     run("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [id]);
 }
 
+function invalidateUserToken(id) {
+    run("UPDATE users SET logged_out_at = unixepoch() WHERE id = ?", [id]);
+}
+
 function deleteUser(id) {
+    const target = getUserById(id);
+    if (target?.role === 'admin') {
+        const activeAdminCount = get(
+            'SELECT COUNT(*) as c FROM users WHERE role = ? AND active = 1',
+            ['admin']
+        )?.c || 0;
+        if (activeAdminCount <= 1) {
+            throw new Error(
+                'Tidak dapat menghapus admin terakhir yang aktif. ' +
+                'Pastikan ada admin lain yang aktif sebelum menghapus akun ini.'
+            );
+        }
+    }
     run('DELETE FROM users WHERE id = ?', [id]);
     return { id };
 }
@@ -613,7 +649,7 @@ function getProducts(searchOrFilters = '', categoryId = null, limit = null, offs
 
 function getProductById(id) { return get('SELECT * FROM products WHERE id = ?', [id]); }
 function getProductByBarcode(barcode) { return get('SELECT * FROM products WHERE barcode = ? AND active = 1', [barcode]); }
-function getProductByName(name) { return get('SELECT * FROM products WHERE name = ? AND active = 1', [name]); }
+function getProductByName(name) { return get('SELECT * FROM products WHERE UPPER(name) = UPPER(?) AND active = 1', [name]); }
 
 function searchProducts(query, limit = 50) {
     // Trim query to remove accidental spaces
@@ -763,6 +799,13 @@ function deleteProduct(id) {
     return { id };
 }
 
+function restoreProduct(id) {
+    const product = get('SELECT id, name FROM products WHERE id = ?', [id]);
+    if (!product) throw new Error('Produk tidak ditemukan');
+    run(`UPDATE products SET active = 1, updated_at = datetime('now', 'localtime') WHERE id = ?`, [id]);
+    return getProductById(id);
+}
+
 
 
 function bulkUpsertProducts(products) {
@@ -782,18 +825,47 @@ function bulkUpsertProducts(products) {
                 }
                 const existing = get('SELECT id FROM products WHERE barcode = ?', [p.barcode]);
                 if (existing) {
+                    const oldStock = get('SELECT stock FROM products WHERE id = ?', [existing.id])?.stock || 0;
                     run(
                         `UPDATE products SET
     name =?, price =?, cost =?, stock = stock +?, category_id = COALESCE(?, category_id), updated_at = datetime('now', 'localtime')
              WHERE id =? `,
                         [upperName, p.price, p.cost, p.stock || 0, catId, existing.id]
                     );
+                    const stockAdded = p.stock || 0;
+                    if (stockAdded !== 0) {
+                        createStockTrail({
+                            product_id: existing.id,
+                            product_name: upperName,
+                            event_type: 'restock',
+                            quantity_before: oldStock,
+                            quantity_change: stockAdded,
+                            quantity_after: oldStock + stockAdded,
+                            user_id: null,
+                            user_name: 'Import Excel',
+                            notes: 'Import/update massal via Excel'
+                        });
+                    }
                 } else {
-                    run(
+                    const insertInfo = run(
                         `INSERT INTO products(barcode, name, price, cost, stock, category_id, unit, margin_mode)
     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
                         [p.barcode, upperName, p.price, p.cost, p.stock || 0, catId, 'pcs', 'manual']
                     );
+                    const newId = insertInfo.lastInsertRowid;
+                    if ((p.stock || 0) > 0) {
+                        createStockTrail({
+                            product_id: newId,
+                            product_name: upperName,
+                            event_type: 'initial',
+                            quantity_before: 0,
+                            quantity_change: p.stock || 0,
+                            quantity_after: p.stock || 0,
+                            user_id: null,
+                            user_name: 'Import Excel',
+                            notes: 'Stok awal via import Excel'
+                        });
+                    }
                 }
                 results.success++;
             } catch (err) {
@@ -835,6 +907,9 @@ function generateProductBarcode() {
         const lastSeq = parseInt(count.barcode.slice(-7));
         if (!isNaN(lastSeq)) seq = lastSeq + 1;
     }
+    if (seq > 9999999) {
+        throw new Error('Sequence barcode untuk bulan ini sudah penuh (maks 9.999.999). Hubungi administrator.');
+    }
     return `${prefix}${seq.toString().padStart(7, '0')}`;
 }
 
@@ -850,9 +925,12 @@ function generateMultipleBarcodes(count) {
         const lastSeq = parseInt(lastRow.barcode.slice(-7));
         if (!isNaN(lastSeq)) seq = lastSeq + 1;
     }
+    if (seq + count > 9999999) {
+        throw new Error(`Sequence barcode tidak cukup. Tersedia ${9999999 - seq + 1} slot, dibutuhkan ${count}.`);
+    }
 
     for (let i = 0; i < count; i++) {
-        codes.push(`${prefix}${seq.toString().padStart(6, '0')}`);
+        codes.push(`${prefix}${seq.toString().padStart(7, '0')}`);
         seq++;
     }
     return codes;
@@ -1101,8 +1179,17 @@ function resolvePaymentStatus(data) {
 }
 
 function decrementProductStock(productId, quantity, userId, userName, invoiceNumber, txId) {
-    // Atomic decrement — prevents race condition if two sales hit simultaneously
-    run("UPDATE products SET stock = stock - ?, updated_at = datetime('now', 'localtime') WHERE id = ?", [quantity, productId]);
+    const updateResult = run(
+        "UPDATE products SET stock = stock - ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND stock >= ?",
+        [quantity, productId, quantity]
+    );
+    if (updateResult.changes === 0) {
+        // Stock tidak cukup — ambil stok aktual untuk pesan error yang informatif
+        const current = get("SELECT stock, name FROM products WHERE id = ?", [productId]);
+        const stockNow = current ? current.stock : 0;
+        const productName = current ? current.name : `ID ${productId}`;
+        throw new Error(`Stok tidak mencukupi untuk produk "${productName}". Stok saat ini: ${stockNow}, dibutuhkan: ${quantity}`);
+    }
     // Re-read after update to get accurate new stock for trail logging
     const currentProduct = get("SELECT stock, name FROM products WHERE id = ?", [productId]);
     const newStock = currentProduct ? (currentProduct.stock ?? 0) : 0;
@@ -1439,14 +1526,17 @@ function getDailySalesBreakdown(days, todayRangeEnd) {
     const rangeStart = getLocalDayRangeUTC(startDate).start;
     const offsetHrs = cachedTimezoneOffset || 7;
 
+    const offsetSign = offsetHrs >= 0 ? '+' : '';
+    const offsetStr = `${offsetSign}${offsetHrs} hours`;
+
     const dailyRows = all(`
-        SELECT date(created_at, '+' || ? || ' hours') as local_date,
+        SELECT date(created_at, ?) as local_date,
                COALESCE(SUM(total - tax_amount), 0) as total
         FROM transactions
         WHERE status = 'completed' AND created_at >= ? AND created_at < ?
-        GROUP BY date(created_at, '+' || ? || ' hours')
+        GROUP BY date(created_at, ?)
         ORDER BY local_date
-    `, [offsetHrs, rangeStart, todayRangeEnd, offsetHrs]);
+    `, [offsetStr, rangeStart, todayRangeEnd, offsetStr]);
 
     const dailyMap = {};
     dailyRows.forEach(r => { dailyMap[r.local_date] = r.total; });
@@ -1718,15 +1808,23 @@ function getBottomProducts(dateFrom, dateTo) {
 
 function getSlowMovingProducts(inactiveDays = 120, limit = 10) {
     return all(
-        `SELECT p.id, p.name, p.stock, p.price, p.cost, c.name as category_name, p.created_at, MAX(t.created_at) as last_sale
+        `SELECT p.id, p.name, p.stock, p.price, p.cost, p.unit,
+                c.name as category_name, p.created_at,
+                MAX(t.created_at) as last_sale_date,
+                CAST(
+                    julianday('now') - COALESCE(
+                        julianday(MAX(t.created_at)),
+                        julianday(p.created_at)
+                    )
+                AS INTEGER) as days_inactive
          FROM products p LEFT JOIN categories c ON p.category_id = c.id
          LEFT JOIN transaction_items ti ON p.id = ti.product_id
          LEFT JOIN transactions t ON ti.transaction_id = t.id AND t.status = 'completed'
          WHERE p.stock > 0 AND p.active = 1
          GROUP BY p.id
-    HAVING(last_sale IS NULL AND julianday('now') - julianday(p.created_at) > ?)
-    OR(last_sale IS NOT NULL AND julianday('now') - julianday(MAX(t.created_at)) > ?)
-         ORDER BY last_sale ASC, p.stock DESC LIMIT ? `,
+         HAVING (last_sale_date IS NULL AND julianday('now') - julianday(p.created_at) > ?)
+             OR (last_sale_date IS NOT NULL AND julianday('now') - julianday(MAX(t.created_at)) > ?)
+         ORDER BY last_sale_date ASC, p.stock DESC LIMIT ?`,
         [inactiveDays, inactiveDays, limit]
     );
 }
@@ -2218,14 +2316,14 @@ function vacuumDatabase() {
     try {
         // Lakukan Checkpoint agresif (TRUNCATE) agar ukuran file wal terestart ke 0 byte, mencegah akumulasi file.
         db.pragma('wal_checkpoint(TRUNCATE)');
-        
+
         const sizeBefore = getTotalDbSize();
-        
+
         db.exec('VACUUM');
-        
+
         // Pastikan WAL bersih lagi setelah VACUUM untuk mengamankan shrink file.
         db.pragma('wal_checkpoint(TRUNCATE)');
-        
+
         const sizeAfter = getTotalDbSize();
         return {
             success: true,
@@ -2299,12 +2397,12 @@ function saveAiLlmPreset(preset) {
 module.exports = {
     initDatabase, closeDatabase, saveDatabase: () => { }, // no-op compatibility
     run, get, all, // low-level helpers (used by ai-aggregator, etc.)
-    getUsers, getUserById, getUserByUsername, createUser, updateUser, deleteUser, updateUserLastLogin,
+    getUsers, getUserById, getUserByUsername, createUser, updateUser, deleteUser, updateUserLastLogin, invalidateUserToken,
     upsertDeviceSession, getDeviceSessions, getDeviceSessionByDeviceId, countDeviceSessions,
     getOldestDeviceSession, deleteDeviceSessionById, deleteDeviceSession,
     getCategories, getCategoryById, createCategory, updateCategory, deleteCategory,
     getProducts, getProductById, getProductByBarcode, searchProducts, getProductByName, getLowStockProducts,
-    createProduct, updateProduct, deleteProduct, bulkUpsertProducts, bulkDeleteProducts, bulkUpdateField,
+    createProduct, updateProduct, deleteProduct, restoreProduct, bulkUpsertProducts, bulkDeleteProducts, bulkUpdateField,
     generateProductBarcode, generateMultipleBarcodes,
     createStockAuditLog, getStockAuditLogByProduct, getStockAuditLog, getStockAuditLogSummary, cleanupOldAuditLogs,
     createStockTrail, getStockTrailByProduct, getStockTrailAll, getStockTrailCount,

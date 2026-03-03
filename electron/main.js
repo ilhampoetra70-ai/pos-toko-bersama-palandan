@@ -10,6 +10,7 @@ const aiDownload = require('./ai-download');
 const aiAggregator = require('./ai-aggregator');
 const aiService = require('./ai-service');
 const aiApiService = require('./ai-api-service');
+const ExcelJS = require('exceljs');
 
 // ─── Low-Spec Optimizations ─────────────────────────────
 // Reduce memory usage for low-spec devices
@@ -36,6 +37,7 @@ function createWindow() {
     height: 800,
     minWidth: 1024,
     minHeight: 700,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -111,8 +113,8 @@ function isScheduleDue(cache, scheduleType) {
   if (!cache?.created_at) return true;
   const cacheTime = new Date(cache.created_at).getTime();
   let periodStart;
-  if (scheduleType === 'weekly')    periodStart = getStartOfCurrentWeek();
-  else if (scheduleType === 'monthly')   periodStart = getStartOfCurrentMonth();
+  if (scheduleType === 'weekly') periodStart = getStartOfCurrentWeek();
+  else if (scheduleType === 'monthly') periodStart = getStartOfCurrentMonth();
   else if (scheduleType === 'quarterly') periodStart = getStartOfCurrentQuarter();
   else return false;
   return cacheTime < periodStart.getTime();
@@ -170,8 +172,8 @@ async function runAutoGenerate() {
   if (autoGenerateRunning) { console.log('[AI Auto] Already running, skip'); return; }
 
   const schedules = [
-    { days: 7,  type: 'weekly',    label: '7-hari (mingguan)' },
-    { days: 30, type: 'monthly',   label: '30-hari (bulanan)' },
+    { days: 7, type: 'weekly', label: '7-hari (mingguan)' },
+    { days: 30, type: 'monthly', label: '30-hari (bulanan)' },
     { days: 90, type: 'quarterly', label: '90-hari (triwulan)' },
   ];
 
@@ -290,7 +292,6 @@ app.whenReady().then(async () => {
   try {
     const serverInfo = await apiServer.startServer(database, 3001);
     console.log('[POS] API server ready for Price Checker connections');
-    console.log('[POS] Server Info:', JSON.stringify(serverInfo));
   } catch (err) {
     console.error('[POS] Failed to start API server:', err.message);
     console.error('[POS] Stack:', err.stack);
@@ -327,6 +328,11 @@ function registerIpcHandlers() {
     return auth.changeMasterKey(oldMasterKey, newMasterKey);
   });
 
+  ipcMain.handle('auth:logout', (_, userId) => {
+    auth.invalidateToken(userId);
+    return { success: true };
+  });
+
   // ─── Users ──────────────────────────────────────────
   ipcMain.handle('users:getAll', () => database.getUsers());
 
@@ -357,11 +363,14 @@ function registerIpcHandlers() {
   ipcMain.handle('products:getById', (_, id) => database.getProductById(id));
   ipcMain.handle('products:getByBarcode', (_, barcode) => {
     const result = database.getProductByBarcode(barcode);
-    return result ? result : null;
+    return result || null;
   });
   ipcMain.handle('products:create', (_, data) => database.createProduct(data));
   ipcMain.handle('products:update', (_, id, data) => database.updateProduct(id, data));
   ipcMain.handle('products:delete', (_, id) => database.deleteProduct(id));
+  ipcMain.handle('products:restore', (_, id) => {
+    return database.restoreProduct(id);
+  });
   ipcMain.handle('products:bulkUpsert', (_, products) => database.bulkUpsertProducts(products));
   ipcMain.handle('products:bulkDelete', (_, ids) => database.bulkDeleteProducts(ids));
   ipcMain.handle('products:bulkUpdateField', (_, ids, field, value) => database.bulkUpdateField(ids, field, value));
@@ -411,13 +420,7 @@ function registerIpcHandlers() {
   // ─── Transactions ───────────────────────────────────
   ipcMain.handle('transactions:create', (_, data) => {
     try {
-      console.log('[IPC transactions:create] Received data keys:', Object.keys(data));
-      console.log('[IPC transactions:create] Items received:', Array.isArray(data.items) ? data.items.length : 'NOT AN ARRAY', typeof data.items);
-      if (Array.isArray(data.items) && data.items.length > 0) {
-        console.log('[IPC transactions:create] Sample item:', JSON.stringify(data.items[0]));
-      }
       const result = database.createTransaction(data);
-      console.log('[IPC transactions:create] Result:', result ? `id=${result.id}, items=${result.items?.length ?? 0}` : 'null');
       return result;
     } catch (err) {
       console.error('[IPC transactions:create] ERROR:', err.message, err.stack);
@@ -425,38 +428,74 @@ function registerIpcHandlers() {
     }
   });
   ipcMain.handle('transactions:getAll', (_, filters) => {
-    const result = database.getTransactions(filters);
-    return result;
+    try {
+      return database.getTransactions(filters);
+    } catch (err) {
+      console.error('[IPC transactions:getAll]', err.message);
+      throw err;
+    }
   });
   ipcMain.handle('transactions:getById', (_, id) => {
-    const result = database.getTransactionById(id);
-    console.log('[transactions:getById] id:', id, 'result:', result ? `found, items: ${result.items?.length ?? 0}` : 'null');
-    return result ? result : null;
+    try {
+      return database.getTransactionById(id) || null;
+    } catch (err) {
+      console.error('[IPC transactions:getById]', err.message);
+      throw err;
+    }
   });
   ipcMain.handle('transactions:void', (_, id) => {
-    const result = database.voidTransaction(id);
-    return result ? result : null;
+    try {
+      return database.voidTransaction(id) || null;
+    } catch (err) {
+      console.error('[IPC transactions:void]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('transactions:addPayment', (_, txId, amount, method, userId, notes) => {
-    return database.addPayment(txId, amount, method, userId, notes);
+    try {
+      return database.addPayment(txId, amount, method, userId, notes);
+    } catch (err) {
+      console.error('[IPC transactions:addPayment]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('transactions:getPaymentHistory', (_, txId) => {
-    return database.getPaymentHistory(txId);
+    try {
+      return database.getPaymentHistory(txId);
+    } catch (err) {
+      console.error('[IPC transactions:getPaymentHistory]', err.message);
+      throw err;
+    }
   });
 
   // ─── Debt Management ──────────────────────────────────
   ipcMain.handle('debts:getOutstanding', (_, filters) => {
-    return database.getOutstandingDebts(filters);
+    try {
+      return database.getOutstandingDebts(filters);
+    } catch (err) {
+      console.error('[IPC debts:getOutstanding]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('debts:getSummary', () => {
-    return database.getDebtSummary();
+    try {
+      return database.getDebtSummary();
+    } catch (err) {
+      console.error('[IPC debts:getSummary]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('debts:getOverdue', () => {
-    return database.getOverdueTransactions();
+    try {
+      return database.getOverdueTransactions();
+    } catch (err) {
+      console.error('[IPC debts:getOverdue]', err.message);
+      throw err;
+    }
   });
 
   // ─── Settings ───────────────────────────────────────
@@ -530,30 +569,54 @@ function registerIpcHandlers() {
   // ─── App Control ──────────────────────────────────────
   ipcMain.handle('app:restart', () => {
     app.relaunch();
-    app.exit(0);
+    app.quit(); // app.quit() agar before-quit + window-all-closed terpanggil → DB flush + server stop
   });
 
   // ─── Dashboard ──────────────────────────────────────
   ipcMain.handle('dashboard:stats', () => {
-    const result = database.getDashboardStats();
-    return result;
+    try {
+      return database.getDashboardStats();
+    } catch (err) {
+      console.error('[IPC dashboard:stats]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('dashboard:enhancedStats', () => {
-    return database.getEnhancedDashboardStats();
+    try {
+      return database.getEnhancedDashboardStats();
+    } catch (err) {
+      console.error('[IPC dashboard:enhancedStats]', err.message);
+      throw err;
+    }
   });
 
   // ─── Reports ───────────────────────────────────────
   ipcMain.handle('reports:sales', (_, dateFrom, dateTo) => {
-    return database.getSalesReport(dateFrom, dateTo);
+    try {
+      return database.getSalesReport(dateFrom, dateTo);
+    } catch (err) {
+      console.error('[IPC reports:sales]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:profit', (_, dateFrom, dateTo) => {
-    return database.getProfitReport(dateFrom, dateTo);
+    try {
+      return database.getProfitReport(dateFrom, dateTo);
+    } catch (err) {
+      console.error('[IPC reports:profit]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:comparison', (_, df1, dt1, df2, dt2) => {
-    return database.getPeriodComparison(df1, dt1, df2, dt2);
+    try {
+      return database.getPeriodComparison(df1, dt1, df2, dt2);
+    } catch (err) {
+      console.error('[IPC reports:comparison]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:exportPdf', async (_, htmlContent) => {
@@ -624,23 +687,35 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('reports:hourly', (_, dateFrom, dateTo) => {
-    return database.getHourlySalesPattern(dateFrom, dateTo);
+    try {
+      return database.getHourlySalesPattern(dateFrom, dateTo);
+    } catch (err) {
+      console.error('[IPC reports:hourly]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:bottomProducts', (_, dateFrom, dateTo) => {
-    return database.getBottomProducts(dateFrom, dateTo);
+    try {
+      return database.getBottomProducts(dateFrom, dateTo);
+    } catch (err) {
+      console.error('[IPC reports:bottomProducts]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:transactionLog', (_, dateFrom, dateTo) => {
-    return database.getTransactionLog(dateFrom, dateTo);
+    try {
+      return database.getTransactionLog(dateFrom, dateTo);
+    } catch (err) {
+      console.error('[IPC reports:transactionLog]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('reports:comprehensive', (_, dateFrom, dateTo) => {
     try {
-      console.log('[IPC reports:comprehensive] Request received:', dateFrom, dateTo);
-      const result = database.getComprehensiveReport(dateFrom, dateTo);
-      console.log('[IPC reports:comprehensive] Result:', result ? 'Data returned' : 'NULL returned');
-      return result;
+      return database.getComprehensiveReport(dateFrom, dateTo);
     } catch (err) {
       console.error('[IPC reports:comprehensive] Uncaught error:', err.message);
       return null;
@@ -723,9 +798,7 @@ function registerIpcHandlers() {
     if (transaction.id) {
       const fresh = database.getTransactionById(transaction.id);
       if (fresh) tx = fresh;
-      console.log('[print:preview] Fresh tx items count:', fresh?.items?.length ?? 0);
     }
-    console.log('[print:preview] Final tx items count:', tx?.items?.length ?? 0);
     return printer.generateReceiptHTML(tx, settings);
   });
 
@@ -797,40 +870,68 @@ function registerIpcHandlers() {
   // ─── Excel Import/Export ────────────────────────────
   ipcMain.handle('excel:exportProducts', async () => {
     try {
-      const XLSX = require('xlsx');
       const products = database.getProducts({ active: 1 });
       const categories = database.getCategories();
       const catMap = {};
       categories.forEach(c => { catMap[c.id] = c.name; });
 
-      const data = products.map(p => ({
-        Barcode: p.barcode || '',
-        Nama: p.name,
-        Kategori: catMap[p.category_id] || '',
-        Harga: p.price,
-        'Harga Modal': p.cost,
-        Stok: p.stock,
-        Satuan: p.unit
-      }));
-
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(data);
-      ws['!cols'] = [
-        { wch: 15 }, { wch: 30 }, { wch: 15 },
-        { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, 'Products');
+      const settings = database.getSettings();
+      const storeName = (settings.store_name || 'Produk').replace(/[\\/:*?"<>|]/g, '_');
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const datePart = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
+      const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+      const defaultName = `${storeName}_${datePart}_${timePart}.xlsx`;
 
       const result = await dialog.showSaveDialog(mainWindow, {
-        defaultPath: 'products.xlsx',
+        defaultPath: defaultName,
         filters: [{ name: 'Excel', extensions: ['xlsx'] }]
       });
+      if (result.canceled || !result.filePath) return { success: false, error: 'Cancelled' };
 
-      if (!result.canceled && result.filePath) {
-        XLSX.writeFile(wb, result.filePath);
-        return { success: true, path: result.filePath };
-      }
-      return { success: false, error: 'Cancelled' };
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Products');
+
+      ws.columns = [
+        { header: 'Barcode',     key: 'barcode',     width: 15, hidden: true },
+        { header: 'Nama',        key: 'nama',         width: 30 },
+        { header: 'Kategori',    key: 'kategori',     width: 18 },
+        { header: 'Harga',       key: 'harga',        width: 14 },
+        { header: 'Harga Modal', key: 'harga_modal',  width: 14, hidden: true },
+        { header: 'Stok',        key: 'stok',         width: 10 },
+        { header: 'Satuan',      key: 'satuan',       width: 10 },
+        { header: 'Mode Harga',  key: 'mode_harga',   width: 12, hidden: true },
+      ];
+
+      // Style header row
+      const headerRow = ws.getRow(1);
+      headerRow.height = 22;
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        cell.border = { bottom: { style: 'medium', color: { argb: 'FF1E40AF' } } };
+      });
+
+      // Freeze header row
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+      // Add data rows
+      products.forEach(p => {
+        ws.addRow({
+          barcode:    p.barcode || '',
+          nama:       p.name,
+          kategori:   catMap[p.category_id] || '',
+          harga:      p.price,
+          harga_modal: p.cost,
+          stok:       p.stock,
+          satuan:     p.unit,
+          mode_harga: p.margin_mode === 'manual' ? 'manual' : 'auto',
+        });
+      });
+
+      await workbook.xlsx.writeFile(result.filePath);
+      return { success: true, path: result.filePath };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -904,8 +1005,6 @@ function registerIpcHandlers() {
         }
         return undefined;
       };
-
-      console.log('[excel] Previewing import. First row keys:', rows.length > 0 ? Object.keys(rows[0]) : 'empty');
 
       rows.forEach((row, index) => {
         const barcode = String(getValue(row, ['Barcode', 'Kode', 'Code']) || '').trim();
@@ -1008,7 +1107,10 @@ function registerIpcHandlers() {
           price: p.price,
           cost: p.cost,
           stock: p.stock,
-          unit: p.unit
+          unit: p.unit,
+          margin_mode: 'auto',
+          userId: null,
+          userName: 'Import Excel'
         });
       });
 
@@ -1028,24 +1130,31 @@ function registerIpcHandlers() {
           price: p.price,
           cost: p.cost,
           stock: p.stock,
-          unit: p.unit
+          unit: p.unit,
+          margin_mode: 'auto',
+          userId: null,
+          userName: 'Import Excel'
         });
       });
 
       // Import all products
       let created = 0;
+      const failedProducts = [];
       allProducts.forEach(product => {
         try {
           database.createProduct(product);
           created++;
         } catch (err) {
           console.error('[excel:confirmImport] Failed to create product:', product.name, err.message);
+          failedProducts.push({ name: product.name, reason: err.message });
         }
       });
 
       return {
         success: true,
         created,
+        failed: failedProducts.length,
+        failedProducts,
         withBarcode: newProducts.length,
         autoBarcode: needBarcode.length
       };
@@ -1150,7 +1259,7 @@ function registerIpcHandlers() {
         { Petunjuk: '' },
         { Petunjuk: 'CATATAN:' },
         { Petunjuk: '- Hapus 2 baris contoh di sheet "Products" lalu isi data Anda.' },
-        { Petunjuk: '- Produk dengan Barcode yang sudah ada akan otomatis di-update.' },
+        { Petunjuk: '- Produk dengan Barcode/Nama yang sudah ada akan dilewati (tidak ditimpa).' },
         { Petunjuk: '- Simpan file sebagai .xlsx lalu gunakan menu Import di aplikasi.' },
       ];
       const wsInstr = XLSX.utils.json_to_sheet(instrData);
@@ -1223,7 +1332,7 @@ function registerIpcHandlers() {
     database.createAutoBackup();
     database.hardResetDatabase();
     app.relaunch();
-    app.exit(0);
+    app.quit();
     return { success: true };
   });
 
@@ -1268,7 +1377,7 @@ function registerIpcHandlers() {
       const restoreResult = database.restoreDatabase(result.filePaths[0]);
       if (restoreResult.success) {
         app.relaunch();
-        app.exit(0);
+        app.quit();
       }
       return restoreResult;
     } catch (err) {
@@ -1280,7 +1389,7 @@ function registerIpcHandlers() {
     const result = database.restoreDatabase(filePath);
     if (result.success) {
       app.relaunch();
-      app.exit(0);
+      app.quit();
     }
     return result;
   });

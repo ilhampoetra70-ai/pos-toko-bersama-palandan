@@ -52,10 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = useCallback(() => {
+        // Invalidate token di server (best-effort: jangan block logout jika gagal)
+        if (user?.id) {
+            window.api.logoutUser(user.id).catch(() => {});
+        }
         sessionStorage.removeItem('pos_token');
         setToken(null);
         setUser(null);
-    }, []);
+    }, [user]);
 
     // Idle Timer Effect
     useEffect(() => {

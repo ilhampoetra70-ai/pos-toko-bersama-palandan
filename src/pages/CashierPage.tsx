@@ -52,12 +52,14 @@ interface CartItem {
 export default function CashierPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filterCat, setFilterCat] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
 
   const { data: productsData = [], isLoading: isLoadingProducts } = useProducts({
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     category_id: filterCat || undefined,
     active: 1,
     limit: 80
@@ -194,7 +196,7 @@ export default function CashierPage() {
       }
       if (e.key === ' ' && document.activeElement === document.body) {
         e.preventDefault();
-        if (cart.length > 0 && total > 0) setShowPayment(true);
+        if (cart.length > 0 && total > 0 && !createTxMutation.isPending) setShowPayment(true);
       }
       if (e.key === 'k' && e.ctrlKey) {
         e.preventDefault();
@@ -295,6 +297,27 @@ export default function CashierPage() {
       items
     };
 
+    // Validasi produk aktif sebelum checkout
+    const productIds = items.filter(i => i.product_id != null).map(i => i.product_id);
+    if (productIds.length > 0) {
+      const invalidItems: string[] = [];
+      for (const item of items) {
+        if (!item.product_id) continue;
+        const product = await window.api.getProductById(item.product_id);
+        if (!product || (product as any).data?.active === 0 || (product as any).active === 0) {
+          invalidItems.push(item.product_name);
+        }
+      }
+      if (invalidItems.length > 0) {
+        setErrorDialog({
+          show: true,
+          title: 'Produk Tidak Tersedia',
+          message: `Produk berikut sudah tidak aktif dan tidak bisa dijual: ${invalidItems.join(', ')}. Hapus dari cart terlebih dahulu.`
+        });
+        return;
+      }
+    }
+
     createTxMutation.mutate(txData, {
       onSuccess: async (tx) => {
         setLastTx(tx);
@@ -368,7 +391,14 @@ export default function CashierPage() {
                 className="w-full h-12 pl-10 pr-24 bg-card dark:bg-background border border-border dark:border-border rounded-xl text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground font-medium focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
                 placeholder="Cari nama produk atau scan barcode..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSearch(val);
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  searchDebounceRef.current = setTimeout(() => {
+                    setDebouncedSearch(val);
+                  }, 400);
+                }}
                 onKeyDown={handleSearchKeyDown}
                 autoFocus
               />
@@ -536,7 +566,7 @@ export default function CashierPage() {
                 type="number"
                 className="w-24 text-right bg-transparent text-sm font-bold text-primary-600 dark:text-primary-400 border-b border-dashed border-primary-400/40 outline-none focus:border-primary-500 transition-colors tabular-nums"
                 value={discount || ''}
-                onChange={e => setDiscount(parseInt(e.target.value) || 0)}
+                onChange={e => setDiscount(Math.max(0, parseInt(e.target.value) || 0))}
                 placeholder="0"
                 min="0"
               />
@@ -554,11 +584,11 @@ export default function CashierPage() {
 
           <button
             onClick={() => setShowPayment(true)}
-            disabled={cart.length === 0 || total <= 0}
+            disabled={cart.length === 0 || total <= 0 || createTxMutation.isPending}
             className={cn(
               "w-full h-14 rounded-2xl flex items-center justify-center gap-3",
               "font-black text-base transition-all active:scale-[0.98]",
-              cart.length === 0 || total <= 0
+              cart.length === 0 || total <= 0 || createTxMutation.isPending
                 ? "bg-muted dark:bg-card text-muted-foreground dark:text-muted-foreground cursor-not-allowed"
                 : "bg-primary-600 hover:bg-primary-500 text-white shadow-lg shadow-primary-500/20"
             )}
@@ -589,6 +619,7 @@ export default function CashierPage() {
           onClose={() => setShowPayment(false)}
           customerName={customerName}
           customerAddress={customerAddress}
+          isSubmitting={createTxMutation.isPending}
         />
       )}
       {showScanner && (
@@ -597,7 +628,10 @@ export default function CashierPage() {
 
       {/* Combined Transaction Success + Receipt Preview Dialog */}
       <Dialog open={showTxSuccess && !!lastTx} onOpenChange={handleCloseSuccess}>
-        <DialogContent className="sm:max-w-xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
+        <DialogContent className={cn(
+          "h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background",
+          settings.receipt_width === 'cf' ? "sm:max-w-4xl" : "sm:max-w-xl"
+        )}>
           <div className="p-6 border-b dark:border-border shrink-0">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center shrink-0">
@@ -628,8 +662,8 @@ export default function CashierPage() {
           {(printMode === 'preview' || printMode === 'auto_print') && (
             <div className="flex-1 overflow-y-auto min-h-0 bg-muted dark:bg-background p-6 flex justify-center">
               {receiptHtml ? (
-                <div className="bg-card shadow-lg rounded-sm overflow-hidden border dark:border-transparent h-fit">
-                  <ReceiptIframe html={receiptHtml} width="320px" />
+                <div className="bg-card w-full max-w-full p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[3px] animate-in fade-in slide-in-from-bottom-4 duration-500 flex justify-center flex-shrink-0 h-fit">
+                  <ReceiptIframe html={receiptHtml} width={settings.receipt_width === 'cf' ? '820px' : settings.receipt_width === '80' ? '302px' : '219px'} />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-12 text-muted-foreground gap-3">

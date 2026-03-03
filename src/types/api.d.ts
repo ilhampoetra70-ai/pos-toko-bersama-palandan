@@ -391,6 +391,7 @@ export interface WindowApi {
     updateProduct(id: number, data: Partial<Product>): Promise<{ success: boolean; error?: string }>;
     updateProductWithAudit(id: number, data: Partial<Product>, auditInfo: { userId: number | null; userName: string; source: string }): Promise<{ success: boolean; error?: string }>;
     deleteProduct(id: number): Promise<{ success: boolean; error?: string }>;
+    restoreProduct(id: number): Promise<{ success: boolean; error?: string }>;
     bulkUpsertProducts(products: Partial<Product>[]): Promise<ApiResult<{ created: number; updated: number }>>;
     bulkDeleteProducts(ids: number[]): Promise<{ success: boolean; error?: string }>;
     bulkUpdateField(ids: number[], field: string, value: unknown): Promise<{ success: boolean; error?: string }>;

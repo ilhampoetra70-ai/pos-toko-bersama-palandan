@@ -12,3 +12,19 @@ nul
 *.log
 .DS_Store
 Thumbs.db
+
+# Build output
+TOKO BERSAMA FINAL*/
+*.rar
+*.zip
+
+# Database
+pos-cashier.db
+pos-cashier.db-shm
+pos-cashier.db-wal
+
+# Claude settings
+.claude/settings.local.json
+
+# Archives
+_archive_zombie_files/

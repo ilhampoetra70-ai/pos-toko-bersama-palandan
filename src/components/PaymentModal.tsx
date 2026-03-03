@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatCurrency } from '../utils/format';
-import { CheckCircle2, Clock, QrCode, Calendar, AlertCircle, Banknote, Info } from 'lucide-react';
+import { CheckCircle2, Clock, QrCode, Calendar, AlertCircle, Banknote, Info, Loader2 } from 'lucide-react';
 import { RetroWallet } from '../components/RetroIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,9 +29,10 @@ interface PaymentModalProps {
     onClose: () => void;
     customerName?: string;
     customerAddress?: string;
+    isSubmitting?: boolean;
 }
 
-export default function PaymentModal({ total, onConfirm, onClose, customerName, customerAddress }: PaymentModalProps) {
+export default function PaymentModal({ total, onConfirm, onClose, customerName, customerAddress, isSubmitting = false }: PaymentModalProps) {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'qris'>('cash');
     const [amountPaid, setAmountPaid] = useState('');
     const [paymentStatus, setPaymentStatus] = useState<string>('lunas');
@@ -105,6 +106,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
     };
 
     const canSubmit = () => {
+        if (isSubmitting) return false;
         if (customerInfoMissing) return false;
         if (dueDateMissing) return false;
         if (paymentStatus === 'lunas' && paymentMethod === 'cash' && paid < total) return false;
@@ -113,7 +115,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background shadow-2xl">
+            <DialogContent className="w-[96vw] max-w-[1400px] max-h-[99vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background shadow-2xl">
                 <DialogHeader className="p-5 pb-3 border-b dark:border-border shrink-0">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         <RetroWallet className="w-5 h-5" />
@@ -180,7 +182,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                         <Input id="cust-name"
                                             placeholder={requiresCustomerInfo ? "Wajib diisi..." : "Nama (opsional)..."}
                                             value={localCustomerName}
-                                            onChange={e => setLocalCustomerName(e.target.value)}
+                                            onChange={e => setLocalCustomerName(e.target.value.toUpperCase())}
                                             className="h-8 text-xs" />
                                     </div>
                                     <div className="space-y-1">
@@ -188,7 +190,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                         <Input id="cust-addr"
                                             placeholder="Alamat (opsional)..."
                                             value={localCustomerAddress}
-                                            onChange={e => setLocalCustomerAddress(e.target.value)}
+                                            onChange={e => setLocalCustomerAddress(e.target.value.toUpperCase())}
                                             className="h-8 text-xs" />
                                     </div>
                                 </div>
@@ -291,23 +293,23 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                     </div>
 
                     {/* Right: total + numpad */}
-                    <div className="w-80 shrink-0 border-l dark:border-border flex flex-col">
+                    <div className="w-[480px] shrink-0 border-l dark:border-border flex flex-col">
 
                         {/* Total bayar */}
                         <div className="p-4 border-b dark:border-border text-center bg-primary-50 dark:bg-primary-900/40">
-                            <div className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-0.5">Total Bayar</div>
-                            <div className="text-2xl font-black text-primary-700 dark:text-primary-300">{formatCurrency(total)}</div>
+                            <div className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-1">Total Bayar</div>
+                            <div className="text-4xl font-black text-primary-700 dark:text-primary-300">{formatCurrency(total)}</div>
                         </div>
 
                         {showNumpad ? (
-                            <div className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
+                            <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
 
                                 {/* Amount display */}
                                 <div className="bg-muted dark:bg-card rounded-xl px-4 py-2.5 border dark:border-border text-right">
                                     <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">
                                         {isLunasCash ? 'Jumlah Bayar' : 'Pembayaran Awal (DP)'}
                                     </div>
-                                    <div className="text-2xl font-black tabular-nums text-foreground dark:text-white min-h-[1.75rem] truncate">
+                                    <div className="text-4xl font-black tabular-nums text-foreground dark:text-white min-h-[2.5rem] truncate">
                                         {numpadValue > 0 ? formatCurrency(numpadValue) : <span className="text-muted-foreground dark:text-muted-foreground">Rp 0</span>}
                                     </div>
                                 </div>
@@ -318,7 +320,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                         {quickAmounts.map(amt => (
                                             <button key={amt} type="button"
                                                 onClick={() => setAmountPaid(String(amt))}
-                                                    className="py-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/40 text-primary-700 dark:text-primary-400 rounded-lg text-[9px] font-bold transition-all border border-primary/20 dark:border-primary/30 leading-tight">
+                                                className="py-1.5 bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/40 text-primary-700 dark:text-primary-400 rounded-lg text-[9px] font-bold transition-all border border-primary/20 dark:border-primary/30 leading-tight">
                                                 {formatCurrency(amt)}
                                             </button>
                                         ))}
@@ -326,12 +328,12 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                 )}
 
                                 {/* Numpad */}
-                                <div className="grid grid-cols-3 gap-1.5">
+                                <div className="grid grid-cols-3 gap-2.5">
                                     {NUMPAD_KEYS.map(key => (
                                         <button key={key} type="button"
                                             onClick={() => handleNumpadPress(key)}
                                             className={cn(
-                                                "h-14 rounded-xl font-black text-xl transition-all active:scale-95 select-none",
+                                                "h-[72px] rounded-xl font-black text-2xl transition-all active:scale-95 select-none",
                                                 key === '⌫'
                                                     ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/30"
                                                     : "bg-card dark:bg-card hover:bg-background dark:hover:bg-muted border border-border dark:border-border text-foreground dark:text-white shadow-sm",
@@ -359,7 +361,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                             {paid === 0 ? 'Kembalian' : change >= 0 ? 'Kembalian' : 'Kurang'}
                                         </div>
                                         <div className={cn(
-                                            "text-xl font-black tabular-nums",
+                                            "text-3xl font-black tabular-nums",
                                             paid === 0 ? 'text-muted-foreground dark:text-muted-foreground' : change >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
                                         )}>
                                             {paid === 0 ? formatCurrency(0) : formatCurrency(Math.abs(change))}
@@ -370,7 +372,7 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                         <div className="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-orange-600 dark:text-orange-400">
                                             Sisa Tagihan
                                         </div>
-                                        <div className="text-xl font-black tabular-nums text-orange-700 dark:text-orange-300">
+                                        <div className="text-3xl font-black tabular-nums text-orange-700 dark:text-orange-300">
                                             {formatCurrency(total - dpAmount)}
                                         </div>
                                     </div>
@@ -404,7 +406,14 @@ export default function PaymentModal({ total, onConfirm, onClose, customerName, 
                                     ? "bg-green-600 hover:bg-green-700 shadow-green-600/20"
                                     : "bg-primary-600 hover:bg-primary-700 shadow-primary-600/20"
                             )}>
-                            {paymentStatus === 'lunas' ? 'Bayar Sekarang' : 'Simpan Transaksi'}
+                            {isSubmitting ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Menyimpan...
+                                </span>
+                            ) : (
+                                paymentStatus === 'lunas' ? 'Bayar Sekarang' : 'Simpan Transaksi'
+                            )}
                         </Button>
                     </div>
                 </div>

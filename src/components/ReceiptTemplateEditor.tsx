@@ -43,6 +43,11 @@ const SECTION_LABELS: Record<string, string> = {
 
 const SAMPLE_TRANSACTION: Partial<Transaction> = {
     invoice_number: 'INV-20260204-0001',
+    cashier_name: 'Budi Santoso',
+    customer_name: 'AHMAD YANI',
+    customer_address: 'JL. MERDEKA NO.1',
+    payment_status: 'lunas' as any,
+    payment_notes: '',
     items: [
         { product_name: 'Nasi Goreng Spesial', quantity: 2, price: 25000, discount: 2500, subtotal: 45000 } as any,
         { product_name: 'Es Teh Manis', quantity: 3, price: 8000, discount: 0, subtotal: 24000 } as any,
@@ -65,10 +70,11 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
     const [headerText, setHeaderText] = useState('');
     const [footerText, setFooterText] = useState('');
     const [receiptWidth, setReceiptWidth] = useState('58');
-    const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [templates, setTemplates] = useState<any[]>([]);
     const [previewHTML, setPreviewHTML] = useState('');
     const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
     const debounceRef = useRef<any>(null);
 
     useEffect(() => {
@@ -86,7 +92,7 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
             setFooterText(sRes.receipt_footer || '');
             setReceiptWidth(sRes.receipt_width ? String(sRes.receipt_width) : '58');
             setLogo(sRes.receipt_logo || '');
-            setSelectedTemplateId(sRes.receipt_template_id ? Number(sRes.receipt_template_id) : null);
+            setSelectedTemplateId(sRes.receipt_template_id || null);
 
             try {
                 const tmpl = JSON.parse(sRes.receipt_template || '{}');
@@ -103,7 +109,7 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
     };
 
     const getFilteredTemplates = () => {
-        const widthKey = receiptWidth === '80' ? '80mm' : '58mm';
+        const widthKey = receiptWidth === '80' ? '80mm' : receiptWidth === 'cf' ? 'cf' : '58mm';
         return templates.filter(t => t.width === widthKey);
     };
 
@@ -159,16 +165,22 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
 
     const handleSave = async () => {
         setSaving(true);
-        await window.api.updateSettings({
-            receipt_template: JSON.stringify(template),
-            receipt_logo: logo,
-            receipt_header: headerText,
-            receipt_footer: footerText,
-            receipt_width: receiptWidth,
-            receipt_template_id: selectedTemplateId ? String(selectedTemplateId) : ''
-        });
-        setSaving(false);
-        onClose();
+        setSaveError('');
+        try {
+            await window.api.updateSettings({
+                receipt_template: JSON.stringify(template),
+                receipt_logo: logo,
+                receipt_header: headerText,
+                receipt_footer: footerText,
+                receipt_width: receiptWidth,
+                receipt_template_id: selectedTemplateId ?? ''
+            });
+            onClose();
+        } catch (err: any) {
+            setSaveError('Gagal menyimpan pengaturan: ' + (err?.message || 'Unknown error'));
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -198,22 +210,26 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
                                 <LayoutIcon className="w-4 h-4 text-primary-500" />
                                 <h3 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Ukuran Kertas</h3>
                             </div>
-                            <div className="flex gap-3">
-                                {['58', '80'].map(width => (
+                            <div className="flex gap-3 flex-wrap">
+                                {[
+                                    { id: '58', label: '58mm', desc: 'Kecil' },
+                                    { id: '80', label: '80mm', desc: 'Standar' },
+                                    { id: 'cf', label: '9.5×11"', desc: 'Continuous' },
+                                ].map(({ id, label, desc }) => (
                                     <button
-                                        key={width}
+                                        key={id}
                                         onClick={() => {
-                                            setReceiptWidth(width);
+                                            setReceiptWidth(id);
                                             setSelectedTemplateId(null);
                                         }}
                                         className={cn(
-                                            "flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all",
-                                            receiptWidth === width
+                                            "flex-1 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border-2 transition-all leading-tight",
+                                            receiptWidth === id
                                                 ? "border-primary-500 bg-primary-600 text-white shadow-lg shadow-primary-600/20"
                                                 : "border-border dark:border-border text-muted-foreground dark:bg-background hover:border-border"
                                         )}
                                     >
-                                        {width}mm {width === '58' ? '(Kecil)' : '(Standar)'}
+                                        {label}<br /><span className="text-[9px] opacity-70">({desc})</span>
                                     </button>
                                 ))}
                             </div>
@@ -366,64 +382,31 @@ export default function ReceiptTemplateEditor({ onClose }: ReceiptTemplateEditor
                                 Real-time Render
                             </Badge>
                         </div>
-                        <div className="flex-1 w-full flex items-start justify-center pb-20">
-                            <div className="bg-card p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[3px]">
-                                <ReceiptIframe html={previewHTML} width={receiptWidth === '80' ? '302px' : '219px'} />
+                        <div className="flex-1 w-full pb-20 flex items-start justify-center">
+                            <div className="bg-card w-full max-w-full p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[3px] flex-shrink-0 flex justify-center">
+                                <ReceiptIframe
+                                    html={previewHTML}
+                                    width={receiptWidth === 'cf' ? '820px' : receiptWidth === '80' ? '302px' : '219px'}
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-4 px-10 py-8 border-t dark:border-border bg-background/50 dark:bg-background/50">
+                <div className="flex flex-col gap-3 px-10 py-8 border-t dark:border-border bg-background/50 dark:bg-background/50">
+                    {saveError && (
+                        <p className="text-xs font-bold text-red-500 text-right">{saveError}</p>
+                    )}
+                    <div className="flex justify-end gap-4">
                     <Button variant="ghost" onClick={onClose} className="h-14 px-10 rounded-2xl font-black uppercase tracking-widest text-xs text-muted-foreground hover:text-muted-foreground">Batal</Button>
                     <Button onClick={handleSave} disabled={saving} className="h-14 px-12 rounded-2xl font-black uppercase tracking-widest text-xs gap-3 shadow-lg shadow-primary-600/20">
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {saving ? 'MENYIMPAN...' : 'TERAPKAN PERUBAHAN'}
                     </Button>
+                    </div>
                 </div>
             </div>
         </div>
     );
-}
-const getSampleTransaction = (): Transaction => {
-    // Mock transaction missing id ... wait I can just spread default props
-    return {
-        id: 0,
-        invoice_number: 'INV-SAMPLE-001',
-        cashier_name: 'Budi',
-        subtotal: 100000,
-        tax_amount: 11000,
-        discount_amount: 0,
-        total: 111000,
-        payment_method: 'cash',
-        amount_paid: 150000,
-        change_amount: 39000,
-        created_at: new Date().toISOString(),
-        status: 'completed' as const,
-        payment_status: 'paid' as const,
-        remaining_balance: 0,
-        items: [
-            { id: 1, transaction_id: 0, product_id: 1, product_name: 'Nasi Goreng Spesial', quantity: 2, price: 50000, subtotal: 100000, barcode: '' }
-        ]
-    };
-};
-
-function generatePreviewHTML(previewSettings: any): string {
-    const is80mm = previewSettings.receipt_width === '80';
-    return `
-        <html>
-            <body style="width: ${is80mm ? '80mm' : '58mm'}; font-family: sans-serif; padding: ${is80mm ? '10px' : '5px'}; font-size: ${previewSettings.receipt_template?.font_size === 'small' ? '12px' : '14px'}">
-                <center>
-                    ${previewSettings.receipt_logo ? `<img src="${previewSettings.receipt_logo}" style="max-width: 80%" />` : ''}
-                    <h3>${previewSettings.receipt_header || 'Toko Demo'}</h3>
-                </center>
-                <hr />
-                <p>Nasi Goreng Spesial x2<br/>Rp 100.000</p>
-                <hr />
-                <p style="text-align: right">Total: Rp 111.000</p>
-                <center><p>${previewSettings.receipt_footer || 'Terima kasih'}</p></center>
-            </body>
-        </html>
-    `;
 }

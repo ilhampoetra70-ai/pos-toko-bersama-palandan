@@ -9,7 +9,6 @@ import { UserRole } from './lib/types';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const MockupPage = lazy(() => import('./pages/MockupPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CashierPage = lazy(() => import('./pages/CashierPage'));
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
@@ -54,25 +53,24 @@ export default function App() {
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-                    <Route path="/mockup" element={<MockupPage />} />
                     <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                         <Route index element={<DashboardPage />} />
                         <Route path="cashier" element={<CashierPage />} />
                         <Route path="products" element={<ProductsPage />} />
                         <Route path="low-stock" element={<LowStockPage />} />
                         <Route path="stock-trail" element={
-                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier' as any]}>
+                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier']}>
                                 <StockTrailPage />
                             </ProtectedRoute>
                         } />
                         <Route path="transactions" element={<TransactionsPage />} />
                         <Route path="reports" element={
-                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier' as any]}>
+                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier']}>
                                 <ReportsPage />
                             </ProtectedRoute>
                         } />
                         <Route path="debts" element={
-                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier' as any]}>
+                            <ProtectedRoute roles={['admin', 'supervisor', 'cashier']}>
                                 <DebtManagementPage />
                             </ProtectedRoute>
                         } />

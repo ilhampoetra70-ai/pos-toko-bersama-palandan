@@ -10,8 +10,11 @@ import {
     useBulkDeleteProducts,
     useStockTrailByProduct,
     useCreateCategory,
-    useDeleteCategory
+    useDeleteCategory,
+    useRestoreProduct,
+    productKeys
 } from '@/lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '../utils/format';
 import ExcelManager from '../components/ExcelManager';
 import BarcodePreviewModal from '../components/BarcodePreviewModal';
@@ -80,6 +83,7 @@ export default function ProductsPage() {
     const { hasRole, user } = useAuth();
     const [search, setSearch] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('active');
     const [showForm, setShowForm] = useState(false);
     const [showCatForm, setShowCatForm] = useState(false);
     const [showExcel, setShowExcel] = useState(false);
@@ -89,6 +93,7 @@ export default function ProductsPage() {
     const [newCatName, setNewCatName] = useState('');
     const [error, setError] = useState('');
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+    const [selectAll, setSelectAll] = useState(false);
     const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
     const [stockHistory, setStockHistory] = useState<any[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
@@ -102,12 +107,13 @@ export default function ProductsPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+    const queryClient = useQueryClient();
 
     // --- Queries ---
     const { data: productsData, isLoading: loadingProducts } = useProducts({
         search,
         category_id: filterCategory === 'all' ? undefined : filterCategory,
-        active: 1,
+        active: filterStatus === 'active' ? 1 : filterStatus === 'inactive' ? 0 : undefined,
         limit: pageSize,
         offset: (page - 1) * pageSize,
         sortBy: sortConfig.key,
@@ -121,15 +127,12 @@ export default function ProductsPage() {
     const { data: settings } = useSettings();
     const defaultMarginFromSettings = settings?.default_margin_percent ? parseFloat(settings.default_margin_percent) : 10.5;
 
-    // Clear selection when products change
-    useEffect(() => {
-        setSelectedProducts([]);
-    }, [products]);
-
     // Reset page when search or filter changes
     useEffect(() => {
         setPage(1);
-    }, [search, filterCategory]);
+        setSelectedProducts([]);
+        setSelectAll(false);
+    }, [search, filterCategory, filterStatus, pageSize]);
 
     // --- Mutations ---
     const createProductMutation = useCreateProduct();
@@ -138,6 +141,7 @@ export default function ProductsPage() {
     const bulkDeleteMutation = useBulkDeleteProducts();
     const createCategoryMutation = useCreateCategory();
     const deleteCategoryMutation = useDeleteCategory();
+    const { mutate: restoreProduct } = useRestoreProduct();
 
     const requestSort = (key: string) => {
         let direction = 'ascending';
@@ -343,10 +347,14 @@ export default function ProductsPage() {
     };
 
     const toggleSelectAll = useCallback(() => {
-        setSelectedProducts(prev =>
-            prev.length === products.length ? [] : products.map(p => p.id)
-        );
-    }, [products]);
+        if (selectedProducts.length === products.length && selectedProducts.length > 0) {
+            setSelectedProducts([]);
+            setSelectAll(false);
+        } else {
+            setSelectedProducts(products.map(p => p.id));
+            setSelectAll(false);
+        }
+    }, [products, selectedProducts]);
 
     const toggleSelectProduct = useCallback((id: number) => {
         setSelectedProducts(prev =>
@@ -361,7 +369,22 @@ export default function ProductsPage() {
 
     const confirmBulkDelete = () => {
         setShowBulkDeleteDialog(false);
-        bulkDeleteMutation.mutate(selectedProducts);
+        if (selectAll) {
+            // @ts-ignore
+            window.showToast?.(
+                `Untuk keamanan, hapus massal lebih dari ${pageSize} produk dilakukan per halaman. Harap ulangi untuk setiap halaman.`,
+                'warning'
+            );
+            setSelectAll(false);
+            setSelectedProducts([]);
+        } else {
+            bulkDeleteMutation.mutate(selectedProducts, {
+                onSuccess: () => {
+                    setSelectedProducts([]);
+                    setSelectAll(false);
+                }
+            });
+        }
     };
 
     const toggleStockHistory = async (productId: number) => {
@@ -429,6 +452,21 @@ export default function ProductsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="w-full md:w-48">
+                            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                <SelectTrigger className="h-11 bg-background/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="w-4 h-4 text-muted-foreground" />
+                                        <SelectValue placeholder="Status" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Aktif</SelectItem>
+                                    <SelectItem value="inactive">Nonaktif / Terhapus</SelectItem>
+                                    <SelectItem value="all">Semua Status</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -461,6 +499,39 @@ export default function ProductsPage() {
 
             <Card className="border-none shadow-sm overflow-hidden">
                 <div className="h-[calc(100vh-420px)] overflow-y-auto custom-scrollbar">
+                    {selectedProducts.length === products.length && products.length > 0 && totalProducts > pageSize && (
+                        <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm">
+                            {selectAll ? (
+                                <>
+                                    <span className="font-medium text-primary-700 dark:text-primary-300">
+                                        Semua <strong>{totalProducts}</strong> produk dipilih.
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-primary-700 dark:text-primary-300 h-7 px-2"
+                                        onClick={() => { setSelectAll(false); setSelectedProducts([]); }}
+                                    >
+                                        Batalkan pilihan
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-muted-foreground">
+                                        {selectedProducts.length} produk di halaman ini dipilih.
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-primary-700 dark:text-primary-300 h-7 px-2"
+                                        onClick={() => setSelectAll(true)}
+                                    >
+                                        Pilih semua {totalProducts} produk
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                    )}
                     <Table className="zebra-rows">
                         <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                             <TableRow className="border-b border-border">
@@ -525,7 +596,10 @@ export default function ProductsPage() {
                                             </TableCell>
                                         )}
                                         <TableCell className="font-sans text-xs text-muted-foreground">{p.barcode || '-'}</TableCell>
-                                        <TableCell className="font-bold text-foreground dark:text-foreground">{p.name}</TableCell>
+                                        <TableCell className="font-bold text-foreground dark:text-foreground">
+                                            {p.name}
+                                            {p.active === 0 && <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full font-bold">TERHAPUS</span>}
+                                        </TableCell>
                                         <TableCell>
                                             <span className={cn(
                                                 "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
@@ -562,17 +636,25 @@ export default function ProductsPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="w-40">
-                                                        {p.barcode && (
-                                                            <DropdownMenuItem onClick={() => setBarcodePreviewProduct(p)} className="gap-2">
-                                                                <Barcode className="w-4 h-4" /> Labelling
+                                                        {p.active === 0 ? (
+                                                            <DropdownMenuItem onClick={() => restoreProduct(p.id)} className="gap-2 text-green-700 focus:text-green-600 focus:bg-green-50">
+                                                                <RetroRefresh className="w-4 h-4" /> Pulihkan
                                                             </DropdownMenuItem>
+                                                        ) : (
+                                                            <>
+                                                                {p.barcode && (
+                                                                    <DropdownMenuItem onClick={() => setBarcodePreviewProduct(p)} className="gap-2">
+                                                                        <Barcode className="w-4 h-4" /> Labelling
+                                                                    </DropdownMenuItem>
+                                                                )}
+                                                                <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
+                                                                    <Edit className="w-4 h-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-800 focus:text-red-600 focus:bg-red-50">
+                                                                    <RetroTrash className="w-4 h-4" /> Hapus
+                                                                </DropdownMenuItem>
+                                                            </>
                                                         )}
-                                                        <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
-                                                            <Edit className="w-4 h-4" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-800 focus:text-red-600 focus:bg-red-50">
-                                                            <RetroTrash className="w-4 h-4" /> Hapus
-                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -803,7 +885,14 @@ export default function ProductsPage() {
                 </DialogContent>
             </Dialog>
 
-            {showExcel && <ExcelManager onClose={() => setShowExcel(false)} />}
+            {showExcel && (
+                <ExcelManager
+                    onClose={() => setShowExcel(false)}
+                    onSuccess={() => {
+                        queryClient.invalidateQueries({ queryKey: productKeys.all });
+                    }}
+                />
+            )}
             {barcodePreviewProduct && <BarcodePreviewModal product={barcodePreviewProduct} onClose={() => setBarcodePreviewProduct(null)} />}
             {showBatchBarcode && <BatchBarcodeModal products={products.filter(p => selectedProducts.includes(p.id))} onClose={() => setShowBatchBarcode(false)} />}
 
@@ -842,7 +931,10 @@ export default function ProductsPage() {
                     <DialogHeader>
                         <DialogTitle className="font-black">Hapus Massal</DialogTitle>
                         <DialogDescription>
-                            Yakin ingin menghapus <strong>{selectedProducts.length} produk</strong> yang dipilih? Tindakan ini tidak dapat dibatalkan.
+                            {selectAll
+                                ? `Fitur hapus semua ${totalProducts} produk dilakukan per halaman untuk keamanan.`
+                                : `Yakin ingin menghapus ${selectedProducts.length} produk yang dipilih? Tindakan ini tidak dapat dibatalkan.`
+                            }
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

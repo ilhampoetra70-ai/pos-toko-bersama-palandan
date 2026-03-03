@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 interface ExcelManagerProps {
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
 interface ImportPreview {
@@ -18,7 +19,7 @@ interface ImportPreview {
     invalidRows: { row: number; reason: string }[];
 }
 
-export default function ExcelManager({ onClose }: ExcelManagerProps) {
+export default function ExcelManager({ onClose, onSuccess }: ExcelManagerProps) {
     const [importing, setImporting] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
@@ -67,13 +68,17 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
         setConfirming(false);
 
         if (res.success) {
+            const apiRes = res as any;
             const msg = [];
-            if (res.withBarcode > 0) msg.push(`${res.withBarcode} dengan barcode`);
-            if (res.autoBarcode > 0) msg.push(`${res.autoBarcode} barcode baru`);
+            if (apiRes.withBarcode > 0) msg.push(`${apiRes.withBarcode} dengan barcode`);
+            if (apiRes.autoBarcode > 0) msg.push(`${apiRes.autoBarcode} barcode baru`);
+            const failedNote = apiRes.failed > 0 ? `. ${apiRes.failed} produk gagal (cek console)` : '';
             setResult({
-                type: 'success',
-                message: `Berhasil import ${res.created} produk (${msg.join(', ')})`
+                type: apiRes.failed > 0 ? 'error' : 'success',
+                message: `Berhasil import ${apiRes.created} produk (${msg.join(', ')})${failedNote}`
             });
+            setPreview(null);
+            onSuccess?.();
         } else {
             setResult({ type: 'error', message: `Import gagal: ${res.error}` });
         }
@@ -99,7 +104,7 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
             <div className="bg-card dark:bg-background rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
                 <div className="p-6 border-b dark:border-border flex items-center justify-between bg-background dark:bg-background">
                     <div>
-                        <h3 className="font-black text-xl text-foreground dark:text-foreground uppercase tracking-tight">Eksper / Impor Excel</h3>
+                        <h3 className="font-black text-xl text-foreground dark:text-foreground uppercase tracking-tight">Ekspor / Impor Excel</h3>
                         <p className="text-xs text-muted-foreground font-medium">Pengolahan data produk massal</p>
                     </div>
                     <button
@@ -234,11 +239,11 @@ export default function ExcelManager({ onClose }: ExcelManagerProps) {
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Kolom "Barcode" wajib diisi</span>
+                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Kosongkan "Barcode" untuk generate otomatis</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Baris dengan barcode ganda akan dilewati</span>
+                                        <span className="text-[9px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">Produk yang sudah ada (barcode/nama sama) akan dilewati, tidak diupdate</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />

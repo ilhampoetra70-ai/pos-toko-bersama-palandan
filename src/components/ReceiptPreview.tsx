@@ -25,6 +25,7 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
     const [printStatus, setPrintStatus] = useState<'success' | 'error' | null>(null);
     const [printError, setPrintError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [receiptWidth, setReceiptWidth] = useState('58');
 
     useEffect(() => {
         loadPreview();
@@ -35,6 +36,10 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
         try {
             // Backend (main.js) sudah mengambil data terbaru sendiri via
             // getTransactionById jika ada id. Tidak perlu fetch dobel di sini.
+            const sRes = (await window.api.getSettings()) as any;
+            if (sRes?.receipt_width) {
+                setReceiptWidth(sRes.receipt_width);
+            }
             const result = await window.api.getReceiptHTML(transaction as any);
             setHtml(result);
         } catch (err) {
@@ -75,7 +80,10 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
 
     return (
         <Dialog open={true} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background border-none shadow-2xl rounded-[2.5rem]">
+            <DialogContent className={cn(
+                "h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background border-none shadow-2xl rounded-[2.5rem]",
+                receiptWidth === 'cf' ? "sm:max-w-4xl" : "sm:max-w-md"
+            )}>
                 <DialogHeader className="p-8 border-b dark:border-border shrink-0 bg-background/50 dark:bg-background/50">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center">
@@ -99,8 +107,8 @@ export default function ReceiptPreview({ transaction, onClose }: ReceiptPreviewP
                             <p className="text-[10px] font-black uppercase tracking-widest leading-none">Menyiapkan Tampilan...</p>
                         </div>
                     ) : (
-                        <div className="bg-card p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[3px] animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <ReceiptIframe html={html} width="300px" />
+                        <div className="bg-card w-full max-w-full p-1 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[3px] animate-in fade-in slide-in-from-bottom-4 duration-500 flex justify-center flex-shrink-0">
+                            <ReceiptIframe html={html} width={receiptWidth === 'cf' ? '820px' : receiptWidth === '80' ? '302px' : '219px'} />
                         </div>
                     )}
                 </div>

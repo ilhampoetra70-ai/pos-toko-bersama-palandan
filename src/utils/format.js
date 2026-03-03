@@ -70,3 +70,13 @@ export function formatTime(dateStr) {
 export function formatNumber(num) {
   return Number(num || 0).toLocaleString('id-ID');
 }
+
+// Versi lengkap dengan Intl.NumberFormat currency style — dipakai di HTML builder laporan
+export function formatCurrencyFull(n) {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n ?? 0);
+}
+
+export function getToday() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}

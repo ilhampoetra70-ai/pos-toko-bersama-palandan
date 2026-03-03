@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from 'react';
-import { UserPlus, Shield, UserCheck, UserX, Edit3, Eye, EyeOff, MoreVertical, CheckCircle2, XCircle, Search, Key } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserPlus, Shield, UserCheck, UserX, Edit3, Eye, EyeOff, MoreVertical, CheckCircle2, XCircle, Search, Key, Loader2 } from 'lucide-react';
 import { RetroUsers, RetroTrash } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,12 +46,24 @@ export default memo(function UsersPage() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [userToToggle, setUserToToggle] = useState<any>(null);
+  const [toggleError, setToggleError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const { user: currentUser } = useAuth();
+  const [actionError, setActionError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => { loadUsers(); }, []);
 
   const loadUsers = async () => {
-    const data = await window.api.getUsers();
-    setUsers((data as any)?.data || (Array.isArray(data) ? data : []));
+    try {
+      setLoadError('');
+      const data = await window.api.getUsers();
+      setUsers((data as any)?.data || (Array.isArray(data) ? data : []));
+    } catch (err: any) {
+      setLoadError('Gagal memuat data pengguna: ' + (err.message || 'Coba muat ulang halaman.'));
+    }
   };
 
   const resetForm = () => {
@@ -71,13 +84,22 @@ export default memo(function UsersPage() {
     e.preventDefault();
     setError('');
 
+    // Validasi password
+    if (!editing) {
+      if (!form.password) { setError('Password wajib diisi'); return; }
+      if (form.password.length < 6) { setError('Password minimal 6 karakter'); return; }
+    } else {
+      if (form.password && form.password.length < 6) { setError('Password minimal 6 karakter'); return; }
+    }
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       if (editing) {
         const data = { name: form.name, username: form.username, role: form.role as import('@/types/api').UserRole } as any;
         if (form.password) data.password = form.password;
         await window.api.updateUser(editing.id, data);
       } else {
-        if (!form.password) { setError('Password wajib diisi'); return; }
         await window.api.createUser({
           name: form.name,
           username: form.username,
@@ -89,21 +111,55 @@ export default memo(function UsersPage() {
       loadUsers();
     } catch (err: any) {
       setError('Gagal menyimpan: ' + (err.message || 'Error'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleToggleActive = async (user: any) => {
-    await window.api.updateUser(user.id, { active: user.active ? 0 : 1 });
-    loadUsers();
+  const handleToggleClick = (user: any) => {
+    if (user.active && user.id === currentUser?.id) {
+      setActionError('Tidak dapat menonaktifkan akun Anda sendiri yang sedang digunakan.');
+      return;
+    }
+    setToggleError('');
+    setUserToToggle(user);
   };
 
-  const handleDelete = (user: any) => setUserToDelete(user);
+  const confirmToggle = async () => {
+    if (!userToToggle) return;
+    try {
+      await window.api.updateUser(userToToggle.id, { active: userToToggle.active ? 0 : 1 });
+      setUserToToggle(null);
+      setToggleError('');
+      loadUsers();
+    } catch (err: any) {
+      setToggleError(err.message || 'Gagal mengubah status pengguna.');
+    }
+  };
+
+  const handleDelete = (user: any) => {
+    if (user.id === currentUser?.id) {
+      setActionError('Tidak dapat menghapus akun Anda sendiri yang sedang digunakan.');
+      return;
+    }
+    setUserToDelete(user);
+  };
 
   const confirmDelete = async () => {
     if (!userToDelete) return;
-    await window.api.deleteUser(userToDelete.id);
-    setUserToDelete(null);
-    loadUsers();
+    if (userToDelete.id === currentUser?.id) {
+      setActionError('Tidak dapat menghapus akun Anda sendiri yang sedang digunakan.');
+      setUserToDelete(null);
+      return;
+    }
+    try {
+      await window.api.deleteUser(userToDelete.id);
+      setUserToDelete(null);
+      setDeleteError('');
+      loadUsers();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Gagal menghapus pengguna.');
+    }
   };
 
   const filteredUsers = users.filter(u =>
@@ -128,6 +184,18 @@ export default memo(function UsersPage() {
           <UserPlus className="w-5 h-5" /> Tambah User
         </Button>
       </div>
+
+      {actionError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-xs font-bold text-red-600 dark:text-red-400">{actionError}</p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setActionError('')}>
+            <XCircle className="w-3 h-3 text-red-400" />
+          </Button>
+        </div>
+      )}
 
       <Card className="border-none shadow-sm">
         <CardContent className="p-4">
@@ -154,7 +222,16 @@ export default memo(function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody className="text-sm">
-            {filteredUsers.length === 0 ? (
+            {loadError ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
+                  <XCircle className="w-16 h-16 mx-auto mb-4 text-red-300 opacity-50" />
+                  <p className="font-bold text-lg text-red-500 dark:text-red-400">Gagal Memuat Data</p>
+                  <p className="text-sm mt-1">{loadError}</p>
+                  <Button variant="outline" className="mt-4 font-bold" onClick={loadUsers}>Coba Lagi</Button>
+                </TableCell>
+              </TableRow>
+            ) : filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-20 text-muted-foreground">
                   <RetroUsers className="w-16 h-16 mx-auto mb-4 opacity-10" />
@@ -183,7 +260,7 @@ export default memo(function UsersPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleToggleActive(user)}
+                    onClick={() => handleToggleClick(user)}
                     className={cn(
                       "font-black text-[10px] uppercase h-7 px-3 rounded-full",
                       user.active
@@ -300,8 +377,19 @@ export default memo(function UsersPage() {
 
             <DialogFooter className="p-6 bg-background/50 dark:bg-background/50 border-t dark:border-border gap-3 shrink-0">
               <Button type="button" variant="outline" onClick={resetForm} className="h-11 px-6 font-bold flex-1 border-border dark:border-border">Batal</Button>
-              <Button type="submit" className="h-11 px-8 font-black bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20 flex-1">
-                <CheckCircle2 className="w-4 h-4 mr-2" /> Simpan Data
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-11 px-8 font-black bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-600/20 flex-1 disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Menyimpan...
+                  </span>
+                ) : (
+                  <><CheckCircle2 className="w-4 h-4 mr-2" /> Simpan Data</>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -316,9 +404,47 @@ export default memo(function UsersPage() {
               Yakin ingin menghapus <strong>{userToDelete?.name}</strong>? Tindakan ini tidak dapat dibatalkan.
             </DialogDescription>
           </DialogHeader>
+          {deleteError && (
+            <div className="px-6 pb-2">
+              <p className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">{deleteError}</p>
+            </div>
+          )}
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setUserToDelete(null)} className="font-bold">Batal</Button>
+            <Button variant="outline" onClick={() => { setUserToDelete(null); setDeleteError(''); }} className="font-bold">Batal</Button>
             <Button onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white font-black">Hapus</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!userToToggle} onOpenChange={() => { setUserToToggle(null); setToggleError(''); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-black">
+              {userToToggle?.active ? 'Nonaktifkan Pengguna?' : 'Aktifkan Pengguna?'}
+            </DialogTitle>
+            <DialogDescription>
+              {userToToggle?.active
+                ? <>Pengguna <strong>{userToToggle?.name}</strong> akan dinonaktifkan dan tidak dapat login.</>
+                : <>Pengguna <strong>{userToToggle?.name}</strong> akan diaktifkan kembali.</>
+              }
+            </DialogDescription>
+          </DialogHeader>
+          {toggleError && (
+            <div className="px-1">
+              <p className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">{toggleError}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setUserToToggle(null); setToggleError(''); }} className="font-bold">Batal</Button>
+            <Button
+              onClick={confirmToggle}
+              className={userToToggle?.active
+                ? 'bg-red-600 hover:bg-red-700 text-white font-black'
+                : 'bg-green-600 hover:bg-green-700 text-white font-black'
+              }
+            >
+              {userToToggle?.active ? 'Nonaktifkan' : 'Aktifkan'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

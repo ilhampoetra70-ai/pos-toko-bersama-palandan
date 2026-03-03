@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { useDashboardStats, useSlowMovingProducts, useLowStockProducts } from '@/lib/queries';
 import { formatCurrency, formatDateTime, formatTime, formatNumber } from '../utils/format';
 import SalesTrendChart from '../components/charts/SalesTrendChart';
@@ -19,9 +20,25 @@ export default function DashboardPage() {
     const navigate = useNavigate();
     const [chartPeriod, setChartPeriod] = useState(7);
 
-    const { data: stats, isLoading } = useDashboardStats();
+    const { data: stats, isLoading, isError, refetch } = useDashboardStats();
 
-    if (isLoading || !stats) return <LoadingState />;
+    if (isLoading) return <LoadingState />;
+
+    if (isError || !stats) return (
+        <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-center">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-full">
+                <RetroAlert className="w-10 h-10 text-red-500" />
+            </div>
+            <div className="space-y-1">
+                <p className="font-bold text-foreground">Gagal memuat dashboard</p>
+                <p className="text-sm text-muted-foreground">Terjadi kesalahan saat mengambil data statistik.</p>
+            </div>
+            <Button onClick={() => refetch()} variant="outline" size="sm" className="gap-2">
+                <Loader2 className="w-4 h-4" />
+                Coba Lagi
+            </Button>
+        </div>
+    );
 
     // Dedicated cashier view — no whitespace, focused on what matters
     if (!hasRole('admin', 'supervisor')) {
@@ -623,7 +640,7 @@ function SalesChartSection({ chartData, chartPeriod, setChartPeriod, stats }: an
 
 function QuickActionsSection({ hasRole, navigate }: any) {
     const actions = [
-        { label: 'Buka Kasir', icon: RetroCart, path: '/cashier', color: 'bg-primary-600', roles: ['admin', 'supervisor', 'cashier', 'kasir'] },
+        { label: 'Buka Kasir', icon: RetroCart, path: '/cashier', color: 'bg-primary-600', roles: ['admin', 'supervisor', 'cashier'] },
         { label: 'Tambah Produk', icon: Plus, path: '/products', color: 'bg-green-600', roles: ['admin', 'supervisor'] },
         { label: 'Laporan Penjualan', icon: RetroReceipt, path: '/reports', color: 'bg-primary', roles: ['admin', 'supervisor'] },
         { label: 'Pengaturan Sistem', icon: RetroSettings, path: '/settings', color: 'bg-secondary', roles: ['admin'] }
@@ -809,36 +826,33 @@ function AlertsSection({ stats, navigate }: any) {
 }
 
 function AiInsightWidget({ navigate }: any) {
-    const [insight, setInsight] = useState<{ narrative: string; highlights: string[]; created_at?: string } | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        window.api.getAiInsightCache().then((r: any) => {
-            setLoading(false);
-            if (r.success && r.data) {
-                const d = r.data as any;
-                // Normalize paragraphs[] → narrative (format terbaru)
-                if (!d.narrative && d.paragraphs?.length) {
-                    d.narrative = d.paragraphs.join('\n\n');
-                }
-                // Normalize old summary format → narrative
-                if (!d.narrative && d.summary) {
-                    const parts = [d.summary];
-                    if (d.stock_recommendations?.length) parts.push(d.stock_recommendations.join('. '));
-                    if (d.slow_moving_recommendations?.length) parts.push(d.slow_moving_recommendations.join('. '));
-                    if (d.operational_recommendations?.length) parts.push(d.operational_recommendations.join('. '));
-                    d.narrative = parts.join('\n\n');
-                    d.highlights = d.top_priorities || [];
-                }
-
-                if (d.narrative) {
-                    setInsight({ ...d, created_at: r.created_at });
-                }
+    const { data: insight, isLoading } = useQuery({
+        queryKey: ['ai', 'insight-cache'],
+        queryFn: async () => {
+            const r = await window.api.getAiInsightCache();
+            if (!r.success || !r.data) return null;
+            const d = { ...r.data } as any;
+            // Normalize paragraphs[] → narrative
+            if (!d.narrative && d.paragraphs?.length) {
+                d.narrative = d.paragraphs.join('\n\n');
             }
-        }).catch(() => setLoading(false));
-    }, []);
+            // Normalize old summary format → narrative
+            if (!d.narrative && d.summary) {
+                const parts = [d.summary];
+                if (d.stock_recommendations?.length) parts.push(d.stock_recommendations.join('. '));
+                if (d.slow_moving_recommendations?.length) parts.push(d.slow_moving_recommendations.join('. '));
+                if (d.operational_recommendations?.length) parts.push(d.operational_recommendations.join('. '));
+                d.narrative = parts.join('\n\n');
+                d.highlights = d.top_priorities || [];
+            }
+            if (!d.narrative) return null;
+            return { ...d, created_at: r.created_at } as { narrative: string; highlights: string[]; created_at?: string };
+        },
+        staleTime: 300000,
+        refetchOnWindowFocus: true,
+    });
 
-    if (loading) return (
+    if (isLoading) return (
         <Card className="border-none shadow-sm overflow-hidden p-6 animate-pulse">
             <div className="h-4 bg-muted dark:bg-card rounded w-1/4 mb-4"></div>
             <div className="space-y-2">
@@ -903,7 +917,7 @@ function AiInsightWidget({ navigate }: any) {
 function SlowMovingDashboardSection({ navigate }: any) {
     const { data: products = [], isLoading } = useSlowMovingProducts(120, 10);
 
-    const totalValue = products.reduce((sum, p) => sum + (p.stock * p.price), 0);
+    const totalValue = (products as any[]).reduce((sum: number, p: any) => sum + (p.stock * p.price), 0);
 
     return (
         <Card className="border-none shadow-sm overflow-hidden">
@@ -1031,7 +1045,7 @@ function RecentTransactionsSection({ transactions, navigate }: any) {
                                                 )}
                                             </td>
                                             <td className="py-2 px-3 text-center">
-                                                <span className="text-[10px] font-black bg-muted dark:bg-card px-1.5 py-0.5 rounded-full">{tx.items?.length || 0}</span>
+                                                <span className="text-[10px] font-black bg-muted dark:bg-card px-1.5 py-0.5 rounded-full">{tx.item_count || 0}</span>
                                             </td>
                                             <td className={cn("py-2 px-4 text-right font-black text-xs", tx.status === 'voided' ? 'text-red-400 line-through' : 'text-primary-700 dark:text-primary-400')}>
                                                 {formatCurrency(tx.total)}

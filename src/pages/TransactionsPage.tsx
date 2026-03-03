@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '../contexts/AuthContext';
-import { formatCurrency, formatDateTime, formatDate } from '../utils/format';
+import { formatCurrency, formatDateTime, formatDate, getToday } from '../utils/format';
 import ReceiptPreview from '../components/ReceiptPreview';
 import AddPaymentModal from '../components/AddPaymentModal';
 import {
@@ -61,11 +61,6 @@ function PaymentStatusBadge({ status }: { status: string }) {
 export default memo(function TransactionsPage() {
     const { user, hasRole } = useAuth();
 
-    // Default to today
-    const getToday = () => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    };
 
     const [filters, setFilters] = useState({
         date_from: getToday(),
@@ -468,7 +463,7 @@ export default memo(function TransactionsPage() {
             </div>
 
             <Dialog open={showDetail} onOpenChange={handleCloseDetail}>
-                <DialogContent className="sm:max-w-2xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
+                <DialogContent className="sm:max-w-4xl h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="sr-only">
                         <DialogTitle>Detail Transaksi</DialogTitle>
                         <DialogDescription>Memuat atau menampilkan detail transaksi penjualan</DialogDescription>
@@ -512,32 +507,31 @@ export default memo(function TransactionsPage() {
 
                             <div className="flex-1 overflow-y-auto min-h-0 bg-card dark:bg-background">
                                 <div className="p-6 space-y-8">
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <InfoItem icon={Calendar} label="Waktu" value={formatDateTime(selectedTx.created_at)} />
-                                                <InfoItem icon={User} label="Kasir" value={selectedTx.cashier_name || '-'} />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <InfoItem
-                                                    icon={paymentMethodConfig[selectedTx.payment_method]?.icon || RetroWallet}
-                                                    label="Metode"
-                                                    value={paymentLabel(selectedTx.payment_method)}
-                                                />
-                                                {selectedTx.due_date && (
-                                                    <InfoItem icon={Clock} label="Jatuh Tempo" value={formatDate(selectedTx.due_date)} className="text-orange-600" />
-                                                )}
-                                            </div>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            <InfoItem icon={Calendar} label="Waktu" value={formatDateTime(selectedTx.created_at)} />
+                                            <InfoItem icon={User} label="Kasir" value={selectedTx.cashier_name || '-'} />
+                                            <InfoItem
+                                                icon={paymentMethodConfig[selectedTx.payment_method]?.icon || RetroWallet}
+                                                label="Metode"
+                                                value={paymentLabel(selectedTx.payment_method)}
+                                            />
+                                            {selectedTx.due_date ? (
+                                                <InfoItem icon={Clock} label="Jatuh Tempo" value={formatDate(selectedTx.due_date)} className="text-orange-600" />
+                                            ) : (
+                                                <div />
+                                            )}
                                         </div>
 
                                         {(selectedTx.customer_name || selectedTx.customer_address) && (
-                                            <div className="alert-adaptive-info flex-col items-start p-4 gap-2">
-                                                <label className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-primary-600 dark:text-primary-400">
-                                                    <User className="w-3 h-3" /> Info Pembeli
-                                                </label>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-black text-foreground dark:text-foreground">{selectedTx.customer_name || 'Pembeli Anonim'}</p>
-                                                    <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed">{selectedTx.customer_address || '-'}</p>
+                                            <div className="alert-adaptive-info flex-row items-center p-4 gap-4">
+                                                <User className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-primary-600 dark:text-primary-400">Info Pembeli</label>
+                                                    <p className="text-sm font-black text-foreground dark:text-foreground truncate">{selectedTx.customer_name || '-'}</p>
+                                                    {selectedTx.customer_address && (
+                                                        <p className="text-xs text-muted-foreground dark:text-muted-foreground leading-relaxed">{selectedTx.customer_address}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -576,24 +570,27 @@ export default memo(function TransactionsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-8">
+                                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(0,380px)] gap-6">
                                         <div className="space-y-4">
                                             {selectedTx.payment_history && selectedTx.payment_history.length > 0 && (
                                                 <div className="space-y-3">
                                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Riwayat Cicilan</label>
-                                                    <div className="max-h-40 overflow-y-auto border dark:border-border rounded-2xl p-4 bg-background/50 dark:bg-background/50">
-                                                        <div className="space-y-4">
+                                                    <div className="max-h-48 overflow-y-auto border dark:border-border rounded-2xl p-4 bg-background/50 dark:bg-background/50">
+                                                        <div className="space-y-3">
                                                             {selectedTx.payment_history.map((ph: any, i: number) => (
                                                                 <div key={i} className="flex justify-between items-start gap-3">
-                                                                    <div className="space-y-0.5">
+                                                                    <div className="space-y-0.5 min-w-0">
                                                                         <p className="text-[10px] font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-tighter">
                                                                             {formatDate(ph.payment_date)}
                                                                         </p>
                                                                         <p className="text-xs font-bold text-muted-foreground dark:text-muted-foreground">{paymentLabel(ph.payment_method)}</p>
+                                                                        {ph.receiver_name && (
+                                                                            <p className="text-[10px] text-muted-foreground/70 italic">{ph.receiver_name}</p>
+                                                                        )}
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <p className="text-sm font-black text-green-600 dark:text-green-400">{formatCurrency(ph.amount)}</p>
-                                                                        <p className="text-[9px] font-medium text-muted-foreground dark:text-muted-foreground italic">{ph.notes || '-'}</p>
+                                                                    <div className="text-right flex-shrink-0">
+                                                                        <p className="text-sm font-black text-green-600 dark:text-green-400 tabular-nums whitespace-nowrap">{formatCurrency(ph.amount)}</p>
+                                                                        {ph.notes && <p className="text-[9px] font-medium text-muted-foreground dark:text-muted-foreground italic">{ph.notes}</p>}
                                                                     </div>
                                                                 </div>
                                                             ))}
@@ -611,7 +608,7 @@ export default memo(function TransactionsPage() {
                                             )}
                                         </div>
 
-                                        <div className="bg-background/80 dark:bg-background/80 rounded-3xl p-6 space-y-4 border border-border dark:border-border">
+                                        <div className="bg-background/80 dark:bg-background/80 rounded-3xl p-6 space-y-3 border border-border dark:border-border self-start">
                                             <div className="space-y-2">
                                                 <TotalRow label="Subtotal" value={formatCurrency(selectedTx.subtotal)} />
                                                 {selectedTx.tax_amount > 0 && (
@@ -622,17 +619,17 @@ export default memo(function TransactionsPage() {
                                                 )}
                                             </div>
                                             <Separator className="bg-muted dark:bg-card" />
-                                            <div className="flex justify-between items-center py-2">
-                                                <span className="text-base font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest">TOTAL</span>
+                                            <div className="flex justify-between items-baseline gap-4 py-1">
+                                                <span className="text-sm font-black text-muted-foreground dark:text-muted-foreground uppercase tracking-widest flex-shrink-0">TOTAL</span>
                                                 <span className={cn(
-                                                    "text-3xl font-black tracking-tight",
+                                                    "text-2xl font-black tracking-tight tabular-nums text-right min-w-0 break-all",
                                                     selectedTx.status === 'voided' ? "text-red-400 line-through" : "text-foreground dark:text-foreground"
                                                 )}>
                                                     {formatCurrency(selectedTx.total)}
                                                 </span>
                                             </div>
                                             <Separator className="bg-muted dark:bg-card" />
-                                            <div className="space-y-2 pt-2">
+                                            <div className="space-y-2 pt-1">
                                                 <TotalRow label="Terbayar" value={formatCurrency(selectedTx.total_paid || selectedTx.amount_paid)} color="text-green-600 dark:text-green-400" />
                                                 {selectedTx.remaining_balance > 0 && (
                                                     <TotalRow label="Sisa Tagihan" value={formatCurrency(selectedTx.remaining_balance)} color="text-orange-600 dark:text-orange-400" />
@@ -724,9 +721,9 @@ function InfoItem({ icon: Icon, label, value, className }: any) {
 
 function TotalRow({ label, value, color = "text-foreground" }: any) {
     return (
-        <div className="flex justify-between items-center text-sm">
-            <span className="text-muted-foreground dark:text-muted-foreground font-bold uppercase tracking-tighter text-xs">{label}</span>
-            <span className={cn("font-black", color)}>{value}</span>
+        <div className="flex justify-between items-center gap-3 text-sm">
+            <span className="text-muted-foreground dark:text-muted-foreground font-bold uppercase tracking-tighter text-xs flex-shrink-0">{label}</span>
+            <span className={cn("font-black tabular-nums text-right", color)}>{value}</span>
         </div>
     );
 }

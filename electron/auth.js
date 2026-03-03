@@ -51,10 +51,18 @@ function generateToken(user, deviceId = null) {
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(token, getJwtSecret());
+    // Cek apakah token diterbitkan sebelum logout terakhir user (server-side invalidation)
+    const user = database.get('SELECT logged_out_at FROM users WHERE id = ?', [decoded.id]);
+    if (user && user.logged_out_at > 0 && decoded.iat < user.logged_out_at) return null;
+    return decoded;
   } catch {
     return null;
   }
+}
+
+function invalidateToken(userId) {
+  database.invalidateUserToken(userId);
 }
 
 // Public API paths yang tidak butuh autentikasi
@@ -183,4 +191,4 @@ function changeMasterKey(oldMasterKey, newMasterKey) {
   return { success: true };
 }
 
-module.exports = { hashPassword, verifyPassword, generateToken, verifyToken, requireAuth, login, seedDefaultAdmin, seedMasterKey, resetPasswordWithMasterKey, changeMasterKey };
+module.exports = { hashPassword, verifyPassword, generateToken, verifyToken, invalidateToken, requireAuth, login, seedDefaultAdmin, seedMasterKey, resetPasswordWithMasterKey, changeMasterKey };

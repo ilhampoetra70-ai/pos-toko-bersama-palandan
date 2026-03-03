@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   verifyToken: (token) => ipcRenderer.invoke('auth:verify', token),
   resetPasswordWithMasterKey: (username, masterKey, newPassword) => ipcRenderer.invoke('auth:resetPasswordWithMasterKey', username, masterKey, newPassword),
   changeMasterKey: (oldMasterKey, newMasterKey) => ipcRenderer.invoke('auth:changeMasterKey', oldMasterKey, newMasterKey),
+  logoutUser: (userId) => ipcRenderer.invoke('auth:logout', userId),
 
   // Users
   getUsers: () => ipcRenderer.invoke('users:getAll'),
@@ -26,6 +27,7 @@ contextBridge.exposeInMainWorld('api', {
   createProduct: (data) => ipcRenderer.invoke('products:create', data),
   updateProduct: (id, data) => ipcRenderer.invoke('products:update', id, data),
   deleteProduct: (id) => ipcRenderer.invoke('products:delete', id),
+  restoreProduct: (id) => ipcRenderer.invoke('products:restore', id),
   bulkUpsertProducts: (products) => ipcRenderer.invoke('products:bulkUpsert', products),
   bulkDeleteProducts: (ids) => ipcRenderer.invoke('products:bulkDelete', ids),
   bulkUpdateField: (ids, field, value) => ipcRenderer.invoke('products:bulkUpdateField', ids, field, value),

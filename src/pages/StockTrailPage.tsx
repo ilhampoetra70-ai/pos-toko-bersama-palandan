@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from 'react';
+import { getToday } from '../utils/format';
 import { Search, Filter, Calendar, User, ArrowRight, TrendingDown, RotateCcw, Layout, Info, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { RetroHistory, RetroBox, RetroRefresh, RetroMoney } from '../components/RetroIcons';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -24,6 +25,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '../utils/format';
+import { useProducts, useUsers } from '@/lib/queries';
 
 const EVENT_LABELS = {
     initial: { label: 'Stok Awal', color: 'bg-primary/10 text-primary dark:text-primary border-primary dark:border-primary/50' },
@@ -34,20 +36,21 @@ const EVENT_LABELS = {
     opname: { label: 'Stock Opname', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-900/50' }
 } as any;
 
-const getTodayDate = () => new Date().toISOString().split('T')[0];
 
 export default memo(function StockTrailPage() {
     const [trails, setTrails] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [products, setProducts] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const { data: productsData } = useProducts();
+    const products = productsData?.data || [];
+    const { data: users = [] } = useUsers();
 
     const [filters, setFilters] = useState({
         product_id: '',
         event_type: '',
         user_id: '',
-        date_from: getTodayDate(),
-        date_to: getTodayDate(),
+        date_from: getToday(),
+        date_to: getToday(),
         search: ''
     });
 
@@ -56,10 +59,6 @@ export default memo(function StockTrailPage() {
     const PAGE_SIZE = 50;
     const [totalCount, setTotalCount] = useState(0);
 
-
-    useEffect(() => {
-        loadInitialData();
-    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -72,28 +71,21 @@ export default memo(function StockTrailPage() {
         loadTrails(1);
     }, [filters]);
 
-
-    const loadInitialData = async () => {
-        try {
-            const [prods, usrs] = await Promise.all([
-                window.api.getProducts(),
-                window.api.getUsers()
-            ]);
-            setProducts((prods as any)?.data || (Array.isArray(prods) ? prods : []));
-            setUsers((usrs as any)?.data || (Array.isArray(usrs) ? usrs : []));
-        } catch (err) {
-            console.error('Failed to load initial data:', err);
-        }
-    };
-
     const loadTrails = async (pageNum: number = 1) => {
         setLoading(true);
+        setError(null);
         setPage(pageNum);
         try {
             const activeFilters = {} as any;
-            if (filters.product_id) activeFilters.product_id = parseInt(filters.product_id);
-            if (filters.event_type) activeFilters.event_type = filters.event_type;
-            if (filters.user_id) activeFilters.user_id = parseInt(filters.user_id);
+            if (filters.product_id && filters.product_id !== 'all') {
+                activeFilters.product_id = parseInt(filters.product_id);
+            }
+            if (filters.event_type && filters.event_type !== 'all') {
+                activeFilters.event_type = filters.event_type;
+            }
+            if (filters.user_id && filters.user_id !== 'all') {
+                activeFilters.user_id = parseInt(filters.user_id);
+            }
             if (filters.date_from) activeFilters.date_from = filters.date_from;
             if (filters.date_to) activeFilters.date_to = filters.date_to;
             if (filters.search) activeFilters.search = filters.search;
@@ -110,6 +102,9 @@ export default memo(function StockTrailPage() {
             setTotalCount(count || 0);
         } catch (err) {
             console.error('Failed to load trails:', err);
+            setError('Gagal memuat riwayat stok. Coba refresh halaman.');
+            setTrails([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
@@ -121,8 +116,8 @@ export default memo(function StockTrailPage() {
             product_id: '',
             event_type: '',
             user_id: '',
-            date_from: getTodayDate(),
-            date_to: getTodayDate(),
+            date_from: getToday(),
+            date_to: getToday(),
             search: ''
         });
         setSearchTerm('');
@@ -163,7 +158,7 @@ export default memo(function StockTrailPage() {
                                     <SelectValue placeholder="Semua Produk" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value=" ">Semua Produk</SelectItem>
+                                    <SelectItem value="all">Semua Produk</SelectItem>
                                     {products.map(p => (
                                         <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
                                     ))}
@@ -177,7 +172,7 @@ export default memo(function StockTrailPage() {
                                     <SelectValue placeholder="Semua Event" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value=" ">Semua Event</SelectItem>
+                                    <SelectItem value="all">Semua Event</SelectItem>
                                     {Object.entries(EVENT_LABELS).map(([key, val]: any) => (
                                         <SelectItem key={key} value={key}>{val.label}</SelectItem>
                                     ))}
@@ -194,7 +189,7 @@ export default memo(function StockTrailPage() {
                                     <SelectValue placeholder="Semua User" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value=" ">Semua User</SelectItem>
+                                    <SelectItem value="all">Semua User</SelectItem>
                                     {users.map(u => (
                                         <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
                                     ))}
@@ -238,6 +233,17 @@ export default memo(function StockTrailPage() {
                                     <TableCell colSpan={7} className="text-center py-20">
                                         <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
                                         <p className="text-sm font-bold text-muted-foreground">Menganalisis riwayat stok...</p>
+                                    </TableCell>
+                                </TableRow>
+                            ) : error ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-20">
+                                        <RetroHistory className="w-16 h-16 mx-auto mb-4 opacity-20 text-red-500" />
+                                        <p className="font-bold text-lg text-red-600 dark:text-red-400 mb-2">Gagal Memuat Data</p>
+                                        <p className="text-sm text-muted-foreground mb-4">{error}</p>
+                                        <Button onClick={() => loadTrails(page)} variant="outline" size="sm" className="gap-2">
+                                            <RetroRefresh className="w-4 h-4" /> Coba Lagi
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ) : trails.length === 0 ? (

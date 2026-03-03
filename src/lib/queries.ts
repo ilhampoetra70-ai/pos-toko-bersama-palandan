@@ -86,12 +86,14 @@ export const productApi = {
     update: ({ id, data }: any) => window.api.updateProduct(id, data),
     updateWithAudit: ({ id, data, auditInfo }: any) => window.api.updateProductWithAudit(id, data, auditInfo),
     delete: (id: number) => window.api.deleteProduct(id),
+    restore: (id: number) => window.api.restoreProduct(id),
     bulkDelete: (ids: number[]) => window.api.bulkDeleteProducts(ids),
 };
 
 export const categoryApi = {
     getAll: async () => {
         const res = await window.api.getCategories();
+        if (Array.isArray(res)) return res;
         return res.success ? (res.data || []) : [];
     },
     create: (name: string) => window.api.createCategory(name),
@@ -117,6 +119,18 @@ export const settingsApi = {
 };
 
 // --- Custom Hooks ---
+
+// Users
+export const useUsers = () =>
+    useQuery({
+        queryKey: ['users', 'list'],
+        queryFn: async () => {
+            const res = await window.api.getUsers();
+            if (Array.isArray(res)) return res;
+            return (res as any)?.data || [];
+        },
+        staleTime: 300000, // 5 menit
+    });
 
 // Products
 export const useProducts = (filters?: any) =>
@@ -175,7 +189,21 @@ export const useDeleteProduct = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: productApi.delete,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: productKeys.lists() }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+        }
+    });
+};
+
+export const useRestoreProduct = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: productApi.restore,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+            queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+        }
     });
 };
 
@@ -216,6 +244,7 @@ export const useSlowMovingProducts = (days: number, limit: number) =>
         queryKey: dashboardKeys.slowMoving(days, limit),
         queryFn: async () => {
             const res = await dashboardApi.getSlowMoving(days, limit);
+            if (Array.isArray(res)) return res;
             return res.success ? (res.data || []) : [];
         },
         staleTime: 60000
@@ -263,31 +292,35 @@ export const useStockTrail = (filters: any) => {
     });
 };
 
-export const useSalesReport = (filters: any) => {
+export const useSalesReport = (filters: any, enabled = true) => {
     return useQuery({
         queryKey: reportKeys.sales(filters),
         queryFn: () => window.api.getSalesReport(filters.date_from, filters.date_to),
+        enabled,
     });
 };
 
-export const useProfitReport = (filters: any) => {
+export const useProfitReport = (filters: any, enabled = true) => {
     return useQuery({
         queryKey: reportKeys.profit(filters),
         queryFn: () => window.api.getProfitReport(filters.date_from, filters.date_to),
+        enabled,
     });
 };
 
-export const useComparisonReport = (filters: any) => {
+export const useComparisonReport = (filters: any, enabled = true) => {
     return useQuery({
         queryKey: reportKeys.comparison(filters),
         queryFn: () => window.api.getPeriodComparison(filters.date_from, filters.date_to, filters.date_from_2, filters.date_to_2),
+        enabled: enabled && !!(filters.date_from && filters.date_to && filters.date_from_2 && filters.date_to_2),
     });
 };
 
-export const useComprehensiveReport = (filters: any) => {
+export const useComprehensiveReport = (filters: any, enabled = true) => {
     return useQuery({
         queryKey: reportKeys.comprehensive(filters),
         queryFn: () => window.api.getComprehensiveReport(filters.date_from, filters.date_to),
+        enabled,
     });
 };
 

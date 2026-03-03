@@ -49,7 +49,7 @@ export default function LowStockPage() {
 
     // Queries
     const { data: settings = {} as any } = useSettings();
-    const { data: rawProducts = [], isLoading: isLoadingProducts, refetch: refetchProducts } = useLowStockProducts(threshold);
+    const { data: rawProducts = [], isLoading: isLoadingProducts, isError: isErrorProducts, refetch: refetchProducts } = useLowStockProducts(threshold);
     const updateProductMutation = useUpdateProductWithAudit();
 
     const products = useMemo(() => {
@@ -290,6 +290,17 @@ export default function LowStockPage() {
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
                             <RetroRefresh className="w-10 h-10 text-primary-600 animate-spin" />
                             <p className="text-muted-foreground font-bold">Memindai stok gudang...</p>
+                        </div>
+                    ) : isErrorProducts ? (
+                        <div className="flex flex-col items-center justify-center py-32 text-center space-y-4">
+                            <RetroAlert className="w-16 h-16 text-red-400 opacity-60" />
+                            <div>
+                                <p className="text-xl font-black text-foreground">Gagal Memuat Data</p>
+                                <p className="text-sm font-medium text-muted-foreground mt-1">Terjadi kesalahan saat mengambil data stok rendah.</p>
+                            </div>
+                            <Button onClick={() => refetchProducts()} variant="outline" className="gap-2 font-bold">
+                                <RetroRefresh className="w-4 h-4" /> Coba Lagi
+                            </Button>
                         </div>
                     ) : products.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-32 text-center space-y-4 opacity-30">

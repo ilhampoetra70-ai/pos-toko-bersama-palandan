@@ -53,18 +53,24 @@ const receiptTemplates = require('./receipt_templates');
 
 function generateReceiptHTML(transaction, settings) {
   const width = settings.receipt_width || '58';
-  const widthMm = parseInt(width);
+  // CF = Continuous Form 9.5×11", printable width ~217mm (8.5" after tractor holes)
+  const widthMm = width === 'cf' ? 217 : parseInt(width);
   const widthPx = Math.round(widthMm * 3.78);
 
-  // Determine template ID. If saved template is just JSON, use default.
-  // We assume settings.receipt_template_id will be added.
-  // If not present, we can map width to a default.
   let templateId = settings.receipt_template_id;
 
-  // Fallback if no specific ID selected but width is set
-  // Fallback if no specific ID selected but width is set
   if (!templateId) {
-    templateId = width === '80' ? '80mm-1' : '58mm-1';
+    if (width === '80') templateId = '80mm-1';
+    else if (width === 'cf') templateId = 'cf-1';
+    else templateId = '58mm-1';
+  }
+
+  // Validasi: pastikan prefix template sesuai dengan width yang dipilih
+  const expectedPrefix = width === 'cf' ? 'cf-' : `${width}mm-`;
+  if (templateId && !templateId.startsWith(expectedPrefix)) {
+    if (width === '80') templateId = '80mm-1';
+    else if (width === 'cf') templateId = 'cf-1';
+    else templateId = '58mm-1';
   }
 
   const parsedTemplate = parseTemplate(settings);
@@ -103,16 +109,16 @@ function generateReceiptHTML(transaction, settings) {
   };
 
   // Escape semua field string dari user/DB sebelum masuk ke template HTML
-  data.storeName      = escHtml(data.storeName);
-  data.storeAddress   = escHtml(data.storeAddress);
-  data.storePhone     = escHtml(data.storePhone);
-  data.headerText     = escHtml(data.headerText);
-  data.footerText     = escHtml(data.footerText);
-  data.invoiceNumber  = escHtml(data.invoiceNumber);
-  data.date           = escHtml(data.date);
-  data.cashierName    = escHtml(data.cashierName);
-  data.notes          = escHtml(data.notes);
-  data.customerName   = escHtml(data.customerName);
+  data.storeName = escHtml(data.storeName);
+  data.storeAddress = escHtml(data.storeAddress);
+  data.storePhone = escHtml(data.storePhone);
+  data.headerText = escHtml(data.headerText);
+  data.footerText = escHtml(data.footerText);
+  data.invoiceNumber = escHtml(data.invoiceNumber);
+  data.date = escHtml(data.date);
+  data.cashierName = escHtml(data.cashierName);
+  data.notes = escHtml(data.notes);
+  data.customerName = escHtml(data.customerName);
   data.customerAddress = escHtml(data.customerAddress);
   data.items = data.items.map(item => ({ ...item, name: escHtml(item.name) }));
   // logoHTML adalah raw HTML dari settings (intentional) — tidak di-escape,
@@ -129,7 +135,9 @@ function generateReceiptHTML(transaction, settings) {
   <meta name="color-scheme" content="only light">
   <style>
     /* Force light mode — prevent Chromium auto-dark from inverting receipt colors */
-    html, body { background: white !important; color: black !important; }
+    html { box-sizing: border-box; }
+    *, *:before, *:after { box-sizing: inherit; }
+    html, body { background: white !important; color: black !important; margin: 0; word-wrap: break-word; overflow-wrap: break-word; }
   </style>
 </head>
 <body>
@@ -142,51 +150,65 @@ function generateReceiptHTMLWithSettings(transaction, customSettings) {
   return generateReceiptHTML(transaction, customSettings);
 }
 
+const PRINT_TIMEOUT_MS = 15000;
+
 async function printReceipt(transaction, settings) {
-  return new Promise((resolve, reject) => {
-    const html = generateReceiptHTML(transaction, settings);
-    const printWindow = new BrowserWindow({
-      show: false,
-      width: 300,
-      height: 600,
-      webPreferences: { nodeIntegration: false }
-    });
+  let printWindow = null; // Angkat ke outer scope agar bisa di-cleanup oleh finally
 
-    // Bug Fix: Tambahkan did-fail-load handler.
-    // Tanpa ini, jika halaman gagal dimuat, Promise tidak pernah resolve/reject
-    // dan printWindow menjadi zombie di memori selamanya.
-    printWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-      printWindow.destroy(); // Gunakan destroy() untuk pembersihan pasti
-      reject(new Error(`Failed to load receipt for printing: ${errorDescription} (${errorCode})`));
-    });
+  try {
+    const printPromise = new Promise((resolve, reject) => {
+      const html = generateReceiptHTML(transaction, settings);
+      printWindow = new BrowserWindow({
+        show: false,
+        width: 300,
+        height: 600,
+        webPreferences: { nodeIntegration: false }
+      });
 
-    printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-
-    printWindow.webContents.on('did-finish-load', () => {
-      const printerName = settings.printer_name || '';
-      const options = {
-        silent: true,
-        printBackground: true,
-        margins: { marginType: 'none' }
-      };
-
-      if (printerName) {
-        options.deviceName = printerName;
-      }
-
-      printWindow.webContents.print(options, (success, failureReason) => {
-        // Bug Fix: Ganti .close() dengan .destroy().
-        // Untuk hidden window, .destroy() langsung menghancurkan native handle
-        // tanpa menunggu event 'close'/'beforeunload' yang tidak perlu.
+      printWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         printWindow.destroy();
-        if (success) {
-          resolve({ success: true });
-        } else {
-          reject(new Error(failureReason || 'Print failed'));
+        printWindow = null;
+        reject(new Error(`Failed to load receipt for printing: ${errorDescription} (${errorCode})`));
+      });
+
+      printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+
+      printWindow.webContents.on('did-finish-load', () => {
+        const printerName = settings.printer_name || '';
+        const options = {
+          silent: true,
+          printBackground: true,
+          margins: { marginType: 'none' }
+        };
+
+        if (printerName) {
+          options.deviceName = printerName;
         }
+
+        printWindow.webContents.print(options, (success, failureReason) => {
+          printWindow.destroy();
+          printWindow = null;
+          if (success) {
+            resolve({ success: true });
+          } else {
+            reject(new Error(failureReason || 'Print failed'));
+          }
+        });
       });
     });
-  });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Print timeout: printer tidak merespons setelah 15 detik')), PRINT_TIMEOUT_MS)
+    );
+
+    return await Promise.race([printPromise, timeoutPromise]);
+  } finally {
+    // Cleanup: jika timeout menang sebelum print callback dipanggil,
+    // printWindow masih hidup → destroy di sini untuk mencegah zombie window
+    if (printWindow && !printWindow.isDestroyed()) {
+      printWindow.destroy();
+    }
+  }
 }
 
 function getPrinters(mainWindow) {
