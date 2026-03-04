@@ -32,3 +32,6 @@ _archive_zombie_files/
 # Root icon artifacts (duplikat, assets/ sudah ada)
 icon.ico
 icon.png
+
+# Google Drive temp
+.tmp.driveupload/
