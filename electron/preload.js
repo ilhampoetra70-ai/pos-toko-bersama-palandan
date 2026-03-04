@@ -155,6 +155,8 @@ contextBridge.exposeInMainWorld('api', {
   getAiApiSettings: () => ipcRenderer.invoke('ai:getApiSettings'),
   saveAiApiSettings: (settings) => ipcRenderer.invoke('ai:saveApiSettings', settings),
   testAiApiConnection: (settings) => ipcRenderer.invoke('ai:testApiConnection', settings),
+  fetchOpenRouterModels: (apiKey) => ipcRenderer.invoke('ai:fetchOpenRouterModels', apiKey),
+  fetchGroqModels: (apiKey) => ipcRenderer.invoke('ai:fetchGroqModels', apiKey),
   onAiDownloadProgress: (callback) => {
     ipcRenderer.on('ai:downloadProgress', (_, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('ai:downloadProgress');

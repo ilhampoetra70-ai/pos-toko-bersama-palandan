@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, nativeImage, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -343,11 +343,16 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('users:update', (_, id, data) => {
-    if (data.password) {
-      data.password_hash = auth.hashPassword(data.password);
-      delete data.password;
+    try {
+      if (data.password) {
+        data.password_hash = auth.hashPassword(data.password);
+        delete data.password;
+      }
+      const user = database.updateUser(id, data);
+      return { success: true, data: user };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
-    return database.updateUser(id, data);
   });
 
   ipcMain.handle('users:markPasswordChanged', (_, userId) => {
@@ -1691,6 +1696,46 @@ function registerIpcHandlers() {
   ipcMain.handle('ai:testApiConnection', async (_, { provider, apiKey, model, baseUrl }) => {
     try {
       return await aiApiService.testApiConnection({ provider, apiKey, model, baseUrl });
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('ai:fetchOpenRouterModels', async (_, apiKey) => {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey && apiKey.trim()) headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+      const res = await net.fetch('https://openrouter.ai/api/v1/models', { method: 'GET', headers });
+      const body = await res.json();
+      if (!res.ok) {
+        const msg = body?.error?.message || body?.message || `HTTP ${res.status}`;
+        return { success: false, error: msg };
+      }
+      const models = (body.data || [])
+        .filter(m => m.id && m.id.endsWith(':free'))
+        .map(m => m.id)
+        .sort();
+      return { success: true, models };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('ai:fetchGroqModels', async (_, apiKey) => {
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey && apiKey.trim()) headers['Authorization'] = `Bearer ${apiKey.trim()}`;
+      const res = await net.fetch('https://api.groq.com/openai/v1/models', { method: 'GET', headers });
+      const body = await res.json();
+      if (!res.ok) {
+        const msg = body?.error?.message || body?.message || `HTTP ${res.status}`;
+        return { success: false, error: msg };
+      }
+      const models = (body.data || [])
+        .filter(m => m.id && !m.id.includes('whisper') && !m.id.includes('distil-whisper')) // exclude audio models
+        .map(m => m.id)
+        .sort();
+      return { success: true, models };
     } catch (err) {
       return { success: false, error: err.message };
     }

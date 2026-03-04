@@ -85,13 +85,17 @@ Jawab HANYA dalam format JSON yang valid, tanpa penjelasan tambahan, dengan stru
 const PROVIDER_PRESETS = {
     openai: { baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini' },
     groq: { baseUrl: 'https://api.groq.com/openai/v1', defaultModel: 'llama-3.3-70b-versatile' },
-    openrouter: { baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'google/gemini-2.0-flash-exp:free' },
+    openrouter: { baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'meta-llama/llama-3.3-70b-instruct:free' },
     gemini: { baseUrl: null, defaultModel: 'gemini-2.0-flash' },
     custom: { baseUrl: '', defaultModel: '' },
 };
 
-// ─── HTTP Helper ──────────────────────────────────────────
+// ─── HTTP Helper (wall-clock timeout via AbortController) ─
 function httpRequest(url, options, body) {
+    const totalTimeout = options.timeout || 90000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), totalTimeout);
+
     return new Promise((resolve, reject) => {
         const parsedUrl = new URL(url);
         const lib = parsedUrl.protocol === 'https:' ? https : http;
@@ -101,21 +105,23 @@ function httpRequest(url, options, body) {
             path: parsedUrl.pathname + parsedUrl.search,
             method: options.method || 'POST',
             headers: options.headers || {},
-            timeout: options.timeout || 60000,
+            signal: controller.signal,
         };
 
         const req = lib.request(reqOptions, (res) => {
             let data = '';
             res.on('data', chunk => { data += chunk; });
             res.on('end', () => {
+                clearTimeout(timer);
                 resolve({ statusCode: res.statusCode, body: data, headers: res.headers });
             });
+            res.on('error', (err) => { clearTimeout(timer); reject(err); });
         });
 
-        req.on('error', reject);
-        req.on('timeout', () => {
-            req.destroy();
-            reject(new Error('Request timeout'));
+        req.on('error', (err) => {
+            clearTimeout(timer);
+            const msg = err.name === 'AbortError' ? `Request timeout setelah ${totalTimeout / 1000}s` : err.message;
+            reject(new Error(msg));
         });
 
         if (body) req.write(body);
@@ -123,33 +129,67 @@ function httpRequest(url, options, body) {
     });
 }
 
+// ─── JSON Extractor (handle markdown code block wrapping) ─
+function extractJson(text) {
+    // Strip Qwen3 / DeepSeek thinking tokens <think>...</think>
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip markdown code fences: ```json ... ``` or ``` ... ```
+    cleaned = cleaned.replace(/^```[\w]*\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+    try {
+        return JSON.parse(cleaned);
+    } catch (e) {
+        // Fallback: cari substring JSON valid pertama {...}
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) return JSON.parse(match[0]);
+        throw new Error(`Gagal parse JSON dari respons model: ${cleaned.slice(0, 120)}`);
+    }
+}
+
 // ─── OpenAI-Compatible Call ───────────────────────────────
-async function callOpenAICompatible({ baseUrl, apiKey, model, prompt, timeout }) {
+async function callOpenAICompatible({ baseUrl, apiKey, model, prompt, timeout, provider }) {
     const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
-    const requestBody = JSON.stringify({
+    const isOpenRouter = provider === 'openrouter' || baseUrl.includes('openrouter.ai');
+    const body = {
         model,
         messages: [
             { role: 'system', content: buildSystemPrompt() },
             { role: 'user', content: JSON.stringify(prompt) },
         ],
-        response_format: { type: 'json_object' },
         temperature: 0.3,
-        max_tokens: 2200,
-    });
+        max_tokens: 4000,
+    };
+    // response_format json_object tidak didukung semua model OpenRouter — skip untuk OpenRouter
+    if (!isOpenRouter) body.response_format = { type: 'json_object' };
+
+    const requestBody = JSON.stringify(body);
 
     const headers = {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(requestBody),
     };
     if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+    if (isOpenRouter) {
+        headers['HTTP-Referer'] = 'https://pos-app';
+        headers['X-Title'] = 'POS App Insight';
+    }
 
     console.log(`[AI API] POST ${url} (model: ${model})`);
-    const response = await httpRequest(url, { headers, timeout: timeout || 60000 }, requestBody);
+    const response = await httpRequest(url, { headers, timeout: timeout || 120000 }, requestBody);
 
     if (response.statusCode !== 200) {
         let errMsg = `HTTP ${response.statusCode}`;
-        try { errMsg = JSON.parse(response.body)?.error?.message || errMsg; } catch { /* ignore */ }
+        try {
+            const errBody = JSON.parse(response.body);
+            errMsg = errBody?.error?.message || errBody?.message || errMsg;
+            // OpenRouter menyertakan detail upstream di metadata.raw
+            const raw = errBody?.error?.metadata?.raw;
+            if (raw) {
+                const rawStr = typeof raw === 'string' ? raw : JSON.stringify(raw);
+                errMsg += ` (${rawStr.slice(0, 200)})`;
+            }
+            console.error(`[AI API] Error ${response.statusCode}:`, JSON.stringify(errBody));
+        } catch { console.error('[AI API] Raw error body:', response.body?.slice(0, 500)); }
         throw new Error(errMsg);
     }
 
@@ -157,7 +197,7 @@ async function callOpenAICompatible({ baseUrl, apiKey, model, prompt, timeout })
     const content = json?.choices?.[0]?.message?.content;
     if (!content) throw new Error('Respons API kosong atau tidak valid');
 
-    return JSON.parse(content);
+    return extractJson(content);
 }
 
 // ─── Google Gemini Call ───────────────────────────────────
@@ -226,6 +266,7 @@ async function generateInsightViaApi(aggregatedData, settings) {
                 apiKey,
                 model: effectiveModel,
                 prompt: aggregatedData,
+                provider,
             });
         }
 
@@ -266,6 +307,7 @@ async function testApiConnection(settings) {
                 model: effectiveModel,
                 prompt: { test: true },
                 timeout: 15000,
+                provider,
             });
         }
         return { success: true };

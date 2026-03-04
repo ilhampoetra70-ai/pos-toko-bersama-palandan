@@ -128,7 +128,11 @@ export default memo(function UsersPage() {
   const confirmToggle = async () => {
     if (!userToToggle) return;
     try {
-      await window.api.updateUser(userToToggle.id, { active: userToToggle.active ? 0 : 1 });
+      const result = await window.api.updateUser(userToToggle.id, { active: userToToggle.active ? 0 : 1 });
+      if (result && !result.success) {
+        setToggleError(result.error || 'Gagal mengubah status pengguna.');
+        return;
+      }
       setUserToToggle(null);
       setToggleError('');
       loadUsers();

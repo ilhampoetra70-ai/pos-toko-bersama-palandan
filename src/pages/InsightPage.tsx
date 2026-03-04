@@ -30,7 +30,7 @@ interface ApiSettings {
 const PROVIDERS = [
     { id: 'groq', name: 'Groq', description: 'Gratis & sangat cepat', badge: 'GRATIS', badgeColor: 'green', defaultModel: 'llama-3.3-70b-versatile', models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'], keyLink: 'https://console.groq.com/keys', keyLabel: 'Groq API Key', needsBaseUrl: false },
     { id: 'openai', name: 'OpenAI', description: 'GPT-4o Mini, akurat', badge: 'BERBAYAR', badgeColor: 'amber', defaultModel: 'gpt-4o-mini', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'], keyLink: 'https://platform.openai.com/api-keys', keyLabel: 'OpenAI API Key', needsBaseUrl: false },
-    { id: 'openrouter', name: 'OpenRouter', description: 'Banyak model, ada gratis', badge: 'GRATIS+', badgeColor: 'blue', defaultModel: 'google/gemini-2.0-flash-exp:free', models: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.3-70b-instruct:free', 'mistralai/mistral-7b-instruct:free'], keyLink: 'https://openrouter.ai/keys', keyLabel: 'OpenRouter API Key', needsBaseUrl: false },
+    { id: 'openrouter', name: 'OpenRouter', description: 'Banyak model, ada gratis', badge: 'GRATIS+', badgeColor: 'blue', defaultModel: 'meta-llama/llama-3.3-70b-instruct:free', models: ['meta-llama/llama-3.3-70b-instruct:free', 'meta-llama/llama-3.1-8b-instruct:free', 'mistralai/mistral-7b-instruct:free', 'google/gemma-2-9b-it:free'], keyLink: 'https://openrouter.ai/keys', keyLabel: 'OpenRouter API Key', needsBaseUrl: false },
     { id: 'gemini', name: 'Google Gemini', description: 'Gemini Flash gratis', badge: 'GRATIS', badgeColor: 'green', defaultModel: 'gemini-2.0-flash', models: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'], keyLink: 'https://aistudio.google.com/apikey', keyLabel: 'Gemini API Key', needsBaseUrl: false },
     { id: 'custom', name: 'Custom (OpenAI-Compatible)', description: 'Ollama, LM Studio, dll', badge: 'LOKAL', badgeColor: 'gray', defaultModel: '', models: [], keyLink: null, keyLabel: 'API Key (opsional)', needsBaseUrl: true },
 ];
@@ -129,24 +129,22 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
     const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-    const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
+    const [dynamicModels, setDynamicModels] = useState<string[]>([]);
     const [fetchingModels, setFetchingModels] = useState(false);
 
-    const fetchOpenRouterModels = useCallback(async (apiKey?: string) => {
+    const fetchDynamicModels = useCallback(async (provider: string, apiKey?: string) => {
+        if (provider !== 'openrouter' && provider !== 'groq') return;
         setFetchingModels(true);
+        setApiError(null);
         try {
-            const headers: Record<string, string> = {};
-            if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
-            const res = await fetch('https://openrouter.ai/api/v1/models', { headers });
-            if (!res.ok) throw new Error('fetch failed');
-            const data = await res.json();
-            const freeModels: string[] = (data.data as { id: string }[])
-                .filter(m => m.id.endsWith(':free'))
-                .map(m => m.id)
-                .sort();
-            if (freeModels.length > 0) setOpenRouterModels(freeModels);
-        } catch {
-            // jaga list lama jika fetch gagal
+            const result = provider === 'groq'
+                ? await window.api.fetchGroqModels(apiKey || '')
+                : await window.api.fetchOpenRouterModels(apiKey || '');
+            if (!result.success) throw new Error(result.error);
+            if (result.models.length > 0) setDynamicModels(result.models);
+            else throw new Error('Tidak ada model yang dapat ditarik.');
+        } catch (e: any) {
+            setApiError(`Gagal memuat model: ${e.message}`);
         } finally {
             setFetchingModels(false);
         }
@@ -158,16 +156,16 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
             if (s.success) {
                 setApiSettings({ mode: s.mode as 'local' | 'api', provider: s.provider, apiKey: s.apiKey, model: s.model, baseUrl: s.baseUrl });
                 setActiveTab(s.mode === 'api' ? 'api' : 'local');
-                if (s.provider === 'openrouter') fetchOpenRouterModels(s.apiKey);
+                if (s.provider === 'openrouter' || s.provider === 'groq') fetchDynamicModels(s.provider, s.apiKey);
             }
         });
-    }, [open, fetchOpenRouterModels]);
+    }, [open, fetchDynamicModels]);
 
     useEffect(() => {
-        if (open && apiSettings.provider === 'openrouter') {
-            fetchOpenRouterModels(apiSettings.apiKey);
+        if (open && (apiSettings.provider === 'openrouter' || apiSettings.provider === 'groq')) {
+            fetchDynamicModels(apiSettings.provider, apiSettings.apiKey);
         }
-    }, [apiSettings.provider, open, fetchOpenRouterModels]);
+    }, [apiSettings.provider, open, fetchDynamicModels]);
 
     useEffect(() => {
         if (!open) { prevPathRef.current = customModelPath; return; }
@@ -250,16 +248,16 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">Nama Model</label>
-                                    {currentProvider.id === 'openrouter' && (
-                                        <button onClick={() => fetchOpenRouterModels(apiSettings.apiKey)} disabled={fetchingModels} title="Refresh daftar model" className="flex items-center gap-1 text-[11px] text-primary-500 hover:text-primary-600 dark:text-primary-400 disabled:opacity-50">
+                                    {(currentProvider.id === 'openrouter' || currentProvider.id === 'groq') && (
+                                        <button onClick={() => fetchDynamicModels(currentProvider.id, apiSettings.apiKey)} disabled={fetchingModels} title="Refresh daftar model" className="flex items-center gap-1 text-[11px] text-primary-500 hover:text-primary-600 dark:text-primary-400 disabled:opacity-50">
                                             {fetchingModels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RetroRefresh className="w-3 h-3" />}
-                                            {fetchingModels ? 'Memuat...' : `Refresh${openRouterModels.length > 0 ? ` (${openRouterModels.length})` : ''}`}
+                                            {fetchingModels ? 'Memuat...' : `Refresh${dynamicModels.length > 0 ? ` (${dynamicModels.length})` : ''}`}
                                         </button>
                                     )}
                                 </div>
-                                {currentProvider.id === 'openrouter' ? (
+                                {(currentProvider.id === 'openrouter' || currentProvider.id === 'groq') ? (
                                     <select value={apiSettings.model || currentProvider.defaultModel} onChange={e => setApiSettings(s => ({ ...s, model: e.target.value }))} className="w-full px-3 py-2 text-sm rounded-lg border border-border dark:border-border bg-card dark:bg-card text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400">
-                                        {(openRouterModels.length > 0 ? openRouterModels : currentProvider.models).map(m => <option key={m} value={m}>{m}</option>)}
+                                        {(dynamicModels.length > 0 ? dynamicModels : currentProvider.models).map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
                                 ) : currentProvider.models.length > 0 ? (
                                     <select value={apiSettings.model || currentProvider.defaultModel} onChange={e => setApiSettings(s => ({ ...s, model: e.target.value }))} className="w-full px-3 py-2 text-sm rounded-lg border border-border dark:border-border bg-card dark:bg-card text-foreground dark:text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400">{currentProvider.models.map(m => <option key={m} value={m}>{m}</option>)}</select>
@@ -299,7 +297,7 @@ const HIGHLIGHT_RULES = [
 
 function renderHighlighted(text: string) {
     const combined = new RegExp(HIGHLIGHT_RULES.map(r => `(${r.pattern})`).join('|'), 'gi');
-    const nodes: (string | JSX.Element)[] = [];
+    const nodes: (string | React.ReactNode)[] = [];
     let last = 0;
     let m: RegExpExecArray | null;
     let k = 0;
@@ -348,11 +346,10 @@ function NarrativeInsight({ data, days }: { data: InsightData; days: number }) {
                     // Dalam satu paragraf bisa ada \n tunggal sebagai baris baru
                     const lines = p.split('\n');
                     return (
-                        <p key={i} className={`leading-7 text-muted-foreground dark:text-muted-foreground ${
-                            i === 0
-                                ? 'text-[15px] font-semibold text-foreground dark:text-foreground'
-                                : 'text-sm'
-                        }`}>
+                        <p key={i} className={`leading-7 text-muted-foreground dark:text-muted-foreground ${i === 0
+                            ? 'text-[15px] font-semibold text-foreground dark:text-foreground'
+                            : 'text-sm'
+                            }`}>
                             {lines.map((line, j) => (
                                 <span key={j}>
                                     {renderHighlighted(line)}
