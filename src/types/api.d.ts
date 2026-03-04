@@ -520,8 +520,8 @@ export interface WindowApi {
     browseAiModelFile(): Promise<{ success: boolean; filePath?: string; status?: string; error?: string }>;
     clearAiCustomModelPath(): Promise<{ success: boolean; error?: string }>;
     // AI API Settings
-    getAiApiSettings(): Promise<{ success: boolean; mode: string; provider: string; apiKey: string; model: string; baseUrl: string }>;
-    saveAiApiSettings(settings: { mode: string; provider: string; apiKey: string; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
+    getAiApiSettings(): Promise<{ success: boolean; mode: string; provider: string; apiKeys: Record<string, string>; model: string; baseUrl: string }>;
+    saveAiApiSettings(settings: { mode: string; provider: string; apiKeys: Record<string, string>; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
     testAiApiConnection(settings: { provider: string; apiKey: string; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
     fetchOpenRouterModels(apiKey: string): Promise<{ success: boolean; models: string[]; error?: string }>;
     fetchGroqModels(apiKey: string): Promise<{ success: boolean; models: string[]; error?: string }>;

@@ -143,9 +143,13 @@ async function performAiGenerate(forceRefresh = false, days = 30) {
     let result;
     if (aiMode === 'api') {
       console.log(`[AI] Using API mode (days=${days})`);
+      const provider = settings.ai_api_provider || 'groq';
+      let apiKeys = {};
+      try { if (settings.ai_api_keys) apiKeys = JSON.parse(settings.ai_api_keys); } catch (e) { }
+
       result = await aiApiService.generateInsightViaApi(aggregated, {
-        provider: settings.ai_api_provider || 'groq',
-        apiKey: settings.ai_api_key || '',
+        provider: provider,
+        apiKey: apiKeys[provider] || settings.ai_api_key || '',
         model: settings.ai_api_model || '',
         baseUrl: settings.ai_api_base_url || '',
       });
@@ -1667,11 +1671,21 @@ function registerIpcHandlers() {
   ipcMain.handle('ai:getApiSettings', () => {
     try {
       const s = database.getSettings();
+      let apiKeys = {};
+      try {
+        if (s.ai_api_keys) apiKeys = JSON.parse(s.ai_api_keys);
+      } catch (e) { }
+
+      // Fallback migration
+      if (s.ai_api_provider && s.ai_api_key && !apiKeys[s.ai_api_provider]) {
+        apiKeys[s.ai_api_provider] = s.ai_api_key;
+      }
+
       return {
         success: true,
         mode: s.ai_mode || 'local',
         provider: s.ai_api_provider || 'groq',
-        apiKey: s.ai_api_key || '',
+        apiKeys: apiKeys,
         model: s.ai_api_model || '',
         baseUrl: s.ai_api_base_url || '',
       };
@@ -1680,11 +1694,11 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('ai:saveApiSettings', (_, { mode, provider, apiKey, model, baseUrl }) => {
+  ipcMain.handle('ai:saveApiSettings', (_, { mode, provider, apiKeys, model, baseUrl }) => {
     try {
       database.updateSetting('ai_mode', mode || 'local');
       database.updateSetting('ai_api_provider', provider || 'groq');
-      database.updateSetting('ai_api_key', apiKey || '');
+      database.updateSetting('ai_api_keys', JSON.stringify(apiKeys || {}));
       database.updateSetting('ai_api_model', model || '');
       database.updateSetting('ai_api_base_url', baseUrl || '');
       return { success: true };

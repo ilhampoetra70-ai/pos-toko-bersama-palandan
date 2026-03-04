@@ -22,7 +22,7 @@ interface CacheResult {
 interface ApiSettings {
     mode: 'local' | 'api';
     provider: string;
-    apiKey: string;
+    apiKeys: Record<string, string>;
     model: string;
     baseUrl: string;
 }
@@ -122,7 +122,7 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
     const [activeTab, setActiveTab] = useState<'local' | 'api'>(aiMode === 'api' ? 'api' : 'local');
     const [justChanged, setJustChanged] = useState(false);
     const prevPathRef = useRef(customModelPath);
-    const [apiSettings, setApiSettings] = useState<ApiSettings>({ mode: 'local', provider: 'groq', apiKey: '', model: '', baseUrl: '' });
+    const [apiSettings, setApiSettings] = useState<ApiSettings>({ mode: 'local', provider: 'groq', apiKeys: {}, model: '', baseUrl: '' });
     const [showKey, setShowKey] = useState(false);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
@@ -154,16 +154,16 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
         if (!open) return;
         window.api.getAiApiSettings().then((s) => {
             if (s.success) {
-                setApiSettings({ mode: s.mode as 'local' | 'api', provider: s.provider, apiKey: s.apiKey, model: s.model, baseUrl: s.baseUrl });
+                setApiSettings({ mode: s.mode as 'local' | 'api', provider: s.provider, apiKeys: s.apiKeys || {}, model: s.model, baseUrl: s.baseUrl });
                 setActiveTab(s.mode === 'api' ? 'api' : 'local');
-                if (s.provider === 'openrouter' || s.provider === 'groq') fetchDynamicModels(s.provider, s.apiKey);
+                if (s.provider === 'openrouter' || s.provider === 'groq') fetchDynamicModels(s.provider, s.apiKeys?.[s.provider] || '');
             }
         });
     }, [open, fetchDynamicModels]);
 
     useEffect(() => {
         if (open && (apiSettings.provider === 'openrouter' || apiSettings.provider === 'groq')) {
-            fetchDynamicModels(apiSettings.provider, apiSettings.apiKey);
+            fetchDynamicModels(apiSettings.provider, apiSettings.apiKeys[apiSettings.provider]);
         }
     }, [apiSettings.provider, open, fetchDynamicModels]);
 
@@ -177,14 +177,15 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
 
     const handleSave = async () => {
         setSaving(true); setApiError(null); setSaveSuccess(false);
-        const result = await window.api.saveAiApiSettings({ mode: activeTab, provider: apiSettings.provider, apiKey: apiSettings.apiKey, model: apiSettings.model || currentProvider.defaultModel, baseUrl: apiSettings.baseUrl });
+        const result = await window.api.saveAiApiSettings({ mode: activeTab, provider: apiSettings.provider, apiKeys: apiSettings.apiKeys, model: apiSettings.model || currentProvider.defaultModel, baseUrl: apiSettings.baseUrl });
         setSaving(false);
         if (result.success) { setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000); } else { setApiError(result.error ?? 'Gagal menyimpan.'); }
     };
 
     const handleTest = async () => {
         setTesting(true); setTestResult(null); setApiError(null);
-        const result = await window.api.testAiApiConnection({ provider: apiSettings.provider, apiKey: apiSettings.apiKey, model: apiSettings.model || currentProvider.defaultModel, baseUrl: apiSettings.baseUrl });
+        const currentKey = apiSettings.apiKeys[apiSettings.provider] || '';
+        const result = await window.api.testAiApiConnection({ provider: apiSettings.provider, apiKey: currentKey, model: apiSettings.model || currentProvider.defaultModel, baseUrl: apiSettings.baseUrl });
         setTesting(false);
         setTestResult(result.success ? { ok: true, msg: 'Koneksi berhasil! API siap digunakan.' } : { ok: false, msg: result.error ?? 'Koneksi gagal.' });
     };
@@ -227,7 +228,7 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
                                 <Button variant="outline" onClick={onBrowse} disabled={isChangingModel} className="flex-1 gap-2 text-sm"><FolderOpen className="w-4 h-4" />{isChangingModel ? 'Memilih...' : customModelPath ? 'Ganti Model Lain' : 'Pilih File Model (.gguf)'}</Button>
                                 {customModelPath && <Button variant="outline" onClick={onClear} disabled={isChangingModel} className="flex-1 gap-2 text-sm text-orange-600 hover:text-orange-700 hover:border-orange-300 dark:text-orange-400"><RetroTrash className="w-4 h-4" />Kembali ke Default</Button>}
                             </div>
-                            {aiMode === 'api' && <Button onClick={async () => { await window.api.saveAiApiSettings({ mode: 'local', provider: apiSettings.provider, apiKey: apiSettings.apiKey, model: apiSettings.model, baseUrl: apiSettings.baseUrl }); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000); }} className="w-full gap-2"><HardDrive className="w-4 h-4" />Aktifkan Mode Lokal</Button>}
+                            {aiMode === 'api' && <Button onClick={async () => { await window.api.saveAiApiSettings({ mode: 'local', provider: apiSettings.provider, apiKeys: apiSettings.apiKeys, model: apiSettings.model, baseUrl: apiSettings.baseUrl }); setSaveSuccess(true); setTimeout(() => setSaveSuccess(false), 3000); }} className="w-full gap-2"><HardDrive className="w-4 h-4" />Aktifkan Mode Lokal</Button>}
                             <p className="text-[11px] text-muted-foreground dark:text-muted-foreground">File <span className="font-mono">.gguf</span> berjalan sepenuhnya di perangkat tanpa koneksi internet.</p>
                         </div>
                     )}
@@ -243,13 +244,13 @@ function ModelSettingsPanel({ customModelPath, browseError, isChangingModel, aiM
                             </div>
                             <div>
                                 <div className="flex items-center justify-between mb-1.5"><label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">{currentProvider.keyLabel}{currentProvider.id !== 'custom' && <span className="text-red-400 ml-0.5">*</span>}</label>{currentProvider.keyLink && <a href={currentProvider.keyLink} target="_blank" rel="noreferrer" className="text-[11px] text-primary-500 hover:text-primary-600 dark:text-primary-400">Dapatkan API Key →</a>}</div>
-                                <div className="relative"><input type={showKey ? 'text' : 'password'} value={apiSettings.apiKey} onChange={e => setApiSettings(s => ({ ...s, apiKey: e.target.value }))} placeholder={`Masukkan ${currentProvider.keyLabel}...`} className="w-full pr-9 pl-3 py-2 text-sm rounded-lg border border-border dark:border-border bg-card dark:bg-card text-foreground dark:text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400" /><button onClick={() => setShowKey(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground">{showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
+                                <div className="relative"><input type={showKey ? 'text' : 'password'} value={apiSettings.apiKeys[apiSettings.provider] || ''} onChange={e => setApiSettings(s => ({ ...s, apiKeys: { ...s.apiKeys, [apiSettings.provider]: e.target.value } }))} placeholder={`Masukkan ${currentProvider.keyLabel}...`} className="w-full pr-9 pl-3 py-2 text-sm rounded-lg border border-border dark:border-border bg-card dark:bg-card text-foreground dark:text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400" /><button onClick={() => setShowKey(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground">{showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button></div>
                             </div>
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground">Nama Model</label>
                                     {(currentProvider.id === 'openrouter' || currentProvider.id === 'groq') && (
-                                        <button onClick={() => fetchDynamicModels(currentProvider.id, apiSettings.apiKey)} disabled={fetchingModels} title="Refresh daftar model" className="flex items-center gap-1 text-[11px] text-primary-500 hover:text-primary-600 dark:text-primary-400 disabled:opacity-50">
+                                        <button onClick={() => fetchDynamicModels(currentProvider.id, apiSettings.apiKeys[apiSettings.provider])} disabled={fetchingModels} title="Refresh daftar model" className="flex items-center gap-1 text-[11px] text-primary-500 hover:text-primary-600 dark:text-primary-400 disabled:opacity-50">
                                             {fetchingModels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RetroRefresh className="w-3 h-3" />}
                                             {fetchingModels ? 'Memuat...' : `Refresh${dynamicModels.length > 0 ? ` (${dynamicModels.length})` : ''}`}
                                         </button>
