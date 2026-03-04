@@ -502,9 +502,9 @@ export default memo(function SettingsPage() {
               <Card className="border-none shadow-sm bg-card dark:bg-background overflow-hidden">
                 <CardHeader className="bg-background/50 dark:bg-card/50 border-b dark:border-border">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <Server className="w-5 h-5 text-green-600" /> Server Price Checker
+                    <Server className="w-5 h-5 text-green-600" /> Server PWA & Price Checker
                   </CardTitle>
-                  <CardDescription>Cek harga mandiri via smartphone/tablet</CardDescription>
+                  <CardDescription>Akses PWA Admin & cek harga via smartphone/tablet</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {apiServerInfo ? (
@@ -513,14 +513,25 @@ export default memo(function SettingsPage() {
                         <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full animate-pulse" />
                         <p className="text-sm font-black text-green-700 dark:text-green-400">API Server Aktif</p>
                       </div>
-                      <div className="space-y-3 p-4 bg-background dark:bg-card/50 rounded-2xl border border-border dark:border-border">
+                      <div className="space-y-2 p-4 bg-background dark:bg-card/50 rounded-2xl border border-border dark:border-border">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border dark:border-border pb-1 mb-2">Price Checker</p>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground font-bold uppercase text-[10px]">Local URL:</span>
                           <code className="bg-card dark:bg-background px-3 py-1 rounded-lg font-sans text-xs">{apiServerInfo.localUrl}</code>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
+                        <div className="flex justify-between items-center text-sm mb-4">
                           <span className="text-muted-foreground font-bold uppercase text-[10px]">Network URL:</span>
                           <code className="bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-lg font-bold text-primary-700 dark:text-primary-400 text-xs">{apiServerInfo.networkUrl}</code>
+                        </div>
+
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest border-b border-border dark:border-border pb-1 mb-2 mt-4">Aplikasi Admin PWA</p>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground font-bold uppercase text-[10px]">Local URL:</span>
+                          <code className="bg-card dark:bg-background px-3 py-1 rounded-lg font-sans text-xs">{apiServerInfo.localUrl}/admin</code>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground font-bold uppercase text-[10px]">Network URL:</span>
+                          <code className="bg-primary-50 dark:bg-primary-950/30 px-3 py-1 rounded-lg font-bold text-primary-700 dark:text-primary-400 text-xs">{apiServerInfo.networkUrl}/admin</code>
                         </div>
                       </div>
                     </div>
