@@ -1,5 +1,8 @@
-import { Suspense, lazy, ReactNode } from 'react';
+import { Suspense, lazy, ReactNode, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -39,6 +42,59 @@ function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
     if (!user) return <Navigate to="/login" replace />;
     if (roles && !roles.includes(user.role as UserRole)) return <Navigate to="/" replace />;
     return children as React.ReactElement;
+}
+
+function ForcePasswordChangeModal() {
+    const { user, requirePasswordChange, setRequirePasswordChange } = useAuth();
+    const [password, setPassword] = useState('');
+    const [confirm, setConfirm] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    if (!user || !requirePasswordChange) return null;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        if (password.length < 6) return setError('Password minimal 6 karakter.');
+        if (password !== confirm) return setError('Konfirmasi password tidak cocok.');
+
+        setLoading(true);
+        try {
+            const data = await window.api.updateUser(user.id, { password });
+            if (data.success) {
+                await window.api.markPasswordChanged(user.id);
+                setRequirePasswordChange(false);
+            } else {
+                setError(data.error || 'Gagal mengubah password.');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Terjadi kesalahan.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={true}>
+            <DialogContent className="sm:max-w-md [&>button]:hidden">
+                <DialogHeader>
+                    <DialogTitle>Ganti Password Default</DialogTitle>
+                </DialogHeader>
+                <div className="py-2 text-sm text-muted-foreground">
+                    Demi keamanan, Anda wajib mengubah password default sebelum melanjutkan penggunaan aplikasi.
+                </div>
+                {error && <div className="text-red-500 text-sm font-semibold mb-2">{error}</div>}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input autoFocus type="password" placeholder="Password Baru" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
+                    <Input type="password" placeholder="Konfirmasi Password Baru" value={confirm} onChange={e => setConfirm(e.target.value)} disabled={loading} />
+                    <Button type="submit" className="w-full" disabled={loading || !password || !confirm}>
+                        {loading ? 'Menyimpan...' : 'Simpan Password'}
+                    </Button>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export default function App() {
@@ -94,6 +150,7 @@ export default function App() {
                 </Routes>
             </Suspense>
             <ReactQueryDevtools initialIsOpen={false} />
+            <ForcePasswordChangeModal />
         </QueryClientProvider>
     );
 }

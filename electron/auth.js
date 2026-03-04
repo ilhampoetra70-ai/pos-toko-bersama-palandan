@@ -102,9 +102,18 @@ function requireAuth(req, res, next) {
 
 function login(username, password, deviceId = null, deviceName = null) {
   const user = database.getUserByUsername(username);
-  if (!user) return { success: false, error: 'User tidak ditemukan' };
-  if (!user.active) return { success: false, error: 'Akun tidak aktif' };
-  if (!verifyPassword(password, user.password_hash)) return { success: false, error: 'Password salah' };
+  const dummyHash = '$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
+
+  if (!user) {
+    verifyPassword(password, dummyHash);
+    return { success: false, error: 'Username atau password salah.' };
+  }
+  if (!user.active) {
+    return { success: false, error: 'Akun tidak aktif' };
+  }
+  if (!verifyPassword(password, user.password_hash)) {
+    return { success: false, error: 'Username atau password salah.' };
+  }
 
   // Update last login timestamp
   database.updateUserLastLogin(user.id);
@@ -126,7 +135,7 @@ function login(username, password, deviceId = null, deviceName = null) {
   return {
     success: true,
     token,
-    user: { id: user.id, username: user.username, role: user.role, name: user.name }
+    user: { id: user.id, username: user.username, role: user.role, name: user.name, password_changed: user.password_changed }
   };
 }
 

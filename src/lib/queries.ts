@@ -408,15 +408,15 @@ export const useDatabaseMutation = () => {
     const queryClient = useQueryClient();
     return {
         vacuum: useMutation({
-            mutationFn: () => window.api.dbVacuum(),
+            mutationFn: (userId: number) => window.api.dbVacuum(userId),
             onSuccess: () => queryClient.invalidateQueries({ queryKey: ['database'] }),
         }),
         clearVoided: useMutation({
-            mutationFn: () => window.api.dbClearVoided(),
+            mutationFn: (userId: number) => window.api.dbClearVoided(userId),
             onSuccess: () => queryClient.invalidateQueries({ queryKey: ['database'] }),
         }),
         archive: useMutation({
-            mutationFn: (months: number) => window.api.dbArchiveTransactions(months),
+            mutationFn: ({ months, userId }: { months: number, userId: number }) => window.api.dbArchiveTransactions(months, userId),
             onSuccess: () => queryClient.invalidateQueries({ queryKey: ['database'] }),
         }),
         resetSettings: useMutation({
@@ -431,7 +431,7 @@ export const useDatabaseMutation = () => {
             onSuccess: () => queryClient.invalidateQueries({ queryKey: ['database'] }),
         }),
         deleteBackup: useMutation({
-            mutationFn: (path: string) => window.api.dbDeleteBackup(path),
+            mutationFn: ({ path, userId }: { path: string, userId: number }) => window.api.dbDeleteBackup(path, userId),
             onSuccess: () => queryClient.invalidateQueries({ queryKey: ['database'] }),
         }),
     };

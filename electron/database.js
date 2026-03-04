@@ -329,6 +329,7 @@ function runMigrations() {
 
     addColumnIfNotExists('users', 'last_login', 'DATETIME');
     addColumnIfNotExists('users', 'active', 'INTEGER DEFAULT 1');
+    addColumnIfNotExists('users', 'password_changed', 'INTEGER DEFAULT 0');
 
     // Ensure auto_start setting exists
     const autoStart = get("SELECT value FROM settings WHERE key = 'auto_start'");
@@ -2153,7 +2154,15 @@ function getBackupHistory() {
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 function deleteBackupFile(p) {
-    try { fs.unlinkSync(p); return { success: true }; } catch (e) { return { success: false, error: e.message }; }
+    try {
+        const backupDir = path.resolve(getBackupDir());
+        const targetPath = path.resolve(p);
+        if (!targetPath.startsWith(backupDir)) {
+            return { success: false, error: 'Path tidak valid.' };
+        }
+        fs.unlinkSync(targetPath);
+        return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
 }
 function validateBackupFile(p) {
     if (!fs.existsSync(p)) return { valid: false, error: 'Not found' };

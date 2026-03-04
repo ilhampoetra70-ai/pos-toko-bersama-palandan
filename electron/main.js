@@ -350,6 +350,15 @@ function registerIpcHandlers() {
     return database.updateUser(id, data);
   });
 
+  ipcMain.handle('users:markPasswordChanged', (_, userId) => {
+    try {
+      database.run('UPDATE users SET password_changed = 1 WHERE id = ?', [userId]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   ipcMain.handle('users:delete', (_, id) => database.deleteUser(id));
 
   // ─── Categories ─────────────────────────────────────
@@ -893,14 +902,14 @@ function registerIpcHandlers() {
       const ws = workbook.addWorksheet('Products');
 
       ws.columns = [
-        { header: 'Barcode',     key: 'barcode',     width: 15, hidden: true },
-        { header: 'Nama',        key: 'nama',         width: 30 },
-        { header: 'Kategori',    key: 'kategori',     width: 18 },
-        { header: 'Harga',       key: 'harga',        width: 14 },
-        { header: 'Harga Modal', key: 'harga_modal',  width: 14, hidden: true },
-        { header: 'Stok',        key: 'stok',         width: 10 },
-        { header: 'Satuan',      key: 'satuan',       width: 10 },
-        { header: 'Mode Harga',  key: 'mode_harga',   width: 12, hidden: true },
+        { header: 'Barcode', key: 'barcode', width: 15, hidden: true },
+        { header: 'Nama', key: 'nama', width: 30 },
+        { header: 'Kategori', key: 'kategori', width: 18 },
+        { header: 'Harga', key: 'harga', width: 14 },
+        { header: 'Harga Modal', key: 'harga_modal', width: 14, hidden: true },
+        { header: 'Stok', key: 'stok', width: 10 },
+        { header: 'Satuan', key: 'satuan', width: 10 },
+        { header: 'Mode Harga', key: 'mode_harga', width: 12, hidden: true },
       ];
 
       // Style header row
@@ -919,13 +928,13 @@ function registerIpcHandlers() {
       // Add data rows
       products.forEach(p => {
         ws.addRow({
-          barcode:    p.barcode || '',
-          nama:       p.name,
-          kategori:   catMap[p.category_id] || '',
-          harga:      p.price,
+          barcode: p.barcode || '',
+          nama: p.name,
+          kategori: catMap[p.category_id] || '',
+          harga: p.price,
           harga_modal: p.cost,
-          stok:       p.stock,
-          satuan:     p.unit,
+          stok: p.stock,
+          satuan: p.unit,
           mode_harga: p.margin_mode === 'manual' ? 'manual' : 'auto',
         });
       });
@@ -1297,6 +1306,12 @@ function registerIpcHandlers() {
   ipcMain.handle('system:version', () => app.getVersion());
 
   // ─── Database Management ───────────────────────────
+  function requireAdminSession(userId) {
+    if (!userId) return false;
+    const user = database.get('SELECT id FROM users WHERE id = ? AND role = ? AND active = 1', [userId, 'admin']);
+    return !!user;
+  }
+
   ipcMain.handle('db:getStats', () => {
     return JSON.parse(JSON.stringify(database.getDatabaseStats()));
   });
@@ -1305,11 +1320,13 @@ function registerIpcHandlers() {
     return database.checkDatabaseIntegrity();
   });
 
-  ipcMain.handle('db:vacuum', () => {
+  ipcMain.handle('db:vacuum', (_, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     return database.vacuumDatabase();
   });
 
-  ipcMain.handle('db:clearVoided', () => {
+  ipcMain.handle('db:clearVoided', (_, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     database.createAutoBackup();
     return database.clearVoidedTransactions();
   });
@@ -1318,7 +1335,8 @@ function registerIpcHandlers() {
     return database.getArchivableTransactions(months);
   });
 
-  ipcMain.handle('db:archiveTransactions', (_, months) => {
+  ipcMain.handle('db:archiveTransactions', (_, months, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     database.createAutoBackup();
     return database.deleteOldTransactions(months);
   });
@@ -1328,7 +1346,8 @@ function registerIpcHandlers() {
     return database.resetSettings();
   });
 
-  ipcMain.handle('db:hardReset', () => {
+  ipcMain.handle('db:hardReset', (_, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     database.createAutoBackup();
     database.hardResetDatabase();
     app.relaunch();
@@ -1344,7 +1363,8 @@ function registerIpcHandlers() {
     return database.createAutoBackup();
   });
 
-  ipcMain.handle('db:deleteBackup', (_, filePath) => {
+  ipcMain.handle('db:deleteBackup', (_, filePath, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     return database.deleteBackupFile(filePath);
   });
 
@@ -1365,7 +1385,8 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('db:restoreBackup', async () => {
+  ipcMain.handle('db:restoreBackup', async (_, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     try {
       const result = await dialog.showOpenDialog(mainWindow, {
         filters: [{ name: 'Database', extensions: ['db'] }],
@@ -1385,7 +1406,8 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('db:restoreFromHistory', (_, filePath) => {
+  ipcMain.handle('db:restoreFromHistory', (_, filePath, userId) => {
+    if (!requireAdminSession(userId)) return { success: false, error: 'Akses ditolak.' };
     const result = database.restoreDatabase(filePath);
     if (result.success) {
       app.relaunch();

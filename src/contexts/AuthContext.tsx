@@ -5,6 +5,8 @@ interface AuthContextType {
     user: User | null;
     token: string | null;
     loading: boolean;
+    requirePasswordChange: boolean;
+    setRequirePasswordChange: (val: boolean) => void;
     login: (username: string, password: string) => Promise<any>;
     logout: () => void;
     hasRole: (...roles: UserRole[]) => boolean;
@@ -16,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(sessionStorage.getItem('pos_token'));
     const [loading, setLoading] = useState(true);
+    const [requirePasswordChange, setRequirePasswordChange] = useState(false);
 
     // Session Timeout Logic
     const lastActivityRef = useRef(Date.now());
@@ -26,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.api.verifyToken(token).then((result: any) => {
                 if (result.success) {
                     setUser(result.user);
+                    if (result.user.password_changed === 0) setRequirePasswordChange(true);
                 } else {
                     sessionStorage.removeItem('pos_token');
                     setToken(null);
@@ -46,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // The API returns UserInfo which lacks 'active' and 'created_at'.
             // We supplement it to match the standard User interface expected by the state.
             setUser({ ...result.user, active: true } as User);
+            if (result.user.password_changed === 0) setRequirePasswordChange(true);
             lastActivityRef.current = Date.now(); // Reset timer on login
         }
         return result;
@@ -54,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = useCallback(() => {
         // Invalidate token di server (best-effort: jangan block logout jika gagal)
         if (user?.id) {
-            window.api.logoutUser(user.id).catch(() => {});
+            window.api.logoutUser(user.id).catch(() => { });
         }
         sessionStorage.removeItem('pos_token');
         setToken(null);
@@ -97,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout, hasRole }}>
+        <AuthContext.Provider value={{ user, token, loading, requirePasswordChange, setRequirePasswordChange, login, logout, hasRole }}>
             {children}
         </AuthContext.Provider>
     );

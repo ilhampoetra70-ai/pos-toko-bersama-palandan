@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
     useDbStats,
     useBackupHistory,
@@ -45,6 +46,7 @@ export default function DatabasePage() {
     const [confirmModal, setConfirmModal] = useState<{ title: string, message: string | null, action: () => void, variant: string } | null>(null);
     const [hardResetConfirm, setHardResetConfirm] = useState('');
     const [integrityResult, setIntegrityResult] = useState<any>(null);
+    const { user } = useAuth();
 
     // Queries
     const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useDbStats();
@@ -69,7 +71,7 @@ export default function DatabasePage() {
     // Actions
     const handleVacuum = async () => {
         try {
-            const result = await mutations.vacuum.mutateAsync();
+            const result = await mutations.vacuum.mutateAsync(user?.id || 0);
             if (result.success) {
                 showMessage(`Optimasi berhasil. Ukuran berkurang dari ${formatFileSize(result.sizeBefore)} menjadi ${formatFileSize(result.sizeAfter)}`);
             } else {
@@ -124,7 +126,7 @@ export default function DatabasePage() {
             message: 'Data saat ini akan diganti sepenuhnya dengan data dari file backup. Aplikasi akan restart setelah restore. Lanjutkan?',
             variant: 'danger',
             action: async () => {
-                const result = await window.api.dbRestoreBackup();
+                const result = await window.api.dbRestoreBackup(user?.id || 0);
                 if (result.success) showMessage('Restore berhasil. Aplikasi akan restart...');
                 else if (result.error !== 'Dibatalkan') showMessage('Gagal restore: ' + result.error, 'error');
             }
@@ -137,7 +139,7 @@ export default function DatabasePage() {
             message: null,
             variant: 'hard-reset',
             action: async () => {
-                await window.api.dbHardReset();
+                await window.api.dbHardReset(user?.id || 0);
             }
         });
     };
@@ -373,7 +375,7 @@ export default function DatabasePage() {
                                                 <TableCell className="text-right pr-10">
                                                     <div className="flex gap-2 justify-end">
                                                         <Button variant="ghost" size="sm" onClick={() => handleRestoreBackupFromHistory(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/30">RESTORE</Button>
-                                                        <Button variant="ghost" size="sm" onClick={() => mutations.deleteBackup.mutate(b.path)} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">HAPUS</Button>
+                                                        <Button variant="ghost" size="sm" onClick={() => mutations.deleteBackup.mutate({ path: b.path, userId: user?.id || 0 })} disabled={processing} className="h-8 font-black text-[10px] uppercase tracking-widest text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30">HAPUS</Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -405,7 +407,7 @@ export default function DatabasePage() {
                                 icon={RetroTrash}
                                 label={stats?.voidedTransactions?.toString() || '0'}
                                 bottomLabel="Transaksi Void Ditemukan"
-                                action={() => mutations.clearVoided.mutate()}
+                                action={() => mutations.clearVoided.mutate(user?.id || 0)}
                                 btnText="Hapus Data Void"
                                 processing={processing}
                                 disabled={!stats?.voidedTransactions}
@@ -445,7 +447,7 @@ export default function DatabasePage() {
                                             {isLoadingArchivable ? 'Menghitung...' : 'Cek Jumlah Transaksi'}
                                         </Button>
                                         <Button
-                                            onClick={() => mutations.archive.mutate(archiveMonths)}
+                                            onClick={() => mutations.archive.mutate({ months: archiveMonths, userId: user?.id || 0 })}
                                             disabled={!archivableCount?.count || mutations.archive.isPending}
                                             variant="destructive"
                                             className="h-12 px-8 font-black gap-2 shadow-lg shadow-red-600/20"
@@ -536,7 +538,7 @@ export default function DatabasePage() {
             message: 'Data saat ini akan diganti dengan file backup ini. Aplikasi akan restart setelah restore. Lanjutkan?',
             variant: 'danger',
             action: async () => {
-                const result = await window.api.dbRestoreFromHistory(path);
+                const result = await window.api.dbRestoreFromHistory(path, user?.id || 0);
                 if (result.success) showMessage('Restore berhasil. Aplikasi akan restart...');
                 else showMessage('Gagal restore: ' + result.error, 'error');
             }

@@ -18,6 +18,7 @@ export interface UserInfo {
     username: string;
     name: string;
     role: UserRole;
+    password_changed?: number;
 }
 
 export interface LoginResult {
@@ -370,11 +371,13 @@ export interface WindowApi {
     verifyToken(token: string): Promise<LoginResult>;
     resetPasswordWithMasterKey(username: string, masterKey: string, newPassword: string): Promise<ApiResult>;
     changeMasterKey(oldMasterKey: string, newMasterKey: string): Promise<ApiResult>;
+    logoutUser(userId: number): Promise<ApiResult>;
 
     // Users
     getUsers(): Promise<User[]>;
     createUser(data: Partial<User> & { password: string }): Promise<ApiResult<User>>;
     updateUser(id: number, data: Partial<User> & { password?: string }): Promise<ApiResult>;
+    markPasswordChanged(id: number): Promise<ApiResult>;
     deleteUser(id: number): Promise<ApiResult>;
 
     // Categories
@@ -490,18 +493,18 @@ export interface WindowApi {
     // Database Management
     getDbStats(): Promise<DbStats>;
     dbIntegrityCheck(): Promise<{ ok: boolean; result: string }>;
-    dbVacuum(): Promise<{ success: boolean; sizeBefore?: number; sizeAfter?: number; error?: string }>;
-    dbClearVoided(): Promise<{ success: boolean; count?: number; error?: string }>;
+    dbVacuum(userId: number): Promise<{ success: boolean; sizeBefore?: number; sizeAfter?: number; error?: string }>;
+    dbClearVoided(userId: number): Promise<{ success: boolean; count?: number; error?: string }>;
     dbGetArchivableCount(months: number): Promise<{ count: number; cutoffDate: string; error?: string }>;
-    dbArchiveTransactions(months: number): Promise<{ success: boolean; count?: number; error?: string }>;
+    dbArchiveTransactions(months: number, userId: number): Promise<{ success: boolean; count?: number; error?: string }>;
     dbResetSettings(): Promise<{ success: boolean; error?: string }>;
-    dbHardReset(): Promise<{ success: boolean; error?: string }>;
+    dbHardReset(userId: number): Promise<{ success: boolean; error?: string }>;
     dbGetBackupHistory(): Promise<BackupEntry[]>;
     dbCreateBackup(): Promise<{ success: boolean; filename?: string; error?: string }>;
-    dbDeleteBackup(filePath: string): Promise<{ success: boolean; error?: string }>;
+    dbDeleteBackup(filePath: string, userId: number): Promise<{ success: boolean; error?: string }>;
     dbManualBackup(): Promise<{ success: boolean; path?: string; error?: string }>;
-    dbRestoreBackup(): Promise<{ success: boolean; error?: string }>;
-    dbRestoreFromHistory(filePath: string): Promise<{ success: boolean; error?: string }>;
+    dbRestoreBackup(userId: number): Promise<{ success: boolean; error?: string }>;
+    dbRestoreFromHistory(filePath: string, userId: number): Promise<{ success: boolean; error?: string }>;
     dbSetBackupDir(): Promise<{ success: boolean; path?: string; error?: string }>;
     dbExportTransactions(filters?: TransactionFilters): Promise<{ success: boolean; path?: string; count?: number; error?: string }>;
     dbExportSummaryPdf(): Promise<{ success: boolean; path?: string; error?: string }>;
