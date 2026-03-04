@@ -2362,7 +2362,12 @@ function checkDatabaseIntegrity() {
 function closeDatabase() { clearStmtCache(); if (db) db.close(); }
 
 // ─── AI Insight Cache ─────────────────────────────────────
+function purgeExpiredAiInsightCache() {
+    run("DELETE FROM ai_insight_cache WHERE datetime(created_at) < datetime('now', '-24 hours')");
+}
+
 function getAiInsightCache(days = null) {
+    purgeExpiredAiInsightCache();
     if (days) {
         return get('SELECT * FROM ai_insight_cache WHERE days = ? ORDER BY id DESC LIMIT 1', [days]);
     }
@@ -2370,6 +2375,7 @@ function getAiInsightCache(days = null) {
 }
 
 function getLatestAiInsightCache() {
+    purgeExpiredAiInsightCache();
     return get('SELECT * FROM ai_insight_cache ORDER BY id DESC LIMIT 1');
 }
 
