@@ -11,9 +11,9 @@ function formatRupiahText(num) {
     if (typeof num !== 'number' || isNaN(num)) return num;
     const absNum = Math.abs(num);
     const sign = num < 0 ? '-' : '';
-    if (absNum >= 1000000000) return `${sign}Rp ${(absNum / 1000000000).toLocaleString('id-ID', {maximumFractionDigits: 2})} miliar`;
-    if (absNum >= 1000000) return `${sign}Rp ${(absNum / 1000000).toLocaleString('id-ID', {maximumFractionDigits: 2})} juta`;
-    if (absNum >= 1000) return `${sign}Rp ${(absNum / 1000).toLocaleString('id-ID', {maximumFractionDigits: 0})} ribu`;
+    if (absNum >= 1000000000) return `${sign}Rp ${(absNum / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} miliar`;
+    if (absNum >= 1000000) return `${sign}Rp ${(absNum / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 2 })} juta`;
+    if (absNum >= 1000) return `${sign}Rp ${(absNum / 1000).toLocaleString('id-ID', { maximumFractionDigits: 0 })} ribu`;
     return `${sign}Rp ${absNum}`;
 }
 
@@ -117,7 +117,7 @@ const INDONESIAN_NATIONAL_HOLIDAYS = [
 /** Filter libur nasional yang jatuh dalam rentang tanggal tertentu */
 function getHolidaysInRange(startDate, endDate) {
     const startStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
-    const endStr   = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+    const endStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
     return INDONESIAN_NATIONAL_HOLIDAYS.filter(h => h.date >= startStr && h.date <= endStr);
 }
 
@@ -170,7 +170,7 @@ function aggregate(days = 30) {
               AND t.created_at >= ? AND t.created_at < ?
             GROUP BY ti.product_name
             ORDER BY total_qty DESC
-            LIMIT 10
+            LIMIT 5
         `, [rangeNStart, rangeNow]);
 
         // ── 2. Slow Moving Products ─────────────────────────
@@ -188,7 +188,7 @@ function aggregate(days = 30) {
             GROUP BY p.id, p.name
             HAVING COUNT(DISTINCT t.id) < ?
             ORDER BY tx_count_period ASC, p.stock DESC
-            LIMIT 15
+            LIMIT 7
         `, [rangeNStart, rangeNow, slowMovingThreshold]);
 
         // ── 3. Hourly Sales Pattern (7 hari terakhir, timezone-adjusted) ──
@@ -299,8 +299,7 @@ function aggregate(days = 30) {
                 SUM(ti.quantity) as total_qty,
                 COALESCE(SUM(ti.subtotal), 0) as total_revenue,
                 COALESCE(SUM(CASE WHEN ti.original_cost > 0
-                    THEN ti.subtotal - (ti.quantity * ti.original_cost) ELSE NULL END), NULL) as total_profit,
-                SUM(CASE WHEN ti.original_cost > 0 THEN 1 ELSE 0 END) as rows_with_cost
+                    THEN ti.subtotal - (ti.quantity * ti.original_cost) ELSE NULL END), NULL) as total_profit
             FROM transaction_items ti
             JOIN transactions t ON ti.transaction_id = t.id
             LEFT JOIN products p ON ti.product_id = p.id
@@ -309,7 +308,7 @@ function aggregate(days = 30) {
               AND t.created_at >= ? AND t.created_at < ?
             GROUP BY c.id
             ORDER BY total_revenue DESC
-            LIMIT 10
+            LIMIT 5
         `, [rangeNStart, rangeNow]);
 
         // Hitung persentase produk aktif yang sudah berkategori
@@ -339,7 +338,7 @@ function aggregate(days = 30) {
               AND TRIM(customer_name) != ''
             GROUP BY TRIM(customer_name)
             ORDER BY total_spent DESC
-            LIMIT 10
+            LIMIT 5
         `, [rangeNStart, rangeNow]);
 
         // Area/lokasi dengan transaksi terbanyak berdasarkan customer_address
@@ -357,7 +356,7 @@ function aggregate(days = 30) {
               AND TRIM(customer_address) != ''
             GROUP BY TRIM(customer_address)
             ORDER BY total_spent DESC
-            LIMIT 10
+            LIMIT 5
         `, [rangeNStart, rangeNow]);
 
         const customerSummaryRaw = database.get(`
@@ -423,7 +422,7 @@ function aggregate(days = 30) {
             WHERE active = 1
               AND stock <= COALESCE(low_stock_threshold, 5)
             ORDER BY stock ASC
-            LIMIT 20
+            LIMIT 10
         `);
 
         // ── 6. Stock Summary ───────────────────────────────
@@ -482,7 +481,7 @@ function aggregate(days = 30) {
         const allWeekdays = getWeekdaysInRange(startN, now);
         const unexpectedZeroSalesWeekdays = allWeekdays
             .filter(d => !datesWithSales.has(d) && !holidayDateSet.has(d))
-            .slice(-15); // batasi 15 terbaru agar tidak membebani token
+            .slice(-7); // batasi 7 terbaru agar tidak membebani token
 
         return {
             generated_at: now.toISOString(),
@@ -520,7 +519,7 @@ function aggregate(days = 30) {
             })),
             hourly_sales: hourlySales,
             day_of_week_sales: dayOfWeekSales,
-            daily_revenue: dailyRevenueRaw.slice(-30).map(r => ({
+            daily_revenue: dailyRevenueRaw.slice(-14).map(r => ({
                 date: r.date,
                 revenue: formatRupiahText(Math.round(r.revenue)),
                 tx_count: r.tx_count,
@@ -541,7 +540,7 @@ function aggregate(days = 30) {
                 data_reliable: categorizedPct >= 60,
                 categories: categoryPerfRaw.map(r => {
                     const rev = Math.round(r.total_revenue);
-                    const profit = r.rows_with_cost > 0 && r.total_profit !== null
+                    const profit = r.total_profit !== null
                         ? Math.round(r.total_profit) : null;
                     const margin_pct = profit !== null && rev > 0
                         ? Math.round((profit / rev) * 100) : null;
