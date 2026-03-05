@@ -39,6 +39,7 @@ Data yang tersedia:
 - data_quality: { is_sufficient, total_transactions }.
 - holiday_dates: daftar hari libur nasional Indonesia yang jatuh dalam periode ini [{date, name}]. Jika kosong, tidak ada libur nasional dalam periode.
 - zero_sales_weekdays: hari Senin–Sabtu tanpa transaksi yang BUKAN libur nasional (kemungkinan tutup mendadak atau keadaan darurat). Array string YYYY-MM-DD.
+- stock_anomalies: daftar produk dengan riwayat penyesuaian stok (manual/audit log). Masing-masing memiliki {product, adjustments, divergence, net_change}. "adjustments" adalah frekuensi stok diubah manual, "divergence" adalah total selisih kasar (mengindikasikan seringnya selisih), "net_change" adalah hasil akhir (minus berarti barang hilang, plus berarti barang lebih). Jika data ini ada dan divergence bernilai besar, BISA JADI ini indikasi kehilangan barang, salah pencatatan, atau bahkan fraud/kecurangan.
 - customer_insights: { named_customers_count, transactions_with_name_pct (% transaksi dengan nama), repeat_customers_count (belanja >1x), one_time_customers_count, top_customers: [{name, address, tx_count, total_spent, avg_order_value, last_visit}], top_locations: [{address, unique_customers, tx_count, total_spent}] }. top_locations menunjukkan area/lokasi asal pelanggan dengan belanja tertinggi — berguna untuk pemetaan pasar dan potensi pengembangan. Jika top_customers kosong, semua transaksi adalah walk-in tanpa nama.
 
 Tulis analisis dalam 5 paragraf yang mengalir:
@@ -46,18 +47,20 @@ Tulis analisis dalam 5 paragraf yang mengalir:
 2. Pola trafik: jam tersibuk & tersepi, hari tersibuk & tersepi — tafsirkan dalam konteks toko bahan bangunan (kontraktor belanja pagi sebelum proyek, dll).
 3. Produk: top_selling vs slow_moving, stockout mendesak, peluang bundling dari market_basket.
 4. Pelanggan: peringkat top_customers berdasarkan nilai belanja (sebut nama dan alamat/area jika tersedia), rasio repeat vs one-time, rekomendasi retensi kontraktor langganan. Dari top_locations, identifikasi area yang paling aktif berbelanja dan area yang belum banyak terjangkau sebagai peluang pasar. Jika transactions_with_name_pct < 30%, sarankan pencatatan nama dan alamat pelanggan untuk transaksi besar.
-5. Rekomendasi operasional: saran konkret berbasis data — stok, tata letak, metode pembayaran.
+5. Rekomendasi operasional: saran konkret berbasis data — stok mendesak, tata letak/bundling, metode pembayaran. Jika stock_anomalies TIDAK KOSONG dan memiliki divergence yang besar (potensi barang hilang/fraud), berikan PERINGATAN KERAS untuk melakukan audit fisik komprehensif pada barang bersangkutan.
 
 PENTING:
 - Pukul 06:00–08:00 adalah jam buka toko bahan bangunan — WAJAR jika penjualan masih sepi karena pelanggan (kontraktor, tukang) baru dalam perjalanan. Jangan beri rekomendasi apapun untuk jam ini, cukup sebutkan sebagai "jam buka".
 - Hari Minggu dan hari libur nasional: toko TUTUP. Jika hari Minggu tidak muncul di day_of_week_sales, ini WAJAR — jangan komentari. Gunakan holiday_dates untuk mengidentifikasi libur nasional: jika sebuah tanggal ada di holiday_dates dan tidak ada di daily_revenue, ini WAJAR. Sebutkan libur nasional yang jatuh dalam periode secara singkat jika relevan untuk menjelaskan penurunan penjualan.
 - zero_sales_weekdays: jika berisi tanggal, sebutkan secara singkat sebagai hari yang toko kemungkinan tutup mendadak — jangan spekulasi penyebabnya, cukup catat faktanya.
 - SELALU sertakan tanggal aktual dari period_info saat menyebut periode: tulis "minggu lalu (15–21 Februari 2026)" bukan hanya "minggu lalu". Gunakan period_info.current_period untuk menyebut periode keseluruhan.
+- Anomali Stok: Jika ada data stock_anomalies, jangan berasumsi itu pasti dicuri, gunakan kata seperti "potensi kehilangan", "selisih stok yang harus dicek", atau "indikasi anomali pencatatan". Jika data stock_anomalies kosong atau null, JANGAN BAHAS KECURANGAN ATAU HILANGNYA BARANG sama sekali.
 - Jangan buat saran generik — semua saran harus mengacu data nyata.
 - Gunakan bahasa yang mudah dipahami pemilik toko kecil.
 - Jangan gunakan bullet points atau list — hanya paragraf naratif.
 - Field "paragraphs" harus berisi ARRAY, setiap elemen adalah SATU paragraf lengkap. Jangan gabungkan semua teks dalam satu elemen.
 - Jika top_locations tidak kosong, WAJIB sertakan minimal 1 highlight tentang area/daerah dengan penjualan tertinggi (contoh: "Jl. Raya Serpong: area tersibuk — 28 transaksi dari 12 pelanggan unik"). Jika top_locations kosong, skip highlight ini.
+- Jika stock_anomalies tidak kosong, WAJIB sertakan highlight berupa peringatan audit stok untuk barang yang selisihnya paling besar.
 
 CONTOH OUTPUT YANG BAIK — ikuti gaya bahasa, penyebutan tanggal, dan konteks toko bahan bangunan ini persis:
 {

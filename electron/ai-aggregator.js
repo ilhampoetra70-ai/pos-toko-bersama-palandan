@@ -483,6 +483,21 @@ function aggregate(days = 30) {
             .filter(d => !datesWithSales.has(d) && !holidayDateSet.has(d))
             .slice(-7); // batasi 7 terbaru agar tidak membebani token
 
+        // ── 9. Anomali Stok (Audit Log / Penyesuaian Manual) ──
+        const stockAnomalies = database.all(`
+            SELECT 
+                product_name, 
+                COUNT(id) as adjustment_count,
+                SUM(ABS(difference)) as total_qty_divergence,
+                SUM(difference) as net_stock_change
+            FROM stock_audit_log
+            WHERE created_at >= ? AND created_at < ?
+              AND difference != 0
+            GROUP BY product_id
+            ORDER BY adjustment_count DESC, total_qty_divergence DESC
+            LIMIT 10
+        `, [rangeNStart, rangeNow]);
+
         return {
             generated_at: now.toISOString(),
             period_days: days,
@@ -596,6 +611,12 @@ function aggregate(days = 30) {
             },
             holiday_dates: holidaysInPeriod,
             zero_sales_weekdays: unexpectedZeroSalesWeekdays,
+            stock_anomalies: stockAnomalies.length > 0 ? stockAnomalies.map(r => ({
+                product: r.product_name,
+                adjustments: r.adjustment_count,
+                divergence: r.total_qty_divergence,
+                net_change: r.net_stock_change
+            })) : null,
             customer_insights: {
                 named_customers_count: customerSummaryRaw?.named_customers_count ?? 0,
                 transactions_with_name_pct: totalTxInPeriod > 0
