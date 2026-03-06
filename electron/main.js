@@ -542,10 +542,11 @@ function registerIpcHandlers() {
   // ─── Debt Management ──────────────────────────────────
   ipcMain.handle('debts:getOutstanding', (_, filters) => {
     try {
-      return database.getOutstandingDebts(filters);
+      const data = database.getOutstandingDebts(filters);
+      return { success: true, data };
     } catch (err) {
       console.error('[IPC debts:getOutstanding]', err.message);
-      throw err;
+      return { success: false, data: [] };
     }
   });
 

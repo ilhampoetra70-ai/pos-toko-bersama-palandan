@@ -1990,7 +1990,7 @@ function getOutstandingDebts(filters = {}) {
                  WHERE t.status = 'completed' AND t.payment_status IN('pending', 'hutang', 'cicilan') AND t.remaining_balance > 0`;
     const params = [];
     if (filters.payment_status) { query += " AND t.payment_status=?"; params.push(filters.payment_status); }
-    if (filters.customer_search) { query += " AND (t.customer_name LIKE ? OR t.customer_address LIKE ?)"; params.push(`% ${filters.customer_search}% `, ` % ${filters.customer_search}% `); }
+    if (filters.customer_search) { query += " AND (t.customer_name LIKE ? OR t.customer_address LIKE ?)"; params.push(`%${filters.customer_search}%`, `%${filters.customer_search}%`); }
     if (filters.overdue_only) { query += " AND t.due_date IS NOT NULL AND date(t.due_date) < date('now')"; }
 
     query += " ORDER BY t.due_date ASC, t.created_at DESC";
