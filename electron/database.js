@@ -1986,26 +1986,56 @@ function addPayment(transactionId, amount, paymentMethod, userId, notes) {
 }
 
 function getOutstandingDebts(filters = {}) {
-    let query = `SELECT t.*, u.name as cashier_name FROM transactions t LEFT JOIN users u ON t.user_id = u.id
-                 WHERE t.status = 'completed' AND t.payment_status IN('pending', 'hutang', 'cicilan') AND t.remaining_balance > 0`;
+    let query = `SELECT t.*, u.name as cashier_name 
+                 FROM transactions t LEFT JOIN users u ON t.user_id = u.id
+                 WHERE t.status = 'completed' AND t.payment_status IN ('pending', 'hutang', 'cicilan') AND t.remaining_balance > 0`;
     const params = [];
-    if (filters.payment_status) { query += " AND t.payment_status=?"; params.push(filters.payment_status); }
-    if (filters.customer_search) { query += " AND (t.customer_name LIKE ? OR t.customer_address LIKE ?)"; params.push(`%${filters.customer_search}%`, `%${filters.customer_search}%`); }
-    if (filters.overdue_only) { query += " AND t.due_date IS NOT NULL AND date(t.due_date) < date('now')"; }
+
+    if (filters.payment_status) {
+        query += " AND t.payment_status = ?";
+        params.push(filters.payment_status);
+    }
+
+    if (filters.customer_search && filters.customer_search.trim()) {
+        const search = `%${filters.customer_search.trim()}%`;
+        query += " AND (t.customer_name LIKE ? OR t.customer_address LIKE ?)";
+        params.push(search, search);
+    }
+
+    if (filters.overdue_only) {
+        query += " AND t.due_date IS NOT NULL AND date(t.due_date) < date('now')";
+    }
 
     query += " ORDER BY t.due_date ASC, t.created_at DESC";
-    if (filters.limit) { query += " LIMIT ?"; params.push(filters.limit); }
+    if (filters.limit) {
+        query += " LIMIT ?";
+        params.push(filters.limit);
+    }
 
     return all(query, params);
 }
 
 function getDebtSummary() {
-    const overall = get("SELECT COUNT(*) as count, COALESCE(SUM(remaining_balance), 0) as total FROM transactions WHERE status='completed' AND payment_status IN ('pending','hutang','cicilan') AND remaining_balance > 0") || { count: 0, total: 0 };
-    const overdue = get("SELECT COUNT(*) as count, COALESCE(SUM(remaining_balance), 0) as total FROM transactions WHERE status='completed' AND payment_status IN ('pending','hutang','cicilan') AND remaining_balance > 0 AND due_date IS NOT NULL AND date(due_date) < date('now')") || { count: 0, total: 0 };
+    const overall = get(`SELECT COUNT(*) as count, COALESCE(SUM(remaining_balance), 0) as total 
+                        FROM transactions 
+                        WHERE status = 'completed' AND payment_status IN ('pending', 'hutang', 'cicilan') AND remaining_balance > 0`) || { count: 0, total: 0 };
+
+    const overdue = get(`SELECT COUNT(*) as count, COALESCE(SUM(remaining_balance), 0) as total 
+                        FROM transactions 
+                        WHERE status = 'completed' AND payment_status IN ('pending', 'hutang', 'cicilan') AND remaining_balance > 0 
+                        AND due_date IS NOT NULL AND date(due_date) < date('now')`) || { count: 0, total: 0 };
+
+    const byStatus = all(`SELECT payment_status, COUNT(*) as count, SUM(remaining_balance) as total 
+                         FROM transactions 
+                         WHERE status = 'completed' AND payment_status IN ('pending', 'hutang', 'cicilan') AND remaining_balance > 0 
+                         GROUP BY payment_status`);
 
     return {
-        total_count: overall.count, total_outstanding: overall.total,
-        overdue_count: overdue.count, overdue_total: overdue.total
+        total_count: overall.count,
+        total_outstanding: overall.total,
+        overdue_count: overdue.count,
+        overdue_total: overdue.total,
+        by_status: byStatus
     };
 }
 
