@@ -27,7 +27,18 @@ export default function LoginPage() {
     useEffect(() => {
         // Fix for unclickable inputs: Radix UI overlays sometimes leave pointer-events:none on body 
         // if they are unmounted abruptly (e.g., via logout navigating to login page).
-        document.body.style.pointerEvents = 'auto';
+        // Radix uses data-scroll-locked to apply pointer-events: none !important via injected styles.
+        document.body.removeAttribute('data-scroll-locked');
+        document.documentElement.removeAttribute('data-scroll-locked');
+        document.body.style.removeProperty('pointer-events');
+        document.documentElement.style.removeProperty('pointer-events');
+
+        const root = document.getElementById('root');
+        if (root) {
+            root.removeAttribute('aria-hidden');
+            root.removeAttribute('data-aria-hidden');
+            root.style.removeProperty('pointer-events');
+        }
 
         window.api.getSettings().then((s: any) => {
             if (s.store_name) setStoreName(s.store_name);
