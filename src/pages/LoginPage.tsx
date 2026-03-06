@@ -25,6 +25,10 @@ export default function LoginPage() {
     const [isBouncing, setIsBouncing] = useState(false);
 
     useEffect(() => {
+        // Fix for unclickable inputs: Radix UI overlays sometimes leave pointer-events:none on body 
+        // if they are unmounted abruptly (e.g., via logout navigating to login page).
+        document.body.style.pointerEvents = 'auto';
+
         window.api.getSettings().then((s: any) => {
             if (s.store_name) setStoreName(s.store_name);
         });
@@ -42,7 +46,7 @@ export default function LoginPage() {
         // Trigger bounce animation
         setIsBouncing(false);
         setTimeout(() => setIsBouncing(true), 10);
-        
+
         try {
             const result = await login(username, password);
             if (!result.success) setError(result.error);
@@ -198,26 +202,26 @@ export default function LoginPage() {
                     <path className="noodle" d="M-100,200 Q200,50 500,200 T1100,200 T1800,200" strokeDasharray="40 20" style={{ animation: 'wiggleHose 4s infinite alternate ease-in-out, march 1s linear infinite' }} />
                     <path className="noodle" d="M-100,600 Q200,750 500,600 T1100,600 T1800,600" strokeWidth="25" strokeDasharray="60 30" style={{ animation: 'wiggleHose 5s infinite alternate-reverse ease-in-out, march 2s linear infinite reverse' }} />
                     <path className="noodle" d="M-100,900 Q200,750 500,900 T1100,900 T1800,900" strokeDasharray="20 40" style={{ animation: 'wiggleHose 3s infinite alternate ease-in-out, march 1.5s linear infinite' }} />
-                    
+
                     {/* Floating pie eyes background */}
                     <g style={{ animation: 'floatSlow 4s infinite ease-in-out', transformOrigin: 'center' }}>
                         <svg x="20%" y="30%" overflow="visible">
-                            <ellipse cx="0" cy="0" rx="10" ry="25" fill="hsl(var(--foreground))"/>
-                            <path d="M -8 -15 L 8 -15 L 0 0 Z" fill="hsl(var(--background))"/>
+                            <ellipse cx="0" cy="0" rx="10" ry="25" fill="hsl(var(--foreground))" />
+                            <path d="M -8 -15 L 8 -15 L 0 0 Z" fill="hsl(var(--background))" />
                         </svg>
                         <svg x="25%" y="30%" overflow="visible">
-                            <ellipse cx="0" cy="0" rx="10" ry="25" fill="hsl(var(--foreground))"/>
-                            <path d="M -8 -15 L 8 -15 L 0 0 Z" fill="hsl(var(--background))"/>
+                            <ellipse cx="0" cy="0" rx="10" ry="25" fill="hsl(var(--foreground))" />
+                            <path d="M -8 -15 L 8 -15 L 0 0 Z" fill="hsl(var(--background))" />
                         </svg>
                     </g>
                     <g style={{ animation: 'floatSlow 5s infinite ease-in-out reverse', transformOrigin: 'center' }}>
                         <svg x="80%" y="70%" overflow="visible">
-                            <ellipse cx="0" cy="0" rx="15" ry="35" fill="hsl(var(--foreground))"/>
-                            <path d="M -12 -20 L 12 -20 L 0 0 Z" fill="hsl(var(--background))"/>
+                            <ellipse cx="0" cy="0" rx="15" ry="35" fill="hsl(var(--foreground))" />
+                            <path d="M -12 -20 L 12 -20 L 0 0 Z" fill="hsl(var(--background))" />
                         </svg>
                         <svg x="88%" y="70%" overflow="visible">
-                            <ellipse cx="0" cy="0" rx="15" ry="35" fill="hsl(var(--foreground))"/>
-                            <path d="M -12 -20 L 12 -20 L 0 0 Z" fill="hsl(var(--background))"/>
+                            <ellipse cx="0" cy="0" rx="15" ry="35" fill="hsl(var(--foreground))" />
+                            <path d="M -12 -20 L 12 -20 L 0 0 Z" fill="hsl(var(--background))" />
                         </svg>
                     </g>
                 </svg>
@@ -226,7 +230,7 @@ export default function LoginPage() {
             {/* Login Centered */}
             <div className="relative z-[5] flex items-center justify-center w-full max-w-[420px]">
                 <div className={`w-full bg-background border-[6px] border-foreground rounded-3xl p-10 relative retro-shadow-box transform-style-3d ${isBouncing ? 'bounce-action' : ''}`}>
-                    
+
                     {/* Glove decoration overlapping card */}
                     <svg className="absolute -top-[40px] -right-[30px] w-[100px] h-[100px] pointer-events-none" style={{ fill: 'none', strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round', stroke: 'hsl(var(--foreground))', animation: 'floatSlow 3s infinite ease-in-out' }} viewBox="0 0 100 100">
                         <path style={{ fill: 'hsl(var(--background))' }} d="M30 60 C20 60 15 50 15 40 C15 30 25 25 35 30 L40 33 C40 25 45 15 55 15 C65 15 70 25 70 35 L70 45 C75 40 85 40 90 48 C95 55 90 65 80 70 L40 85 C30 88 15 80 20 70 Z" />
@@ -292,9 +296,9 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <button 
-                            type="submit" 
-                            disabled={loading} 
+                        <button
+                            type="submit"
+                            disabled={loading}
                             className="btn-arcade w-full p-4 text-[1.4rem] font-[900] uppercase tracking-[2px] text-white bg-primary border-[4px] border-foreground rounded-xl cursor-pointer transition-all mt-2 retro-shadow-btn relative overflow-hidden"
                         >
                             {loading ? (
@@ -312,7 +316,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="mt-8 text-center">
-                        <span 
+                        <span
                             className="text-xs font-bold text-muted-foreground hover:text-primary cursor-pointer uppercase tracking-widest transition-colors"
                             onClick={() => setShowResetModal(true)}
                         >

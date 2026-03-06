@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { User, UserRole } from '@/types/api';
+import { queryClient } from '@/lib/queryClient';
 
 interface AuthContextType {
     user: User | null;
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.api.logoutUser(user.id).catch(() => { });
         }
         sessionStorage.removeItem('pos_token');
+        queryClient.clear(); // Hapus seluruh cache React Query agar data tidak bocor antar sesi
         setToken(null);
         setUser(null);
     }, [user]);
