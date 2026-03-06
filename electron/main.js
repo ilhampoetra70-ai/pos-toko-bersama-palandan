@@ -11,6 +11,7 @@ const aiAggregator = require('./ai-aggregator');
 const aiService = require('./ai-service');
 const aiApiService = require('./ai-api-service');
 const ExcelJS = require('exceljs');
+const workerManager = require('./worker-manager');
 
 // ─── Low-Spec Optimizations ─────────────────────────────
 // Reduce memory usage for low-spec devices
@@ -243,6 +244,12 @@ function scheduleAuditCleanup() {
       if (result.deleted > 0) {
         console.log(`[AuditCleanup] Cleaned up ${result.deleted} old audit logs (before ${result.cutoffDate})`);
       }
+
+      // [PERF] Run ANALYZE daily to keep index statistics up to date
+      const analyzeResult = database.analyzeDatabase();
+      if (analyzeResult && analyzeResult.success) {
+        console.log(`[Database] Daily ANALYZE completed successfully`);
+      }
     } catch (e) {
       console.error('[AuditCleanup] Error:', e.message);
     }
@@ -253,6 +260,23 @@ function scheduleAuditCleanup() {
     runCleanup();
     setInterval(runCleanup, 24 * 60 * 60 * 1000); // 24 hours
   }, 60000); // 1 minute delay on startup
+}
+
+// Hourly cleanup of old AI insight cache (> 24 hours)
+function scheduleAiCacheCleanup() {
+  const runCleanup = () => {
+    try {
+      database.purgeExpiredAiInsightCache();
+    } catch (e) {
+      console.error('[AiCacheCleanup] Error:', e.message);
+    }
+  };
+
+  // Run initial cleanup after 2 minutes, then run every 1 hour
+  setTimeout(() => {
+    runCleanup();
+    setInterval(runCleanup, 60 * 60 * 1000); // 1 hour
+  }, 120000);
 }
 
 app.whenReady().then(async () => {
@@ -271,6 +295,7 @@ app.whenReady().then(async () => {
   console.log('[POS] Window created');
   scheduleAutoBackup();
   scheduleAuditCleanup();
+  scheduleAiCacheCleanup();
   // Auto-generate AI insight jika jadwal jatuh tempo (delay 8 detik agar UI selesai load)
   setTimeout(() => { runAutoGenerate().catch(err => console.error('[AI Auto] Error:', err)); }, 8000);
   console.log('[POS] Scheduled tasks set');
@@ -389,7 +414,33 @@ function registerIpcHandlers() {
   ipcMain.handle('products:restore', (_, id) => {
     return database.restoreProduct(id);
   });
-  ipcMain.handle('products:bulkUpsert', (_, products) => database.bulkUpsertProducts(products));
+  // [PERF] Jalankan bulkUpsert di Worker Thread agar UI tidak freeze saat import Excel besar
+  ipcMain.handle('products:bulkUpsert', async (_, products) => {
+    try {
+      const dbPath = database.getDatabasePath();
+      const { success, results, error } = await workerManager.runBulkUpsertWorker(
+        dbPath,
+        products,
+        (processed, total) => {
+          // Forward progress ke renderer jika mainWindow masih ada
+          mainWindow?.webContents.send('products:bulkUpsertProgress', { processed, total });
+        }
+      );
+
+      if (!success) {
+        console.error('[IPC products:bulkUpsert] Worker failed:', error);
+        // Fallback ke implementasi sync jika worker gagal
+        return database.bulkUpsertProducts(products);
+      }
+
+      // Invalidate caches in main process after worker writes to DB
+      database.invalidateCaches();
+      return results;
+    } catch (err) {
+      console.error('[IPC products:bulkUpsert] Unexpected error:', err.message);
+      return database.bulkUpsertProducts(products);
+    }
+  });
   ipcMain.handle('products:bulkDelete', (_, ids) => database.bulkDeleteProducts(ids));
   ipcMain.handle('products:bulkUpdateField', (_, ids, field, value) => database.bulkUpdateField(ids, field, value));
   ipcMain.handle('products:getLowStock', (_, threshold) => database.getLowStockProducts(threshold));
@@ -731,12 +782,20 @@ function registerIpcHandlers() {
     }
   });
 
-  ipcMain.handle('reports:comprehensive', (_, dateFrom, dateTo) => {
+  // [PERF] Jalankan getComprehensiveReport di Worker Thread agar main thread tidak freeze
+  ipcMain.handle('reports:comprehensive', async (_, dateFrom, dateTo) => {
     try {
+      const dbPath = database.getDatabasePath();
+      const result = await workerManager.runReportWorker(dbPath, dateFrom, dateTo);
+
+      if (result) return result;
+
+      // Fallback ke implementasi sync jika worker gagal
+      console.warn('[IPC reports:comprehensive] Worker returned null, falling back to sync');
       return database.getComprehensiveReport(dateFrom, dateTo);
     } catch (err) {
-      console.error('[IPC reports:comprehensive] Uncaught error:', err.message);
-      return null;
+      console.error('[IPC reports:comprehensive] Unexpected error:', err.message);
+      return database.getComprehensiveReport(dateFrom, dateTo);
     }
   });
 

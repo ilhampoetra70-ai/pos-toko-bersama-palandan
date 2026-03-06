@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '../contexts/AuthContext';
 import {
     useProducts,
@@ -105,23 +106,56 @@ export default function ProductsPage() {
     const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(25);
-    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+    const [pageSize, setPageSize] = useState(5000); // Fetch all for client-side virtualization
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' | null }>({ key: 'name', direction: 'ascending' });
     const queryClient = useQueryClient();
 
     // --- Queries ---
-    const { data: productsData, isLoading: loadingProducts } = useProducts({
-        search,
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(search), 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const { data: productsData, isLoading: loadingProducts, error: fetchError } = useProducts({
+        page: 1, // Reset page
+        limit: pageSize,
+        search: debouncedSearch,
         category_id: filterCategory === 'all' ? undefined : filterCategory,
         active: filterStatus === 'active' ? 1 : filterStatus === 'inactive' ? 0 : undefined,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
         sortBy: sortConfig.key,
         sortOrder: sortConfig.direction === 'ascending' ? 'asc' : 'desc'
     });
 
     const products = productsData?.data || (Array.isArray(productsData) ? productsData : []);
     const totalProducts = productsData?.total || (Array.isArray(productsData) ? productsData.length : 0);
+
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+
+    // [FIX] windowWidth must be reactive — plain variable causes stale closure in estimateSize
+    const [windowWidth, setWindowWidth] = useState(
+        typeof window !== 'undefined' ? window.innerWidth : 1024
+    );
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const rowVirtualizer = useVirtualizer({
+        count: products.length,
+        getScrollElement: () => tableContainerRef.current,
+        estimateSize: useCallback((index: number) => {
+            const isExpanded = expandedProduct === products[index]?.id;
+            const baseSize = windowWidth < 640 ? 120 : (windowWidth < 1024 ? 90 : 54);
+            return isExpanded ? baseSize + 300 : baseSize;
+        }, [expandedProduct, products, windowWidth]),
+        overscan: 10,
+    });
+
+    useEffect(() => {
+        rowVirtualizer.measure();
+    }, [expandedProduct, rowVirtualizer]);
 
     const { data: categories = [] } = useCategories();
     const { data: settings } = useSettings();
@@ -144,7 +178,7 @@ export default function ProductsPage() {
     const { mutate: restoreProduct } = useRestoreProduct();
 
     const requestSort = (key: string) => {
-        let direction = 'ascending';
+        let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';
         }
@@ -498,7 +532,7 @@ export default function ProductsPage() {
             )}
 
             <Card className="border-none shadow-sm overflow-hidden">
-                <div className="h-[calc(100vh-420px)] overflow-y-auto custom-scrollbar">
+                <div ref={tableContainerRef} className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-250px)] relative custom-scrollbar">
                     {selectedProducts.length === products.length && products.length > 0 && totalProducts > pageSize && (
                         <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm">
                             {selectAll ? (
@@ -532,11 +566,11 @@ export default function ProductsPage() {
                             )}
                         </div>
                     )}
-                    <Table className="zebra-rows">
-                        <TableHeader className="bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
-                            <TableRow className="border-b border-border">
+                    <Table className="zebra-rows block w-full">
+                        <TableHeader className="bg-muted/50 sticky top-0 z-20 backdrop-blur-sm block w-full">
+                            <TableRow className="border-b border-border flex w-full">
                                 {canEdit && (
-                                    <TableHead className="w-12 text-center">
+                                    <TableHead className="w-12 flex-shrink-0 flex items-center justify-center">
                                         <input
                                             type="checkbox"
                                             className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
@@ -545,204 +579,148 @@ export default function ProductsPage() {
                                         />
                                     </TableHead>
                                 )}
-                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
+                                <TableHead className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
                                     Barcode {sortConfig.key === 'barcode' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
+                                <TableHead className="flex-1 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
                                     Nama Produk {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
+                                <TableHead className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
                                     Kategori {sortConfig.key === 'category_name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
                                 {hasRole('admin', 'supervisor') && (
-                                    <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
+                                    <TableHead className="w-24 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
                                         Modal {sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                     </TableHead>
                                 )}
-                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
+                                <TableHead className="w-24 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
                                     Harga {sortConfig.key === 'price' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
+                                <TableHead className="w-20 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
                                     Stok {sortConfig.key === 'stock' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
                                 </TableHead>
-                                <TableHead className="text-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Unit</TableHead>
-                                {canEdit && <TableHead className="text-right font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Aksi</TableHead>}
+                                <TableHead className="w-16 flex-shrink-0 flex justify-center items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Unit</TableHead>
+                                {canEdit && <TableHead className="w-16 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Aksi</TableHead>}
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="block w-full relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
                             {products.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={10} className="text-center py-20 text-muted-foreground">
+                                <TableRow className="flex items-center justify-center absolute w-full inset-0">
+                                    <TableCell colSpan={10} className="text-center py-20 text-muted-foreground border-none">
                                         <RetroBox className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                         <p className="font-bold text-lg">Tidak ada produk ditemukan</p>
                                         <p className="text-sm">Silakan tambah produk baru atau sesuaikan filter</p>
                                     </TableCell>
                                 </TableRow>
-                            ) : products.map(p => (
-                                <React.Fragment key={p.id}>
-                                    <TableRow className={cn(
-                                        "hover:bg-muted/30 transition-colors border-b border-border",
-                                        selectedProducts.includes(p.id) && "bg-primary-50 dark:bg-primary-900/10",
-                                        expandedProduct === p.id && "bg-primary/50 dark:bg-primary/10"
-                                    )}>
-                                        {canEdit && (
-                                            <TableCell className="text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
-                                                    checked={selectedProducts.includes(p.id)}
-                                                    onChange={() => toggleSelectProduct(p.id)}
-                                                />
-                                            </TableCell>
-                                        )}
-                                        <TableCell className="font-sans text-xs text-muted-foreground">{p.barcode || '-'}</TableCell>
-                                        <TableCell className="font-bold text-foreground dark:text-foreground">
-                                            {p.name}
-                                            {p.active === 0 && <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full font-bold">TERHAPUS</span>}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={cn(
-                                                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
-                                                CATEGORY_COLORS[(p.category_id || 0) % CATEGORY_COLORS.length].bg,
-                                                CATEGORY_COLORS[(p.category_id || 0) % CATEGORY_COLORS.length].text
-                                            )}>
-                                                {p.category_name || 'Tanpa Kategori'}
-                                            </span>
-                                        </TableCell>
-                                        {hasRole('admin', 'supervisor') && (
-                                            <TableCell className="text-right text-muted-foreground font-medium">{formatCurrency(p.cost)}</TableCell>
-                                        )}
-                                        <TableCell className="text-right font-black text-primary-700 dark:text-primary-400">{formatCurrency(p.price)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => toggleStockHistory(p.id)}
-                                                className={cn("font-black gap-1.5 h-7", p.stock <= 5 ? "text-red-800 bg-red-50 hover:bg-red-100" : "text-foreground")}
-                                            >
-                                                {p.stock}
-                                                <RetroHistory className={cn("w-3 h-3 transition-transform", expandedProduct === p.id && "rotate-180")} />
-                                            </Button>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant="secondary" className="font-bold">{p.unit}</Badge>
-                                        </TableCell>
-                                        {canEdit && (
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                            <MoreVertical className="w-4 h-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-40">
-                                                        {p.active === 0 ? (
-                                                            <DropdownMenuItem onClick={() => restoreProduct(p.id)} className="gap-2 text-green-700 focus:text-green-600 focus:bg-green-50">
-                                                                <RetroRefresh className="w-4 h-4" /> Pulihkan
-                                                            </DropdownMenuItem>
-                                                        ) : (
-                                                            <>
-                                                                {p.barcode && (
-                                                                    <DropdownMenuItem onClick={() => setBarcodePreviewProduct(p)} className="gap-2">
-                                                                        <Barcode className="w-4 h-4" /> Labelling
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                                <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
-                                                                    <Edit className="w-4 h-4" /> Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-800 focus:text-red-600 focus:bg-red-50">
-                                                                    <RetroTrash className="w-4 h-4" /> Hapus
-                                                                </DropdownMenuItem>
-                                                            </>
+                            ) : rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                                const p = products[virtualRow.index];
+                                const isExpanded = expandedProduct === p.id;
+                                return (
+                                    <React.Fragment key={virtualRow.key}>
+                                        <TableRow
+                                            data-index={virtualRow.index}
+                                            ref={rowVirtualizer.measureElement}
+                                            className={cn(
+                                                "absolute w-full flex border-b transition-colors bg-card",
+                                                selectedProducts.includes(p.id) && "bg-primary-50 dark:bg-primary-900/10",
+                                                isExpanded && "bg-primary/50 dark:bg-primary/10",
+                                                !isExpanded && "hover:bg-muted/30"
+                                            )} style={{ transform: `translateY(${virtualRow.start}px)`, flexWrap: 'wrap' }}>
+                                            <div className="flex w-full min-h-[54px] items-center px-4">
+                                                {canEdit && (
+                                                    <div className="w-12 flex-shrink-0 flex justify-center py-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
+                                                            checked={selectedProducts.includes(p.id)}
+
+                                                            onChange={() => toggleSelectProduct(p.id)}
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="w-32 flex-shrink-0 font-sans text-xs text-muted-foreground py-2">{p.barcode || '-'}</div>
+                                                <div className="flex-1 font-bold text-foreground py-2 grid">
+                                                    <span className="truncate pr-2">{p.name}</span>
+                                                    {p.active === 0 && <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full font-bold w-max mt-0.5">TERHAPUS</span>}
+                                                </div>
+                                                <div className="w-32 flex-shrink-0 py-2">
+                                                    <Badge className={cn("font-bold text-[10px]", CATEGORY_COLORS[p.category_id ? p.category_id % CATEGORY_COLORS.length : 0].bg, CATEGORY_COLORS[p.category_id ? p.category_id % CATEGORY_COLORS.length : 0].text, "shadow-none border-none")}>
+                                                        {p.category_name || 'Tanpa Kategori'}
+                                                    </Badge>
+                                                </div>
+                                                {hasRole('admin', 'supervisor') && (
+                                                    <div className="w-24 flex-shrink-0 text-right font-medium text-xs py-2">{formatCurrency(p.cost || p.buy_price)}</div>
+                                                )}
+                                                <div className="w-24 flex-shrink-0 text-right font-black text-primary-700 dark:text-primary-400 py-2">{formatCurrency(p.price || p.sell_price)}</div>
+                                                <div className="w-20 flex-shrink-0 text-right py-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setExpandedProduct(expandedProduct === p.id ? null : p.id);
+                                                        }}
+                                                        className={cn(
+                                                            "h-7 px-2 font-black gap-1.5 rounded-full w-full justify-end",
+                                                            p.stock <= 5 ? "text-red-600 hover:text-red-700 bg-red-50" : "text-muted-foreground hover:text-foreground"
                                                         )}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        )}
-                                    </TableRow>
-                                    {expandedProduct === p.id && (
-                                        <TableRow className="bg-primary/30 dark:bg-primary/5">
-                                            <TableCell colSpan={10} className="p-0 border-b">
-                                                <StockHistoryPanelWrapper
-                                                    productId={p.id}
-                                                    productName={p.name}
-                                                />
-                                            </TableCell>
+                                                    >
+                                                        {p.stock}
+                                                        <RetroHistory className={cn("w-3 h-3 transition-transform", isExpanded && "rotate-180")} />
+                                                    </Button>
+                                                </div>
+                                                <div className="w-16 flex-shrink-0 text-center py-2">
+                                                    <Badge variant="secondary" className="font-bold">{p.unit}</Badge>
+                                                </div>
+                                                {canEdit && (
+                                                    <div className="w-16 flex-shrink-0 text-right py-2">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto">
+                                                                    <MoreVertical className="w-4 h-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-40">
+                                                                {p.active === 0 ? (
+                                                                    <DropdownMenuItem onClick={() => restoreProduct(p.id)} className="gap-2 text-green-700 focus:text-green-600 focus:bg-green-50">
+                                                                        <RetroRefresh className="w-4 h-4" /> Pulihkan
+                                                                    </DropdownMenuItem>
+                                                                ) : (
+                                                                    <>
+                                                                        {p.barcode && (
+                                                                            <DropdownMenuItem onClick={() => setBarcodePreviewProduct(p)} className="gap-2">
+                                                                                <Barcode className="w-4 h-4" /> Labelling
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        <DropdownMenuItem onClick={() => handleEdit(p)} className="gap-2">
+                                                                            <Edit className="w-4 h-4" /> Edit
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => handleDelete(p)} className="gap-2 text-red-800 focus:text-red-600 focus:bg-red-50">
+                                                                            <RetroTrash className="w-4 h-4" /> Hapus
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {isExpanded && (
+                                                <div className="w-full bg-primary/30 dark:bg-primary/5 p-4 border-t">
+                                                    <StockHistoryPanelWrapper
+                                                        productId={p.id}
+                                                        productName={p.name}
+                                                    />
+                                                </div>
+                                            )}
                                         </TableRow>
-                                    )}
-                                </React.Fragment>
-                            ))}
+                                    </React.Fragment>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </div>
             </Card>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card dark:bg-background rounded-2xl shadow-sm border border-transparent">
-                <div className="text-sm font-bold text-muted-foreground">
-                    Showing <span className="text-foreground">{Math.min(products.length, pageSize)}</span> of <span className="text-foreground">{totalProducts}</span> items
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="h-10 w-10"
-                    >
-                        <ChevronLeft className="w-5 h-5" />
-                    </Button>
-
-                    <div className="flex items-center gap-1">
-                        {(() => {
-                            const totalPages = Math.ceil(totalProducts / pageSize);
-                            if (totalPages <= 1) return null;
-
-                            const pages = [];
-                            let startPage = Math.max(1, page - 1);
-                            let endPage = Math.min(totalPages, startPage + 2);
-                            if (endPage - startPage < 2) startPage = Math.max(1, endPage - 2);
-
-                            for (let i = startPage; i <= endPage; i++) pages.push(i);
-
-                            return pages.map(pageNum => (
-                                <Button
-                                    key={pageNum}
-                                    variant={page === pageNum ? "default" : "ghost"}
-                                    size="sm"
-                                    onClick={() => setPage(pageNum)}
-                                    className={cn("h-10 w-10 font-black", page === pageNum && "shadow-lg shadow-primary-600/20")}
-                                >
-                                    {pageNum}
-                                </Button>
-                            ));
-                        })()}
-                    </div>
-
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setPage(p => Math.min(Math.ceil(totalProducts / pageSize), p + 1))}
-                        disabled={page >= Math.ceil(totalProducts / pageSize) || totalProducts === 0}
-                        className="h-10 w-10"
-                    >
-                        <ChevronRight className="w-5 h-5" />
-                    </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-muted-foreground">Rows:</span>
-                    <Select value={String(pageSize)} onValueChange={val => { setPageSize(Number(val)); setPage(1); }}>
-                        <SelectTrigger className="w-20 h-10 font-bold border-none bg-muted/50 data-[state=open]:bg-card dark:data-[state=open]:bg-background">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-
+            {/* Pagination UI removed due to virtualization */}
             <Dialog open={showForm} onOpenChange={resetForm}>
                 <DialogContent className="sm:max-w-lg h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="p-6 pb-4 border-b shrink-0">

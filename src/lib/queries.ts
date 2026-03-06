@@ -346,7 +346,7 @@ export const useStockTrailReport = (filters: any) => {
 export const useTransactionDetail = (id: number | null) => {
     return useQuery({
         queryKey: transactionKeys.detail(id!),
-        queryFn: async () => {
+        queryFn: async (): Promise<any | null> => {
             const res = await transactionApi.getById(id!);
             // Backend main.js mengembalikan objek transaksi secara langsung tanpa dibungkus
             // { success: true, data: ... }. Penanganan ini disesuaikan untuk meng-handle

@@ -7,6 +7,7 @@ let db;
 let dbPath;
 let settingsCache = null;
 let dashboardCache = { data: null, expiry: 0 };
+let cachedCostMultiplier = null;
 
 // ─── Prepared Statement Cache ───────────────────────────
 const stmtCache = new Map();
@@ -631,9 +632,7 @@ function getProducts(searchOrFilters = '', categoryId = null, limit = null, offs
 
     const products = all(query, params);
     if (products.length > 0) {
-        const settings = getSettings();
-        const defaultMargin = parseFloat(settings.default_margin_percent || 10.5);
-        const costMultiplier = 1 - (defaultMargin / 100);
+        const costMultiplier = getCostMultiplier();
         products.forEach(p => {
             if ((!p.cost || p.cost === 0) && p.price > 0) {
                 p.cost = Math.round(p.price * costMultiplier);
@@ -1235,9 +1234,7 @@ function createTransaction(data) {
     const items = data.items || [];
     const status = resolvePaymentStatus(data);
 
-    const settings = getSettings();
-    const defaultMargin = parseFloat(settings.default_margin_percent || 10.5);
-    const costMultiplier = 1 - (defaultMargin / 100);
+    const costMultiplier = getCostMultiplier();
 
     const insertTransaction = db.transaction(() => {
         // Generate invoice number inside transaction so concurrent calls cannot produce duplicates
@@ -1326,8 +1323,14 @@ function getTransactions(filters = {}) {
     const totalRow = get(`SELECT COUNT(*) as total FROM transactions t WHERE ${whereClause}`, params);
     const total = totalRow ? totalRow.total : 0;
 
-    let query = `SELECT t.*, u.name as cashier_name, (SELECT COUNT(*) FROM transaction_items WHERE transaction_id = t.id) as item_count 
-                 FROM transactions t LEFT JOIN users u ON t.user_id = u.id 
+    // [PERF] Replaced correlated N+1 subquery with pre-aggregated LEFT JOIN
+    let query = `SELECT t.*, u.name as cashier_name, COALESCE(ic.item_count, 0) as item_count 
+                 FROM transactions t 
+                 LEFT JOIN users u ON t.user_id = u.id 
+                 LEFT JOIN (
+                     SELECT transaction_id, COUNT(*) as item_count
+                     FROM transaction_items GROUP BY transaction_id
+                 ) ic ON t.id = ic.transaction_id
                  WHERE ${whereClause} 
                  ORDER BY t.created_at DESC`;
 
@@ -1740,10 +1743,16 @@ function getProfitReport(dateFrom, dateTo) {
 }
 
 function getPeriodComparison(dateFrom1, dateTo1, dateFrom2, dateTo2) {
-    const getSummary = (from, to) => get(
-        `SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as revenue, COALESCE(AVG(total), 0) as average 
-        FROM transactions WHERE status = 'completed' AND date(created_at) >= ? AND date(created_at) <= ? `, [from, to]
-    ) || { count: 0, revenue: 0, average: 0 };
+    // [PERF] Use UTC range boundaries instead of date() function which bypasses index
+    const getSummary = (from, to) => {
+        const startRange = getLocalDayRangeUTC(new Date(from));
+        const endRange = getLocalDayRangeUTC(new Date(to));
+        return get(
+            `SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as revenue, COALESCE(AVG(total), 0) as average 
+            FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ? `,
+            [startRange.start, endRange.end]
+        ) || { count: 0, revenue: 0, average: 0 };
+    };
 
     const periodA = getSummary(dateFrom1, dateTo1);
     const periodB = getSummary(dateFrom2, dateTo2);
@@ -1831,14 +1840,17 @@ function getSlowMovingProducts(inactiveDays = 120, limit = 10) {
 }
 
 function getTopProductsExpanded(dateFrom, dateTo, limit = 10) {
+    // [PERF] Use UTC range boundaries instead of date() function which bypasses index
+    const startRange = getLocalDayRangeUTC(new Date(dateFrom));
+    const endRange = getLocalDayRangeUTC(new Date(dateTo));
     return all(
         `SELECT ti.product_id, ti.product_name, SUM(ti.quantity) as qty, COUNT(DISTINCT ti.transaction_id) as frequency,
         SUM(ti.subtotal) as total, SUM(ti.subtotal) - SUM(ti.quantity * COALESCE(p.cost, 0)) as profit
          FROM transaction_items ti JOIN transactions t ON ti.transaction_id = t.id
          LEFT JOIN products p ON ti.product_id = p.id
-         WHERE t.status = 'completed' AND date(t.created_at) >= ? AND date(t.created_at) <= ?
+         WHERE t.status = 'completed' AND t.created_at >= ? AND t.created_at < ?
         GROUP BY ti.product_id, ti.product_name ORDER BY qty DESC LIMIT ? `,
-        [dateFrom, dateTo, limit]
+        [startRange.start, endRange.end, limit]
     );
 }
 
@@ -1890,18 +1902,24 @@ function getComprehensiveReport(dateFrom, dateTo) {
     try {
         log(`[getComprehensiveReport] Starting... range: ${dateFrom} to ${dateTo}`);
 
+        // [PERF] getSalesReport already calls getTransactionLog & getHourlySalesPattern internally,
+        // so we reuse its results instead of calling them again (was duplicating ~250ms of work)
         const sales = getSalesReport(dateFrom, dateTo);
         log(`[getComprehensiveReport] Sales: ${sales ? 'OK' : 'NULL'}`);
 
         const profit = getProfitReport(dateFrom, dateTo);
         log(`[getComprehensiveReport] Profit: ${profit ? 'OK' : 'NULL'}`);
 
-        const hourly = getHourlySalesPattern(dateFrom, dateTo);
+        // Reuse hourly from sales (already computed inside getSalesReport)
+        const hourly = sales?.hourlyBreakdown || getHourlySalesPattern(dateFrom, dateTo);
         log(`[getComprehensiveReport] Hourly: ${hourly ? `OK (${hourly.length})` : 'NULL'}`);
 
         const bottomProducts = getBottomProducts(dateFrom, dateTo);
         log(`[getComprehensiveReport] Bottom: ${bottomProducts ? `OK (${bottomProducts.length})` : 'NULL'}`);
 
+        // [PERF] Call getTransactionLog once with the final limit (500).
+        // getSalesReport fetches with limit 300 for its own summary, but getComprehensiveReport
+        // needs the full 500 — so we always make this single authoritative call here.
         const transactionLog = getTransactionLog(dateFrom, dateTo, 500);
         log(`[getComprehensiveReport] TxLog: ${transactionLog ? `OK (${transactionLog.length})` : 'NULL'}`);
 
@@ -2010,9 +2028,18 @@ function getSettings() {
     return obj;
 }
 
+function getCostMultiplier() {
+    if (cachedCostMultiplier !== null) return cachedCostMultiplier;
+    const settings = getSettings();
+    const defaultMargin = parseFloat(settings.default_margin_percent || 10.5);
+    cachedCostMultiplier = 1 - (defaultMargin / 100);
+    return cachedCostMultiplier;
+}
+
 function updateSetting(key, value) {
     run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
     settingsCache = null;
+    cachedCostMultiplier = null;
     if (key === 'timezone_offset') cachedTimezoneOffset = null;
 }
 
@@ -2025,6 +2052,7 @@ function updateSettings(settings) {
     });
     transaction(settings);
     settingsCache = null;
+    cachedCostMultiplier = null;
     if ('timezone_offset' in settings) cachedTimezoneOffset = null;
     return getSettings();
 }
@@ -2362,8 +2390,23 @@ function checkDatabaseIntegrity() {
 function closeDatabase() { clearStmtCache(); if (db) db.close(); }
 
 // ─── AI Insight Cache ─────────────────────────────────────
+/**
+ * Purge AI insight cache rows whose age exceeds their own `days` period.
+ * e.g. a row with days=7 expires after 7 days, days=30 after 30 days.
+ * This is consistent with the isScheduleDue() calendar-period logic in main.js.
+ */
 function purgeExpiredAiInsightCache() {
-    run("DELETE FROM ai_insight_cache WHERE datetime(created_at) < datetime('now', '-24 hours')");
+    try {
+        // Each row's TTL = its own `days` value (weekly=7d, monthly=30d, quarterly=90d)
+        const result = run(
+            "DELETE FROM ai_insight_cache WHERE datetime(created_at) < datetime('now', '-' || days || ' days')"
+        );
+        if (result && result.changes > 0) {
+            console.log(`[AiCache] Purged ${result.changes} expired AI insight cache row(s)`);
+        }
+    } catch (e) {
+        console.error('[AiCache] purgeExpiredAiInsightCache error:', e.message);
+    }
 }
 
 function getAiInsightCache(days = null) {
@@ -2408,8 +2451,33 @@ function saveAiLlmPreset(preset) {
     run("INSERT OR REPLACE INTO settings (key, value) VALUES ('ai_llm_preset', ?)", [preset]);
 }
 
+function analyzeDatabase() {
+    try {
+        db.exec('ANALYZE');
+        return { success: true };
+    } catch (e) {
+        console.error('[Database] ANALYZE failed:', e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Invalidate all in-process caches.
+ * Dipanggil oleh main.js setelah Worker Thread selesai menulis ke DB
+ * agar read berikutnya dari main process mengambil data baru.
+ */
+function invalidateCaches() {
+    settingsCache = null;
+    cachedCostMultiplier = null;
+    cachedTimezoneOffset = null;
+    dashboardCache = { data: null, expiry: 0 };
+    clearStmtCache();
+    console.log('[Database] All caches invalidated (post-worker write)');
+}
+
 // ─── Exports ────────────────────────────────────────────
 module.exports = {
+    analyzeDatabase, invalidateCaches,
     initDatabase, closeDatabase, saveDatabase: () => { }, // no-op compatibility
     run, get, all, // low-level helpers (used by ai-aggregator, etc.)
     getUsers, getUserById, getUserByUsername, createUser, updateUser, deleteUser, updateUserLastLogin, invalidateUserToken,
@@ -2427,13 +2495,13 @@ module.exports = {
     getDashboardStats, getEnhancedDashboardStats,
     getSalesReport, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
     getSlowMovingProducts, getTopProductsExpanded,
-    getDatabaseStats, checkDatabaseIntegrity, vacuumDatabase,
+    getDatabaseStats, checkDatabaseIntegrity, vacuumDatabase, analyzeDatabase,
     clearVoidedTransactions, getArchivableTransactions, deleteOldTransactions,
     getAllTransactionsWithItems, hardResetDatabase,
     getDatabasePath, getBackupDir, getBackupHistory,
     createAutoBackup, deleteBackupFile, validateBackupFile, restoreDatabase,
     createTables, seedSettings,
     getMarginImpactStats, updateMarginSettings,
-    getAiInsightCache, getLatestAiInsightCache, saveAiInsightCache, getTimezoneOffsetHours,
+    getAiInsightCache, getLatestAiInsightCache, saveAiInsightCache, getTimezoneOffsetHours, purgeExpiredAiInsightCache,
     getAiLlmPreset, saveAiLlmPreset,
 };
