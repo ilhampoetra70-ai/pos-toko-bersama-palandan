@@ -25,14 +25,7 @@ import { RetroBox, RetroTrash, RetroHistory, RetroRefresh } from '../components/
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     Dialog,
     DialogContent,
@@ -106,7 +99,7 @@ export default function ProductsPage() {
     const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(5000); // Fetch all for client-side virtualization
+    const [pageSize, setPageSize] = useState(100); // Hybrid: paginate + virtualize per page
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' | null }>({ key: 'name', direction: 'ascending' });
     const queryClient = useQueryClient();
 
@@ -117,8 +110,8 @@ export default function ProductsPage() {
         return () => clearTimeout(timer);
     }, [search]);
 
-    const { data: productsData, isLoading: loadingProducts, error: fetchError } = useProducts({
-        page: 1, // Reset page
+    const { data: productsData, isLoading: loadingProducts, isFetching, error: fetchError } = useProducts({
+        page,
         limit: pageSize,
         search: debouncedSearch,
         category_id: filterCategory === 'all' ? undefined : filterCategory,
@@ -142,15 +135,21 @@ export default function ProductsPage() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // [PERF] Gunakan ref agar products tidak masuk deps estimateSize.
+    // Kalau products masuk deps, setiap refetch query membuat callback baru
+    // → virtualizer re-measure semua baris → re-render storm.
+    const productsRef = useRef(products);
+    productsRef.current = products;
+
     const rowVirtualizer = useVirtualizer({
         count: products.length,
         getScrollElement: () => tableContainerRef.current,
         estimateSize: useCallback((index: number) => {
-            const isExpanded = expandedProduct === products[index]?.id;
+            const isExpanded = expandedProduct === productsRef.current[index]?.id;
             const baseSize = windowWidth < 640 ? 120 : (windowWidth < 1024 ? 90 : 54);
             return isExpanded ? baseSize + 300 : baseSize;
-        }, [expandedProduct, products, windowWidth]),
-        overscan: 10,
+        }, [expandedProduct, windowWidth]), // products dikeluarkan — pakai ref
+        overscan: 5, // turun dari 10 → kurangi DOM nodes di luar viewport
     });
 
     useEffect(() => {
@@ -532,6 +531,12 @@ export default function ProductsPage() {
             )}
 
             <Card className="border-none shadow-sm overflow-hidden">
+                {/* Subtle loading bar saat background refetch (ganti halaman/filter/search) */}
+                {isFetching && !loadingProducts && (
+                    <div className="h-0.5 w-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary animate-[loading-bar_1s_ease-in-out_infinite]" style={{ width: '40%', animation: 'indeterminate 1.2s ease-in-out infinite' }} />
+                    </div>
+                )}
                 <div ref={tableContainerRef} className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-250px)] relative custom-scrollbar">
                     {selectedProducts.length === products.length && products.length > 0 && totalProducts > pageSize && (
                         <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm">
@@ -566,66 +571,81 @@ export default function ProductsPage() {
                             )}
                         </div>
                     )}
-                    <Table className="zebra-rows block w-full">
-                        <TableHeader className="bg-muted/50 sticky top-0 z-20 backdrop-blur-sm block w-full">
-                            <TableRow className="border-b border-border flex w-full">
+                    {/* [FIX] Seluruh virtualized table diubah ke div role="table" agar tidak ada
+                         invalid HTML nesting (<div> inside <table> / <div> inside <tr>).
+                         Semua styling sudah pakai display:block + flex + absolute,
+                         sehingga tidak ada perubahan visual. */}
+                    <div role="table" className="zebra-rows block w-full">
+
+                        {/* ─── Header ───────────────────────────────────────────── */}
+                        <div role="rowgroup" className="bg-muted/50 sticky top-0 z-20 backdrop-blur-sm block w-full">
+                            {/* px-4 matches body inner div padding for alignment */}
+                            <div role="row" className="border-b border-border flex w-full px-4">
                                 {canEdit && (
-                                    <TableHead className="w-12 flex-shrink-0 flex items-center justify-center">
+                                    <div role="columnheader" className="w-12 flex-shrink-0 flex items-center justify-center py-4">
                                         <input
                                             type="checkbox"
                                             className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
                                             checked={products.length > 0 && selectedProducts.length === products.length}
                                             onChange={toggleSelectAll}
                                         />
-                                    </TableHead>
+                                    </div>
                                 )}
-                                <TableHead className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
+                                <div role="columnheader" className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('barcode')}>
                                     Barcode {sortConfig.key === 'barcode' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                </TableHead>
-                                <TableHead className="flex-1 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
+                                </div>
+                                <div role="columnheader" className="flex-1 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('name')}>
                                     Nama Produk {sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                </TableHead>
-                                <TableHead className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
+                                </div>
+                                <div role="columnheader" className="w-32 flex-shrink-0 flex items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('category_name')}>
                                     Kategori {sortConfig.key === 'category_name' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                </TableHead>
+                                </div>
                                 {hasRole('admin', 'supervisor') && (
-                                    <TableHead className="w-24 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
+                                    <div role="columnheader" className="w-36 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('cost')}>
                                         Modal {sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                    </TableHead>
+                                    </div>
                                 )}
-                                <TableHead className="w-24 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
+                                <div role="columnheader" className="w-36 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('price')}>
                                     Harga {sortConfig.key === 'price' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                </TableHead>
-                                <TableHead className="w-20 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
+                                </div>
+                                <div role="columnheader" className="w-20 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground cursor-pointer hover:text-primary-600" onClick={() => requestSort('stock')}>
                                     Stok {sortConfig.key === 'stock' && (sortConfig.direction === 'ascending' ? '↑' : '↓')}
-                                </TableHead>
-                                <TableHead className="w-16 flex-shrink-0 flex justify-center items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Unit</TableHead>
-                                {canEdit && <TableHead className="w-16 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Aksi</TableHead>}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody className="block w-full relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
+                                </div>
+                                <div role="columnheader" className="w-16 flex-shrink-0 flex justify-center items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Unit</div>
+                                {canEdit && <div role="columnheader" className="w-16 flex-shrink-0 flex justify-end items-center font-black text-[10px] uppercase tracking-widest py-4 text-muted-foreground">Aksi</div>}
+                            </div>
+                        </div>
+
+                        {/* ─── Virtual Body ─────────────────────────────────────── */}
+                        <div role="rowgroup" className="block w-full relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
                             {products.length === 0 ? (
-                                <TableRow className="flex items-center justify-center absolute w-full inset-0">
-                                    <TableCell colSpan={10} className="text-center py-20 text-muted-foreground border-none">
+                                <div role="row" className="flex items-center justify-center absolute w-full inset-0">
+                                    <div className="text-center py-20 text-muted-foreground w-full">
                                         <RetroBox className="w-16 h-16 mx-auto mb-4 opacity-10" />
                                         <p className="font-bold text-lg">Tidak ada produk ditemukan</p>
                                         <p className="text-sm">Silakan tambah produk baru atau sesuaikan filter</p>
-                                    </TableCell>
-                                </TableRow>
+                                    </div>
+                                </div>
                             ) : rowVirtualizer.getVirtualItems().map((virtualRow) => {
                                 const p = products[virtualRow.index];
                                 const isExpanded = expandedProduct === p.id;
+                                const isZebra = virtualRow.index % 2 !== 0;
                                 return (
                                     <React.Fragment key={virtualRow.key}>
-                                        <TableRow
+                                        <div
+                                            role="row"
                                             data-index={virtualRow.index}
                                             ref={rowVirtualizer.measureElement}
                                             className={cn(
-                                                "absolute w-full flex border-b transition-colors bg-card",
-                                                selectedProducts.includes(p.id) && "bg-primary-50 dark:bg-primary-900/10",
-                                                isExpanded && "bg-primary/50 dark:bg-primary/10",
-                                                !isExpanded && "hover:bg-muted/30"
-                                            )} style={{ transform: `translateY(${virtualRow.start}px)`, flexWrap: 'wrap' }}>
+                                                "absolute w-full flex border-b transition-colors",
+                                                // Zebra stripes
+                                                isZebra ? "bg-muted/40 dark:bg-muted/20" : "bg-card",
+                                                selectedProducts.includes(p.id) && "!bg-primary-50 dark:!bg-primary-900/20",
+                                                isExpanded && "!bg-primary/10 dark:!bg-primary/10",
+                                                !isExpanded && !selectedProducts.includes(p.id) && "hover:!bg-muted/60 dark:hover:!bg-muted/40"
+                                            )}
+                                            style={{ transform: `translateY(${virtualRow.start}px)`, flexWrap: 'wrap' }}
+                                        >
                                             <div className="flex w-full min-h-[54px] items-center px-4">
                                                 {canEdit && (
                                                     <div className="w-12 flex-shrink-0 flex justify-center py-2">
@@ -633,7 +653,6 @@ export default function ProductsPage() {
                                                             type="checkbox"
                                                             className="w-4 h-4 rounded-md border-border text-primary-600 focus:ring-primary-500"
                                                             checked={selectedProducts.includes(p.id)}
-
                                                             onChange={() => toggleSelectProduct(p.id)}
                                                         />
                                                     </div>
@@ -649,15 +668,13 @@ export default function ProductsPage() {
                                                     </Badge>
                                                 </div>
                                                 {hasRole('admin', 'supervisor') && (
-                                                    <div className="w-24 flex-shrink-0 text-right font-medium text-xs py-2">{formatCurrency(p.cost || p.buy_price)}</div>
+                                                    <div className="w-36 flex-shrink-0 text-right font-medium text-xs py-2">{formatCurrency(p.cost || p.buy_price)}</div>
                                                 )}
-                                                <div className="w-24 flex-shrink-0 text-right font-black text-primary-700 dark:text-primary-400 py-2">{formatCurrency(p.price || p.sell_price)}</div>
+                                                <div className="w-36 flex-shrink-0 text-right font-black text-primary-700 dark:text-primary-400 py-2">{formatCurrency(p.price || p.sell_price)}</div>
                                                 <div className="w-20 flex-shrink-0 text-right py-2">
                                                     <Button
                                                         variant="ghost"
-                                                        onClick={() => {
-                                                            setExpandedProduct(expandedProduct === p.id ? null : p.id);
-                                                        }}
+                                                        onClick={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
                                                         className={cn(
                                                             "h-7 px-2 font-black gap-1.5 rounded-full w-full justify-end",
                                                             p.stock <= 5 ? "text-red-600 hover:text-red-700 bg-red-50" : "text-muted-foreground hover:text-foreground"
@@ -711,16 +728,80 @@ export default function ProductsPage() {
                                                     />
                                                 </div>
                                             )}
-                                        </TableRow>
+                                        </div>
                                     </React.Fragment>
                                 );
                             })}
-                        </TableBody>
-                    </Table>
+                        </div>{/* end virtual body */}
+                    </div>{/* end role="table" */}
                 </div>
             </Card>
 
-            {/* Pagination UI removed due to virtualization */}
+            {/* ─── Hybrid Pagination Footer ───────────────────────────── */}
+            {totalProducts > 0 && (
+                <Card className="border-none shadow-sm">
+                    <CardContent className="p-3">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            {/* Info */}
+                            <p className="text-sm text-muted-foreground font-medium">
+                                Menampilkan{' '}
+                                <span className="font-black text-foreground">
+                                    {Math.min((page - 1) * pageSize + 1, totalProducts)}
+                                </span>
+                                {'–'}
+                                <span className="font-black text-foreground">
+                                    {Math.min(page * pageSize, totalProducts)}
+                                </span>
+                                {' '}dari{' '}
+                                <span className="font-black text-foreground">{totalProducts}</span>{' '}produk
+                            </p>
+
+                            {/* Controls */}
+                            <div className="flex items-center gap-2">
+                                {/* Page size selector */}
+                                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+                                    <SelectTrigger className="h-8 w-28 text-xs font-bold bg-background/50 border-none shadow-inner">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="50">50 / hal</SelectItem>
+                                        <SelectItem value="100">100 / hal</SelectItem>
+                                        <SelectItem value="200">200 / hal</SelectItem>
+                                        <SelectItem value="500">500 / hal</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                {/* Prev */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-3 font-bold"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+
+                                {/* Page indicator */}
+                                <span className="text-xs font-black text-muted-foreground min-w-[60px] text-center">
+                                    {page} / {Math.max(1, Math.ceil(totalProducts / pageSize))}
+                                </span>
+
+                                {/* Next */}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-3 font-bold"
+                                    onClick={() => setPage(p => Math.min(Math.ceil(totalProducts / pageSize), p + 1))}
+                                    disabled={page >= Math.ceil(totalProducts / pageSize)}
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
             <Dialog open={showForm} onOpenChange={resetForm}>
                 <DialogContent className="sm:max-w-lg h-[90vh] p-0 gap-0 overflow-hidden flex flex-col bg-card dark:bg-background">
                     <DialogHeader className="p-6 pb-4 border-b shrink-0">

@@ -515,6 +515,7 @@ export interface WindowApi {
     cancelAiDownload(): Promise<{ success: boolean; error?: string }>;
     generateAiInsight(forceRefresh?: boolean, days?: number): Promise<{ success: boolean; data?: AiInsightData; from_cache?: boolean; created_at?: string; status?: string; error?: string }>;
     getAiInsightCache(days?: number): Promise<{ success: boolean; data?: AiInsightData; created_at?: string; status?: string }>;
+    deleteAiInsightCache(days: number): Promise<{ success: boolean; error?: string }>;
     getLlmPreset(): Promise<string>;
     saveLlmPreset(preset: string): Promise<{ success: boolean; error?: string }>;
     browseAiModelFile(): Promise<{ success: boolean; filePath?: string; status?: string; error?: string }>;

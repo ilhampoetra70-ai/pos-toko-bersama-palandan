@@ -140,7 +140,9 @@ export const useProducts = (filters?: any) =>
             const res = await productApi.getAll(filters);
             if (Array.isArray(res)) return { data: res, total: res.length };
             return { data: res.data || [], total: res.total || 0 };
-        }
+        },
+        staleTime: 30000,           // Jangan refetch kalau data < 30 detik
+        placeholderData: (prev: any) => prev, // Tampilkan data lama saat loading page/filter baru → tidak flicker
     });
 
 export const useProductByBarcode = (code: string) =>

@@ -564,6 +564,20 @@ const InsightPage = memo(function InsightPage() {
         });
     }, [generateInsight, selectedDays]);
 
+    const handleDeleteInsight = useCallback(async () => {
+        if (!confirm('Hapus insight untuk periode ini? AI akan di-generate ulang pada jadwal berikutnya atau saat Anda menekan Generate.')) return;
+        try {
+            const res = await window.api.deleteAiInsightCache(selectedDays);
+            if (res.success) {
+                setInsight(null);
+            } else {
+                setGenerateError(res.error || 'Gagal menghapus insight.');
+            }
+        } catch (e: any) {
+            setGenerateError(e.message);
+        }
+    }, [selectedDays]);
+
     const state = aiStatus?.state ?? 'not_downloaded';
     const customModelPath = aiStatus?.customModelPath ?? null;
     const effectiveState = aiMode === 'api' ? 'ready' : state;
@@ -589,7 +603,16 @@ const InsightPage = memo(function InsightPage() {
                 </div>
                 <div className="flex gap-2 shrink-0">
                     {!insight?.data && !isGenerating && <Button onClick={() => handleGenerate(false)} disabled={isGenerating} className="gap-2"><RetroSparkle className="w-4 h-4" />Generate Insight</Button>}
-                    {insight?.data && <Button variant="outline" onClick={() => handleGenerate(true)} disabled={isGenerating} className="gap-2"><RetroRefresh className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />{isGenerating ? 'Menganalisis...' : 'Perbarui Insight'}</Button>}
+                    {insight?.data && (
+                        <>
+                            <Button variant="outline" onClick={handleDeleteInsight} disabled={isGenerating} className="gap-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                <RetroTrash className="w-4 h-4" /> Hapus
+                            </Button>
+                            <Button variant="outline" onClick={() => handleGenerate(true)} disabled={isGenerating} className="gap-2">
+                                <RetroRefresh className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />{isGenerating ? 'Menganalisis...' : 'Perbarui Insight'}
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 

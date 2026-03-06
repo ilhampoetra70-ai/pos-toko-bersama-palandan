@@ -1832,6 +1832,17 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.handle('ai:deleteCache', (_, days) => {
+    try {
+      database.deleteAiInsightCache(days);
+      return { success: true };
+    } catch (err) {
+      console.error('[AI] Fail delete cache:', err.message);
+      return { success: false, error: err.message };
+    }
+  });
+
+
   // ── AI LLM Preset ─────────────────────────────────────────
   ipcMain.handle('ai:getLlmPreset', () => {
     try {

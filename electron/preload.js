@@ -147,6 +147,7 @@ contextBridge.exposeInMainWorld('api', {
   cancelAiDownload: () => ipcRenderer.invoke('ai:cancelDownload'),
   generateAiInsight: (forceRefresh, days) => ipcRenderer.invoke('ai:generate', forceRefresh, days),
   getAiInsightCache: (days) => ipcRenderer.invoke('ai:getCache', days),
+  deleteAiInsightCache: (days) => ipcRenderer.invoke('ai:deleteCache', days),
   getLlmPreset: () => ipcRenderer.invoke('ai:getLlmPreset'),
   saveLlmPreset: (preset) => ipcRenderer.invoke('ai:saveLlmPreset', preset),
   browseAiModelFile: () => ipcRenderer.invoke('ai:browseModelFile'),

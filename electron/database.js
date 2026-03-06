@@ -2441,6 +2441,10 @@ function saveAiInsightCache(insightJson, dataHash, days = 30) {
     );
 }
 
+function deleteAiInsightCache(days) {
+    run('DELETE FROM ai_insight_cache WHERE days = ?', [days]);
+}
+
 // ─── AI LLM Preset ────────────────────────────────────────
 function getAiLlmPreset() {
     const row = get("SELECT value FROM settings WHERE key = 'ai_llm_preset'");
@@ -2502,6 +2506,6 @@ module.exports = {
     createAutoBackup, deleteBackupFile, validateBackupFile, restoreDatabase,
     createTables, seedSettings,
     getMarginImpactStats, updateMarginSettings,
-    getAiInsightCache, getLatestAiInsightCache, saveAiInsightCache, getTimezoneOffsetHours, purgeExpiredAiInsightCache,
+    getAiInsightCache, getLatestAiInsightCache, saveAiInsightCache, deleteAiInsightCache, getTimezoneOffsetHours, purgeExpiredAiInsightCache,
     getAiLlmPreset, saveAiLlmPreset,
 };
