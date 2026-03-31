@@ -1,0 +1,722 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme Color Variables (Rose/Pink Primary) ──────────────────── */
+:root {
+  /* Primary: Rose/Magenta Pink — hsl(330.96 64% 52%) */
+  --color-primary-50:  254 240 247;
+  --color-primary-100: 252 218 237;
+  --color-primary-200: 249 177 214;
+  --color-primary-300: 242 133 185;
+  --color-primary-400: 230 90  157;
+  --color-primary-500: 212 54  130;
+  --color-primary-600: 181 34  105;
+  --color-primary-700: 146 23  84;
+  --color-primary-800: 113 16  65;
+  --color-primary-900: 84  11  48;
+}
+
+/* ── Theme: Blue ─────────────────────────────────────────────── */
+:root[data-theme="blue"] {
+  --color-primary-50:  239 246 255;
+  --color-primary-100: 219 234 254;
+  --color-primary-200: 191 219 254;
+  --color-primary-300: 147 197 253;
+  --color-primary-400: 96  165 250;
+  --color-primary-500: 59  130 246;
+  --color-primary-600: 37  99  235;
+  --color-primary-700: 29  78  216;
+  --color-primary-800: 30  64  175;
+  --color-primary-900: 30  58  138;
+  --primary: 217.2 91.2% 59.8%;
+  --ring: 217.2 91.2% 59.8%;
+  --sidebar-primary: 217.2 91.2% 59.8%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/* ── Theme: Green ────────────────────────────────────────────── */
+:root[data-theme="green"] {
+  --color-primary-50:  236 253 245;
+  --color-primary-100: 209 250 229;
+  --color-primary-200: 167 243 208;
+  --color-primary-300: 110 231 183;
+  --color-primary-400: 52  211 153;
+  --color-primary-500: 16  185 129;
+  --color-primary-600: 5   150 105;
+  --color-primary-700: 4   120 87;
+  --color-primary-800: 6   95  70;
+  --color-primary-900: 6   78  59;
+  --primary: 160.1 84.1% 39.4%;
+  --ring: 160.1 84.1% 39.4%;
+  --sidebar-primary: 160.1 84.1% 39.4%;
+  --sidebar-ring: 160.1 84.1% 39.4%;
+}
+
+/* ── Theme: Purple ───────────────────────────────────────────── */
+:root[data-theme="purple"] {
+  --color-primary-50:  245 243 255;
+  --color-primary-100: 237 233 254;
+  --color-primary-200: 221 214 254;
+  --color-primary-300: 196 181 253;
+  --color-primary-400: 167 139 250;
+  --color-primary-500: 139 92  246;
+  --color-primary-600: 124 58  237;
+  --color-primary-700: 109 40  217;
+  --color-primary-800: 91  33  182;
+  --color-primary-900: 76  29  149;
+  --primary: 257.7 89.6% 65.9%;
+  --ring: 257.7 89.6% 65.9%;
+  --sidebar-primary: 257.7 89.6% 65.9%;
+  --sidebar-ring: 257.7 89.6% 65.9%;
+}
+
+/* ── Theme: Orange ───────────────────────────────────────────── */
+:root[data-theme="orange"] {
+  --color-primary-50:  255 251 235;
+  --color-primary-100: 254 243 199;
+  --color-primary-200: 253 230 138;
+  --color-primary-300: 252 211 77;
+  --color-primary-400: 251 191 36;
+  --color-primary-500: 245 158 11;
+  --color-primary-600: 217 119 6;
+  --color-primary-700: 180 83  9;
+  --color-primary-800: 146 64  14;
+  --color-primary-900: 120 53  15;
+  --primary: 37.7 92.1% 50.2%;
+  --ring: 37.7 92.1% 50.2%;
+  --sidebar-primary: 37.7 92.1% 50.2%;
+  --sidebar-ring: 37.7 92.1% 50.2%;
+}
+
+/* ── Theme: Red ──────────────────────────────────────────────── */
+:root[data-theme="red"] {
+  --color-primary-50:  254 242 242;
+  --color-primary-100: 254 226 226;
+  --color-primary-200: 254 202 202;
+  --color-primary-300: 252 165 165;
+  --color-primary-400: 248 113 113;
+  --color-primary-500: 239 68  68;
+  --color-primary-600: 220 38  38;
+  --color-primary-700: 185 28  28;
+  --color-primary-800: 153 27  27;
+  --color-primary-900: 127 29  29;
+  --primary: 0 84.2% 60.2%;
+  --ring: 0 84.2% 60.2%;
+  --sidebar-primary: 0 84.2% 60.2%;
+  --sidebar-ring: 0 84.2% 60.2%;
+}
+
+/* ── Theme: Emerald ──────────────────────────────────────────── */
+:root[data-theme="emerald"] {
+  --color-primary-50:  236 255 248;
+  --color-primary-100: 204 251 233;
+  --color-primary-200: 154 243 214;
+  --color-primary-300: 94  231 191;
+  --color-primary-400: 50  213 163;
+  --color-primary-500: 0   196 126;
+  --color-primary-600: 0   159 101;
+  --color-primary-700: 0   125 80;
+  --color-primary-800: 0   99  63;
+  --color-primary-900: 0   81  52;
+  --primary: 156 100% 38.4%;
+  --ring: 156 100% 38.4%;
+  --sidebar-primary: 156 100% 38.4%; 
+  --sidebar-ring: 156 100% 38.4%;
+}
+
+@layer base {
+  /* ── Light Mode ─────────────────────────────────────────────────── */
+  :root {
+    --background: 43.8462 86.6667% 94.1176%;
+    --foreground: 192.2034 80.8219% 14.3137%;
+    --card: 45.6 42.3729% 88.4314%;
+    --card-foreground: 192.2034 80.8219% 14.3137%;
+    --popover: 45.6 42.3729% 88.4314%;
+    --popover-foreground: 192.2034 80.8219% 14.3137%;
+    --primary: 330.9554 64.0816% 51.9608%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 175.4622 58.6207% 39.8039%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 180 6.9307% 60.3922%;
+    --muted-foreground: 192.2034 80.8219% 14.3137%;
+    --accent: 17.5691 80.4444% 44.1176%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 1.0405 71.1934% 52.3529%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 186.3158 8.2969% 55.098%;
+    --input: 186.3158 8.2969% 55.098%;
+    --ring: 330.9554 64.0816% 51.9608%;
+    --chart-1: 204.7674 69.3548% 48.6275%;
+    --chart-2: 175.4622 58.6207% 39.8039%;
+    --chart-3: 330.9554 64.0816% 51.9608%;
+    --chart-4: 17.5691 80.4444% 44.1176%;
+    --chart-5: 1.0405 71.1934% 52.3529%;
+    --sidebar: 43.8462 86.6667% 94.1176%;
+    --sidebar-foreground: 192.2034 80.8219% 14.3137%;
+    --sidebar-primary: 330.9554 64.0816% 51.9608%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 175.4622 58.6207% 39.8039%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 186.3158 8.2969% 55.0980%;
+    --sidebar-ring: 330.9554 64.0816% 51.9608%;
+    --radius: 0.75rem;
+    --table-zebra: rgba(0, 80, 80, 0.04);
+    --table-hover: rgba(0, 80, 80, 0.08);
+    /* Shadows: soft teal-tinted */
+    --shadow-sm: 2px 3px 0px hsl(186.3 8.3% 50% / 0.5), 0 1px 2px 0 hsl(196 83% 10% / 0.08);
+    --shadow:    2px 3px 0px hsl(186.3 8.3% 50% / 0.5), 0 1px 3px 0 hsl(196 83% 10% / 0.10);
+    --shadow-md: 2px 3px 0px hsl(186.3 8.3% 50% / 0.5), 0 2px 6px -1px hsl(196 83% 10% / 0.12);
+    --shadow-lg: 3px 4px 0px hsl(186.3 8.3% 50% / 0.5), 0 4px 8px -1px hsl(196 83% 10% / 0.14);
+  }
+
+  /* ── Dark Mode ──────────────────────────────────────────────────── */
+  .dark {
+    --radius: 0.75rem;
+    --background: 192.2222 100% 10.5882%;
+    --foreground: 180 12% 72%;
+    --card: 192.2034 80.8219% 14.3137%;
+    --card-foreground: 180 12% 72%;
+    --popover: 192.2034 80.8219% 14.3137%;
+    --popover-foreground: 180 12% 72%;
+    --primary: 330.9554 64.0816% 51.9608%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 175.4622 58.6207% 39.8039%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 194 14% 20%;
+    --muted-foreground: 180 7% 70%;
+    --accent: 17.5691 80.4444% 44.1176%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 1.0405 71.1934% 52.3529%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 194.4828 14.1463% 40.1961%;
+    --input: 194.4828 14.1463% 40.1961%;
+    --ring: 330.9554 64.0816% 51.9608%;
+    --chart-1: 204.7674 69.3548% 48.6275%;
+    --chart-2: 175.4622 58.6207% 39.8039%;
+    --chart-3: 330.9554 64.0816% 51.9608%;
+    --chart-4: 17.5691 80.4444% 44.1176%;
+    --chart-5: 1.0405 71.1934% 52.3529%;
+    --sidebar: 192.2222 100.0000% 10.5882%;
+    --sidebar-foreground: 180 12% 72%;
+    --sidebar-primary: 330.9554 64.0816% 51.9608%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 175.4622 58.6207% 39.8039%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 194.4828 14.1463% 40.1961%;
+    --sidebar-ring: 330.9554 64.0816% 51.9608%;
+    --table-zebra: rgba(0, 200, 200, 0.04);
+    --table-hover: rgba(0, 200, 200, 0.08);
+    --shadow-sm: 2px 3px 0px hsl(194.5 14.1% 30% / 0.7), 0 1px 2px 0 hsl(194.5 14.1% 40.2% / 0.30);
+    --shadow:    2px 3px 0px hsl(194.5 14.1% 30% / 0.7), 0 1px 3px 0 hsl(194.5 14.1% 40.2% / 0.40);
+    --shadow-md: 2px 3px 0px hsl(194.5 14.1% 30% / 0.7), 0 2px 6px -1px hsl(194.5 14.1% 40.2% / 0.45);
+    --shadow-lg: 3px 4px 0px hsl(194.5 14.1% 30% / 0.7), 0 4px 8px -1px hsl(194.5 14.1% 40.2% / 0.50);
+  }
+}
+
+@layer base {
+  * {
+    font-family: var(--font-family, 'Outfit', system-ui, sans-serif);
+  }
+
+  body {
+    @apply transition-colors duration-300;
+    font-family: var(--font-family, 'Outfit', system-ui, sans-serif);
+    --font-header: 'Outfit', system-ui, sans-serif;
+    background-color: hsl(43.8, 86.7%, 94.1%);
+    background-image: radial-gradient(at 0% 0%, hsl(43.8, 86.7%, 94.1%) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsl(45, 80%, 90%) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(43.8, 86.7%, 94.1%) 0, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    color: hsl(192.2, 80.8%, 14.3%);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-header);
+    font-weight: 700;
+  }
+
+  /* Target all text elements to ensure inheritance if not specifically set */
+  p,
+  span,
+  label,
+  input,
+  textarea,
+  select,
+  button,
+  td,
+  th {
+    font-family: inherit;
+  }
+
+  /* ── Dark mode base styles ─────────────────────────────────────── */
+  html.dark,
+  html.dark body {
+    background-color: hsl(192.2, 100%, 10.6%) !important;  /* deep teal-black */
+    color: hsl(180, 12%, 72%) !important;                  /* muted teal-grey — matches --foreground */
+    background-image: radial-gradient(at 0% 0%, hsl(192.2, 100%, 10.6%) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsl(192.2, 80.8%, 13%) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(192.2, 100%, 10.6%) 0, transparent 50%) !important;
+  }
+
+  /* Dark mode for common elements */
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6 {
+    color: hsl(180, 12%, 75%) !important;
+  }
+
+  /* Dark mode for tables */
+  html.dark table {
+    color: hsl(180, 6.9%, 60.4%);
+  }
+
+  html.dark thead {
+    background-color: hsl(192.2, 80.8%, 14.3%) !important;
+  }
+
+  html.dark th {
+    color: hsl(180, 12%, 70%) !important;
+  }
+
+  html.dark tbody tr {
+    border-color: hsl(194.5, 14.1%, 40.2%) !important;
+  }
+
+  /* Zebra striping — opt-in via .zebra-rows on <Table> / <table> element */
+  .zebra-rows tbody tr:nth-child(even) {
+    background-color: var(--table-zebra);
+  }
+
+  .zebra-rows tbody tr:hover {
+    background-color: var(--table-hover);
+  }
+
+  tbody tr {
+    @apply transition-colors duration-200;
+  }
+
+  /* ── Dark mode background overrides ────────────────────────────── */
+  html.dark .bg-background,
+  html.dark .bg-muted {
+    background-color: hsl(192.2, 100%, 10.6%) !important;
+  }
+
+  html.dark {
+    background: hsl(192.2, 100%, 10.6%) !important;
+  }
+
+  html.dark .bg-card {
+    background-color: hsl(192.2, 80.8%, 14.3%) !important;  /* dark card */
+  }
+
+  
+
+  html.dark .text-muted-foreground {
+    color: hsl(180, 6.9%, 55%) !important;
+  }
+
+  /* ── Dark mode border overrides ─────────────────────────────────── */
+  html.dark .border-border {
+    border-color: hsl(194.5, 14.1%, 40.2%) !important;
+  }
+}
+
+@layer components {
+  /* ── Base Buttons ──────────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700 active:scale-[0.97] transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed;
+    font-family: var(--font-family, system-ui, sans-serif);
+  }
+
+  .btn-secondary {
+    background-color: hsl(175.5, 58.6%, 39.8%);
+    @apply text-white px-4 py-2 rounded active:scale-[0.97] transition-all font-medium;
+    font-family: var(--font-family, system-ui, sans-serif);
+  }
+  .btn-secondary:hover {
+    background-color: hsl(175.5, 58.6%, 33%);
+  }
+
+  .btn-danger {
+    background-color: hsl(1.04, 71.2%, 52.4%);
+    @apply text-white px-4 py-2 rounded active:scale-[0.97] transition-all font-medium;
+    font-family: var(--font-family, system-ui, sans-serif);
+  }
+  .btn-danger:hover {
+    background-color: hsl(1.04, 71.2%, 44%);
+  }
+
+  .btn-success {
+    background-color: hsl(152, 57%, 40%);
+    @apply text-white px-4 py-2 rounded active:scale-[0.97] transition-all font-medium;
+    font-family: var(--font-family, system-ui, sans-serif);
+  }
+  .btn-success:hover {
+    background-color: hsl(152, 57%, 33%);
+  }
+
+  /* ── Input Fields ──────────────────────────────────────────────── */
+  .input-field {
+    @apply w-full rounded px-3 py-2 focus:outline-none focus:ring-2 transition-all;
+    border: 1px solid hsl(186.3, 8.3%, 55.1%);
+    font-family: var(--font-family, system-ui, sans-serif);
+    color: hsl(192.2, 80.8%, 14.3%);
+    background-color: hsl(43.8, 86.7%, 97%);
+  }
+  .input-field:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25);
+  }
+  html.dark .input-field {
+    background-color: hsl(192.2, 80.8%, 14.3%);
+    border-color: hsl(194.5, 14.1%, 40.2%);
+    color: hsl(180, 6.9%, 60.4%);
+  }
+
+  /* ── Cards ─────────────────────────────────────────────────────── */
+  .card {
+    background-color: hsl(45.6, 42.4%, 88.4%);
+    border: 1px solid hsl(186.3, 8.3%, 55.1%);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 2px 2px 4px 0px hsl(196 83% 10% / 0.12);
+    transition: all 0.2s ease;
+    color: hsl(192.2, 80.8%, 14.3%);
+  }
+  .card:hover {
+    box-shadow: 2px 2px 6px 0px hsl(196 83% 10% / 0.18);
+  }
+
+  /* ── Dark mode form & select overrides ──────────────────────────── */
+  html.dark select {
+    background-color: hsl(192.2, 80.8%, 14.3%);
+    border-color: hsl(194.5, 14.1%, 40.2%);
+    color: hsl(180, 6.9%, 60.4%);
+  }
+
+  html.dark textarea {
+    background-color: hsl(192.2, 80.8%, 14.3%);
+    border-color: hsl(194.5, 14.1%, 40.2%);
+    color: hsl(180, 6.9%, 60.4%);
+  }
+
+  html.dark input[type="checkbox"] {
+    background-color: hsl(192.2, 80.8%, 14.3%);
+    border-color: hsl(194.5, 14.1%, 40.2%);
+  }
+
+  html.dark input[type="number"],
+  html.dark input[type="text"],
+  html.dark input[type="date"],
+  html.dark input[type="email"],
+  html.dark input[type="password"] {
+    background-color: hsl(192.2, 80.8%, 14.3%);
+    border-color: hsl(194.5, 14.1%, 40.2%);
+    color: hsl(180, 6.9%, 60.4%);
+  }
+
+  /* ── Dark mode cards ─────────────────────────────────────────────── */
+  html.dark .card {
+    background-color: hsl(192.2, 80.8%, 14.3%) !important;
+    border-color: hsl(194.5, 14.1%, 40.2%) !important;
+    color: hsl(180, 6.9%, 60.4%) !important;
+    box-shadow: 2px 2px 4px 0px hsl(194.5 14.1% 40.2% / 0.40);
+  }
+
+  /* Adaptive Warning/Alert Styles */
+  .alert-adaptive-success {
+    @apply bg-green-50 border-green-100 text-green-700 dark:bg-green-900/40 dark:border-green-800 dark:text-green-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-error {
+    @apply bg-red-50 border-red-100 text-red-700 dark:bg-red-900/40 dark:border-red-800 dark:text-red-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-info {
+    @apply bg-primary-100 border-primary-200 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+  .alert-adaptive-warning {
+    @apply bg-orange-50 border-orange-100 text-orange-700 dark:bg-orange-900/40 dark:border-orange-800 dark:text-orange-400 font-bold px-4 py-3 rounded-2xl flex items-center gap-2 border;
+  }
+
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(43.8, 50%, 88%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(330.96, 40%, 70%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(330.96, 64.1%, 52%);
+}
+
+/* Dark mode scrollbar */
+html.dark ::-webkit-scrollbar-track {
+  background: hsl(192.2, 80.8%, 14.3%);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: hsl(194.5, 14.1%, 40.2%);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(175.5, 40%, 50%);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  display: block;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+}
+
+html.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Receipt print styles */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Jspreadsheet custom styles */
+.jspreadsheet-container {
+  font-family: var(--font-family, system-ui, sans-serif) !important;
+}
+
+.jspreadsheet-container .jexcel {
+  border-collapse: collapse;
+}
+
+.jspreadsheet-container .jexcel thead td {
+  background-color: #f9fafb !important;
+  color: #4b5563 !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  padding: 10px 8px !important;
+  border-color: #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel tbody td {
+  font-size: 13px !important;
+  padding: 8px !important;
+  border-color: #f3f4f6 !important;
+  vertical-align: middle !important;
+}
+
+.jspreadsheet-container .jexcel tbody td:first-child {
+  background-color: #f9fafb !important;
+  font-weight: 500 !important;
+  color: #6b7280 !important;
+}
+
+.jspreadsheet-container .jexcel tbody tr:hover td {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jexcel tbody td.highlight {
+  background-color: #dbeafe !important;
+}
+
+.jspreadsheet-container .jexcel tbody td.highlight-selected {
+  background-color: #bfdbfe !important;
+}
+
+.jspreadsheet-container .jexcel_content {
+  padding: 0 !important;
+}
+
+.jspreadsheet-container .jexcel_pagination {
+  padding: 12px !important;
+  background-color: #f9fafb !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel_pagination select {
+  @apply input-field text-sm;
+  width: auto !important;
+  padding: 4px 8px !important;
+}
+
+.jspreadsheet-container .jexcel_search {
+  padding: 12px !important;
+  background-color: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.jspreadsheet-container .jexcel_search input {
+  @apply input-field text-sm;
+}
+
+/* Dropdown styles */
+.jspreadsheet-container .jdropdown-container {
+  font-size: 13px !important;
+}
+
+.jspreadsheet-container .jdropdown-item {
+  padding: 8px 12px !important;
+}
+
+.jspreadsheet-container .jdropdown-item:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jdropdown-item.jdropdown-selected {
+  background-color: #dbeafe !important;
+}
+
+/* Context menu styles */
+.jspreadsheet-container .jcontextmenu {
+  @apply bg-card rounded-lg shadow-lg border border-border;
+  padding: 4px 0 !important;
+}
+
+.jspreadsheet-container .jcontextmenu>div {
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+}
+
+.jspreadsheet-container .jcontextmenu>div:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.jspreadsheet-container .jcontextmenu hr {
+  margin: 4px 0 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Jspreadsheet dark mode styles */
+html.dark .jspreadsheet-container .jexcel thead td {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td:first-child {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody tr:hover td {
+  background-color: hsl(var(--muted)) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td.highlight {
+  background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel tbody td.highlight-selected {
+  background-color: hsl(var(--primary) / 0.2) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel_pagination {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .jspreadsheet-container .jexcel_search {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu>div {
+  color: hsl(var(--foreground)) !important;
+}
+
+html.dark .jspreadsheet-container .jcontextmenu>div:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+html.dark .jspreadsheet-container .jdropdown-item {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+html.dark .jspreadsheet-container .jdropdown-item:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* ── 1950s Rubber Hose Retro Animation ───────────────────────────── */
+.retro-wobble {
+  transition: transform 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.retro-wobble:hover,
+.group:hover .retro-wobble,
+*:hover > .retro-wobble {
+  animation: rubberHoseBounce 0.6s ease-in-out;
+  transform-origin: bottom center;
+}
+
+@keyframes rubberHoseBounce {
+  0% { transform: scaleY(1) scaleX(1); }
+  25% { transform: scaleY(0.85) scaleX(1.15) translateY(2px); }
+  50% { transform: scaleY(1.1) scaleX(0.9) translateY(-4px); }
+  75% { transform: scaleY(0.95) scaleX(1.05) translateY(1px); }
+  100% { transform: scaleY(1) scaleX(1); }
+}
+
+/* ── Accessibility: Reduced Motion ──────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .retro-wobble,
+  .retro-wobble:hover,
+  *:hover > .retro-wobble,
+  .group:hover .retro-wobble {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

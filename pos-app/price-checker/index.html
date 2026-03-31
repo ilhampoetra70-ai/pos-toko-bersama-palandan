@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Cek harga produk dengan mudah">
+
+  <title>Cek Harga</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+  <!-- Virtual Keyboard CSS -->
+  <link rel="stylesheet" href="js/simple-keyboard/index.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       DESIGN TOKENS — Coinbase-inspired Design System
+       ═══════════════════════════════════════════════════ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --primary: #0052FF;
+      --primary-hover: #003ECB;
+      --primary-light: rgba(0, 82, 255, 0.08);
+      --success: #00D395;
+      --success-dark: #00A572;
+      --warning: #FFB237;
+      --danger: #FF4D4D;
+      --surface-0: #ffffff;
+      --surface-1: #f7f8fa;
+      --surface-2: #eff2f5;
+      --surface-3: #e8ecf1;
+      --text-primary: #0a0b0d;
+      --text-secondary: #5b616e;
+      --text-tertiary: #8a919e;
+      --border: #d1d5db;
+      --border-light: #e8ecf1;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --primary: #4C8BFF;
+      --primary-hover: #6FA0FF;
+      --primary-light: rgba(76, 139, 255, 0.12);
+      --success: #00D395;
+      --success-dark: #00A572;
+      --surface-0: #0a0b0d;
+      --surface-1: #141519;
+      --surface-2: #1e2025;
+      --surface-3: #2a2d35;
+      --text-primary: #f7f8fa;
+      --text-secondary: #8a919e;
+      --text-tertiary: #5b616e;
+      --border: #2a2d35;
+      --border-light: #1e2025;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--surface-1);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HEADER — Compact, modern top bar
+       ═══════════════════════════════════════════════════ */
+    .header {
+      background: var(--surface-0);
+      border-bottom: 1px solid var(--border-light);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--primary);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .header-info h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .header-info .store-name {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .connection-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      background: rgba(0, 211, 149, 0.1);
+      border: 1px solid rgba(0, 211, 149, 0.2);
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--success-dark);
+    }
+
+    .connection-badge .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .connection-badge.offline {
+      background: rgba(255, 77, 77, 0.1);
+      border-color: rgba(255, 77, 77, 0.2);
+      color: var(--danger);
+    }
+
+    .connection-badge.offline .status-dot {
+      background: var(--danger);
+    }
+
+    .settings-btn {
+      width: 36px;
+      height: 36px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+
+    .settings-btn:hover {
+      background: var(--surface-3);
+    }
+
+    .settings-btn:active {
+      transform: scale(0.95);
+    }
+
+    .settings-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       APP WRAPPER — Side-by-side kiosk layout
+       ═══════════════════════════════════════════════════ */
+    .app-wrapper {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL — Search & Results (always takes priority) */
+    .panel-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .panel-main-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem 1rem;
+    }
+
+    .panel-main-inner {
+      width: 100%;
+    }
+
+    /* RIGHT PANEL — Virtual Keyboard */
+    .panel-keyboard {
+      width: 380px;
+      flex-shrink: 0;
+      background: var(--surface-0);
+      border-left: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      padding: 0.75rem;
+      justify-content: flex-start;
+    }
+
+    .keyboard-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .keyboard-label svg {
+      width: 18px;
+      height: 18px;
+      color: var(--text-tertiary);
+    }
+
+    .keyboard-label span {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+    }
+
+    /* Keyboard Input Display */
+    .keyboard-display {
+      background: var(--surface-1);
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 0.625rem 0.875rem;
+      margin-bottom: 0.75rem;
+      min-height: 40px;
+      font-family: var(--font);
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      word-break: break-all;
+      transition: border-color 0.2s;
+    }
+
+    .keyboard-display.has-text {
+      border-color: var(--primary);
+      background: var(--surface-0);
+    }
+
+    .keyboard-display-placeholder {
+      color: var(--text-tertiary);
+      font-weight: 400;
+      font-size: 0.875rem;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SEARCH SECTION
+       ═══════════════════════════════════════════════════ */
+    .search-section {
+      background: var(--surface-0);
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+      margin-bottom: 0.75rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.9375rem;
+      font-family: var(--font);
+      font-weight: 500;
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background: var(--surface-1);
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s ease;
+      caret-color: var(--primary);
+    }
+
+    .search-input:focus,
+    .search-input.scanner-ready {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--primary-light);
+      background: var(--surface-0);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .scan-btn {
+      padding: 0.625rem 0.75rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scan-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .scan-btn:active {
+      transform: scale(0.95);
+    }
+
+    .scan-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       CAMERA SCANNER
+       ═══════════════════════════════════════════════════ */
+    .scanner-container {
+      display: none;
+      background: black;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-top: 0.75rem;
+      position: relative;
+    }
+
+    .scanner-container.active {
+      display: block;
+    }
+
+    #scanner-video {
+      width: 100%;
+      display: block;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      height: 100px;
+      border: 3px solid var(--success);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    }
+
+    .close-scanner {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       PRODUCT CARD — Hero display
+       ═══════════════════════════════════════════════════ */
+    .product-card {
+      background: var(--surface-0);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-light);
+      animation: cardEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardEnter {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .product-header {
+      background: linear-gradient(135deg, #00D395 0%, #00A572 100%);
+      color: white;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .product-header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+    }
+
+    .product-header .label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.85;
+      margin-bottom: 0.5rem;
+    }
+
+    .product-header .price {
+      font-size: 2.25rem;
+      font-weight: 800;
+      line-height: 1;
+      position: relative;
+    }
+
+    .product-header .unit {
+      font-size: 0.9375rem;
+      opacity: 0.85;
+      margin-top: 0.25rem;
+    }
+
+    .product-details {
+      padding: 1rem;
+    }
+
+    .product-name {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.75rem;
+    }
+
+    .product-info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .info-item {
+      background: var(--surface-1);
+      padding: 0.625rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .info-item .label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .info-item .value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .stock-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .stock-badge.available {
+      background: rgba(0, 211, 149, 0.12);
+      color: #059669;
+    }
+
+    .stock-badge.low {
+      background: rgba(255, 178, 55, 0.15);
+      color: #92400e;
+    }
+
+    .stock-badge.out {
+      background: rgba(255, 77, 77, 0.12);
+      color: #991b1b;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SEARCH RESULTS LIST
+       ═══════════════════════════════════════════════════ */
+    .search-results {
+      background: var(--surface-0);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-light);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-item:active {
+      background: var(--primary-light);
+    }
+
+    .result-info h4 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.125rem;
+    }
+
+    .result-info .barcode {
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .result-price {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       STATES — Empty, Not Found, Loading
+       ═══════════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 1rem 1rem;
+      color: var(--text-tertiary);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      color: var(--border);
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state h3 {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+    }
+
+    .empty-state p {
+      font-size: 0.875rem;
+    }
+
+    .not-found {
+      background: var(--surface-0);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+    }
+
+    .not-found svg {
+      width: 44px;
+      height: 44px;
+      color: var(--text-tertiary);
+      margin-bottom: 0.5rem;
+    }
+
+    .not-found h3 {
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+    }
+
+    .not-found p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 1.5rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 0.75rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RECENT SCANS
+       ═══════════════════════════════════════════════════ */
+    .recent-scans-container {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--border-light);
+      padding-top: 1rem;
+    }
+
+    .recent-scans-header {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.625rem;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-1);
+      padding: 0.625rem 0.875rem;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      border: 1px solid var(--border-light);
+      transition: all 0.15s;
+    }
+
+    .recent-item:active {
+      transform: scale(0.98);
+      background: var(--primary-light);
+    }
+
+    .recent-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .recent-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .recent-price {
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       VIRTUAL KEYBOARD — Premium tactile buttons
+       ═══════════════════════════════════════════════════ */
+    .simple-keyboard {
+      width: 100%;
+    }
+
+    .hg-theme-default {
+      background-color: transparent !important;
+      padding: 0 !important;
+    }
+
+    .hg-theme-default .hg-button {
+      height: 46px !important;
+      font-size: 1rem !important;
+      font-family: var(--font) !important;
+      font-weight: 500 !important;
+      border-radius: 6px !important;
+      background: var(--surface-1) !important;
+      color: var(--text-primary) !important;
+      border: 1px solid var(--border) !important;
+      border-bottom: 3px solid var(--border) !important;
+      box-shadow: none !important;
+      margin: 2px !important;
+      transition: all 0.08s ease !important;
+      cursor: pointer !important;
+    }
+
+    .hg-theme-default .hg-button:active {
+      transform: translateY(2px) !important;
+      border-bottom-width: 1px !important;
+      background: var(--surface-3) !important;
+    }
+
+    [data-theme="dark"] .hg-theme-default .hg-button {
+      background: var(--surface-2) !important;
+      border-color: var(--surface-3) !important;
+      border-bottom-color: #000 !important;
+    }
+
+    .hg-theme-default .hg-button.hg-button-enter {
+      background: var(--primary) !important;
+      color: white !important;
+      border-color: var(--primary-hover) !important;
+      border-bottom-color: var(--primary-hover) !important;
+      font-weight: 600 !important;
+    }
+
+    .hg-theme-default .hg-button.hg-button-bksp {
+      background: var(--surface-2) !important;
+      color: var(--danger) !important;
+      font-weight: 600 !important;
+    }
+
+    .hg-theme-default .hg-row {
+      margin-bottom: 2px !important;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       MODAL — Bottom sheet
+       ═══════════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--surface-0);
+      width: 100%;
+      max-width: 480px;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      padding: 1.5rem;
+      animation: sheetUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes sheetUp {
+      from {
+        transform: translateY(100%);
+      }
+
+      to {
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .modal-close {
+      background: var(--surface-2);
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.375rem;
+      border-radius: var(--radius-sm);
+      display: flex;
+    }
+
+    .modal-close svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.375rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      font-family: var(--font);
+      border: 2px solid var(--border-light);
+      border-radius: var(--radius-md);
+      background: var(--surface-1);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.875rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.99);
+    }
+
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--border);
+      transition: 0.3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    input:checked+.slider {
+      background: var(--primary);
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(20px);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVE — Mobile fallback (stacked)
+       ═══════════════════════════════════════════════════ */
+    @media (max-width: 799px) {
+      .panel-keyboard {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-light);
+        padding: 0.5rem;
+        max-height: 240px;
+        justify-content: flex-end;
+      }
+
+      .app-wrapper {
+        flex-direction: column;
+      }
+
+      .keyboard-label {
+        display: none;
+      }
+
+      .keyboard-display {
+        display: none;
+      }
+
+      .panel-main-scroll {
+        padding: 0.75rem;
+      }
+
+      .hg-theme-default .hg-button {
+        height: 40px !important;
+        font-size: 0.875rem !important;
+      }
+    }
+
+    @media (min-width: 800px) {
+      .panel-keyboard {
+        width: 380px;
+      }
+    }
+
+    @media (min-width: 1100px) {
+      .panel-keyboard {
+        width: 420px;
+      }
+
+      .hg-theme-default .hg-button {
+        height: 50px !important;
+        font-size: 1.0625rem !important;
+      }
+    }
+
+    /* Utilities */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="header-left">
+      <div class="header-logo">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+      </div>
+      <div class="header-info">
+        <h1>Cek Harga</h1>
+        <div class="store-name" id="storeName">-</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="connection-badge" id="connectionBadge">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Terhubung</span>
+      </div>
+      <button class="settings-btn" id="settingsBtn">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ APP WRAPPER — Side by Side ═══ -->
+  <div class="app-wrapper">
+
+    <!-- LEFT: Search + Results -->
+    <div class="panel-main">
+      <div class="panel-main-scroll">
+        <div class="panel-main-inner">
+
+          <section class="search-section">
+            <div class="search-box">
+              <input type="text" class="search-input" id="searchInput" placeholder="Ketik nama atau scan barcode..."
+                autocomplete="off" inputmode="none" readonly>
+              <button class="scan-btn" id="scanBtn" title="Pindai Barcode">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Camera Scanner -->
+            <div class="scanner-container" id="scannerContainer">
+              <video id="scanner-video" playsinline></video>
+              <div class="scanner-overlay"></div>
+              <button class="close-scanner" id="closeScanner">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Recent Scans -->
+            <div id="recentScansContainer" class="recent-scans-container" style="display: none;"></div>
+          </section>
+
+          <!-- Result Container -->
+          <section id="resultContainer">
+            <div class="empty-state" id="emptyState">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3>Cari Produk</h3>
+              <p>Ketik nama produk atau scan barcode untuk melihat harga</p>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Virtual Keyboard -->
+    <div class="panel-keyboard" id="keyboardContainer">
+      <div class="keyboard-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm1 4h2m2 0h2m2 0h2m2 0h2M4 13h2m2 0h8m2 0h2" />
+        </svg>
+        <span>Papan Ketik</span>
+      </div>
+      <div class="keyboard-display" id="keyboardDisplay">
+        <span class="keyboard-display-placeholder">Ketik untuk mencari...</span>
+      </div>
+      <div class="simple-keyboard"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══ SETTINGS MODAL ═══ -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Pengaturan Koneksi</h2>
+        <button class="modal-close" id="closeSettings">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="form-group">
+        <label for="serverUrl">Alamat Server POS</label>
+        <input type="url" id="serverUrl" placeholder="http://192.168.1.100:3001">
+      </div>
+      <div class="form-group"
+        style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+        <label for="darkModeToggle" style="margin-bottom: 0;">Mode Gelap</label>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <p style="font-size: 0.75rem; color: var(--text-tertiary); margin: 1rem 0;">
+        Masukkan alamat IP komputer POS Cashier. Contoh: http://192.168.1.100:3001
+      </p>
+      <button class="btn-primary" id="saveSettings">Simpan & Test Koneksi</button>
+    </div>
+  </div>
+
+  <!-- QuaggaJS for Barcode Scanning (Offline) -->
+  <script src="js/quagga.min.js"></script>
+  <!-- SimpleKeyboard -->
+  <script src="js/simple-keyboard/index.js"></script>
+
+  <script>
+    // ─── Configuration ─────────────────────────────────────
+    const CONFIG_KEY = 'price_checker_config';
+    let config = {
+      serverUrl: localStorage.getItem(CONFIG_KEY) || window.location.origin,
+      darkMode: localStorage.getItem('price_checker_dark_mode') === 'true'
+    };
+
+    // Apply theme immediately
+    if (config.darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+
+    // ─── DOM Elements ──────────────────────────────────────
+    const searchInput = document.getElementById('searchInput');
+    const scanBtn = document.getElementById('scanBtn');
+    const scannerContainer = document.getElementById('scannerContainer');
+    const closeScanner = document.getElementById('closeScanner');
+    const resultContainer = document.getElementById('resultContainer');
+    const emptyState = document.getElementById('emptyState');
+    const storeName = document.getElementById('storeName');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const connectionBadge = document.getElementById('connectionBadge');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettings = document.getElementById('closeSettings');
+    const serverUrlInput = document.getElementById('serverUrl');
+    const saveSettings = document.getElementById('saveSettings');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const keyboardDisplay = document.getElementById('keyboardDisplay');
+
+    // Init checkbox state
+    darkModeToggle.checked = config.darkMode;
+
+    darkModeToggle.addEventListener('change', (e) => {
+      const isDark = e.target.checked;
+      config.darkMode = isDark;
+      localStorage.setItem('price_checker_dark_mode', isDark);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    });
+
+    let searchTimeout = null;
+    let isScanning = false;
+
+    // ─── Hardware Barcode Scanner Support ──────────────────
+    let lastInputTime = 0;
+    let inputBuffer = '';
+    let scannerDetectTimeout = null;
+    const SCANNER_INPUT_THRESHOLD = 50;
+    const SCANNER_COMPLETE_DELAY = 50;
+
+    // ─── Virtual Keyboard Setup ────────────────────────────
+    const Keyboard = window.SimpleKeyboard.default;
+    let keyboard;
+
+    function initKeyboard() {
+      keyboard = new Keyboard({
+        onChange: input => onChange(input),
+        onKeyPress: button => onKeyPress(button),
+        layout: {
+          default: [
+            "1 2 3 4 5 6 7 8 9 0",
+            "q w e r t y u i o p",
+            "a s d f g h j k l",
+            "z x c v b n m {bksp}",
+            "{space} {enter}"
+          ]
+        },
+        display: {
+          "{bksp}": "⌫",
+          "{enter}": "🔍 Cari",
+          "{space}": "Spasi"
+        },
+        theme: "hg-theme-default",
+        physicalKeyboardHighlight: true,
+        buttonTheme: [
+          {
+            class: "hg-button-enter",
+            buttons: "{enter}"
+          },
+          {
+            class: "hg-button-bksp",
+            buttons: "{bksp}"
+          }
+        ]
+      });
+    }
+
+    function updateKeyboardDisplay(text) {
+      if (!keyboardDisplay) return;
+      if (text && text.length > 0) {
+        keyboardDisplay.textContent = text;
+        keyboardDisplay.classList.add('has-text');
+      } else {
+        keyboardDisplay.innerHTML = '<span class="keyboard-display-placeholder">Ketik untuk mencari...</span>';
+        keyboardDisplay.classList.remove('has-text');
+      }
+    }
+
+    function onChange(input) {
+      searchInput.value = input;
+      updateKeyboardDisplay(input);
+      handleInputDebounced(input);
+    }
+
+    function onKeyPress(button) {
+      if (button === "{enter}") {
+        const value = searchInput.value.trim();
+        if (/^\d{8,13}$/.test(value) || /^[A-Z0-9]{6,20}$/i.test(value)) {
+          handleBarcodeSearch(value);
+        } else {
+          handleSearch(value);
+        }
+      }
+    }
+
+    initKeyboard();
+
+    // ─── Recent Scans Logic ────────────────────────────────
+    let recentScans = JSON.parse(localStorage.getItem('recent_scans') || '[]');
+
+    function addToRecentScans(product) {
+      if (!product || !product.id) return;
+      recentScans = recentScans.filter(p => p.id !== product.id);
+      recentScans.unshift({
+        id: product.id, name: product.name,
+        price: product.price, barcode: product.barcode, unit: product.unit
+      });
+      recentScans = recentScans.slice(0, 3);
+      localStorage.setItem('recent_scans', JSON.stringify(recentScans));
+    }
+
+    function renderRecentScans() {
+      const container = document.getElementById('recentScansContainer');
+      if (!container) return;
+      if (recentScans.length === 0 || searchInput.value.length > 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+      }
+      const items = recentScans.map(p => `
+        <div class="recent-item" data-barcode="${esc(p.barcode || '')}">
+          <div class="recent-info">
+            <span class="recent-name">${esc(p.name)}</span>
+            <span class="recent-price">${formatCurrency(p.price)}</span>
+          </div>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="recent-scans-header">Terakhir di-scan</div>
+        <div class="recent-list">${items}</div>
+      `;
+      container.style.display = 'block';
+
+      container.querySelectorAll('.recent-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const barcode = el.dataset.barcode;
+          if (barcode) {
+            searchInput.value = '';
+            handleBarcodeSearch(barcode);
+          }
+        });
+      });
+    }
+
+    // ─── Security: HTML Escaping ────────────────────────────
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ─── Utilities ─────────────────────────────────────────
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR',
+        minimumFractionDigits: 0, maximumFractionDigits: 0
+      }).format(amount);
+    }
+
+    function getStockBadge(stock) {
+      if (stock <= 0) return { class: 'out', text: 'Habis' };
+      if (stock <= 5) return { class: 'low', text: `Sisa ${stock}` };
+      return { class: 'available', text: 'Tersedia' };
+    }
+
+    // ─── API Functions ─────────────────────────────────────
+    async function fetchAPI(endpoint) {
+      if (!config.serverUrl) throw new Error('Server belum dikonfigurasi');
+      const response = await fetch(`${config.serverUrl}${endpoint}`, {
+        method: 'GET', headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Request failed');
+      }
+      return response.json();
+    }
+
+    async function checkConnection() {
+      try {
+        await fetchAPI('/api/health');
+        connectionBadge.classList.remove('offline');
+        statusText.textContent = 'Terhubung';
+        const storeData = await fetchAPI('/api/store');
+        if (storeData.success) storeName.textContent = storeData.store.name;
+        return true;
+      } catch (e) {
+        connectionBadge.classList.add('offline');
+        statusText.textContent = 'Tidak terhubung';
+        storeName.textContent = '-';
+        return false;
+      }
+    }
+
+    async function searchProducts(query) {
+      try {
+        const data = await fetchAPI(`/api/products/search?q=${encodeURIComponent(query)}`);
+        return data.products || [];
+      } catch (e) { console.error('Search error:', e); return []; }
+    }
+
+    async function getProductByBarcode(barcode) {
+      try {
+        const data = await fetchAPI(`/api/product/${encodeURIComponent(barcode)}`);
+        return data.product || null;
+      } catch (e) {
+        if (e.message === 'Produk tidak ditemukan') return null;
+        console.error('Barcode lookup error:', e); return null;
+      }
+    }
+
+    // ─── Rendering ─────────────────────────────────────────
+    function showLoading() {
+      resultContainer.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p style="color: var(--text-tertiary); font-size: 0.875rem;">Mencari produk...</p>
+        </div>
+      `;
+    }
+
+    function showEmpty() {
+      resultContainer.innerHTML = `
+        <div class="empty-state">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+          </svg>
+          <h3>Siap Scan Barcode</h3>
+          <p>Arahkan scanner ke barcode atau ketik nama produk</p>
+        </div>
+      `;
+    }
+
+    function showNotFound(query) {
+      resultContainer.innerHTML = `
+        <div class="not-found">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h3>Produk Tidak Ditemukan</h3>
+          <p>"${esc(query)}" tidak ditemukan dalam database</p>
+        </div>
+      `;
+    }
+
+    function showProduct(product) {
+      const stock = getStockBadge(product.stock);
+      resultContainer.innerHTML = `
+        <div class="product-card">
+          <div class="product-header">
+            <div class="label">Harga</div>
+            <div class="price">${formatCurrency(product.price)}</div>
+            <div class="unit">per ${esc(product.unit)}</div>
+          </div>
+          <div class="product-details">
+            <h2 class="product-name">${esc(product.name)}</h2>
+            <div class="product-info">
+              <div class="info-item">
+                <div class="label">Barcode</div>
+                <div class="value">${esc(product.barcode || '-')}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Kategori</div>
+                <div class="value">${esc(product.category || '-')}</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Stok</div>
+                <div class="value">
+                  <span class="stock-badge ${esc(stock.class)}">${esc(stock.text)}</span>
+                </div>
+              </div>
+              <div class="info-item">
+                <div class="label">Satuan</div>
+                <div class="value">${esc(product.unit)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function showSearchResults(products) {
+      if (products.length === 0) { showNotFound(searchInput.value); return; }
+      if (products.length === 1) { showProduct(products[0]); addToRecentScans(products[0]); return; }
+
+      const items = products.map(p => `
+        <div class="result-item" data-barcode="${esc(p.barcode || '')}" data-id="${esc(p.id)}">
+          <div class="result-info">
+            <h4>${esc(p.name)}</h4>
+            <div class="barcode">${esc(p.barcode || 'No barcode')}</div>
+          </div>
+          <div class="result-price">${formatCurrency(p.price)}</div>
+        </div>
+      `).join('');
+
+      resultContainer.innerHTML = `<div class="search-results">${items}</div>`;
+
+      resultContainer.querySelectorAll('.result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const barcode = item.dataset.barcode;
+          if (barcode) { searchInput.value = barcode; handleBarcodeSearch(barcode); }
+        });
+      });
+    }
+
+    // ─── Search Handlers ───────────────────────────────────
+    async function handleSearch(query) {
+      if (!query || query.length < 2) { showEmpty(); renderRecentScans(); return; }
+      showLoading();
+      const products = await searchProducts(query);
+      showSearchResults(products);
+    }
+
+    async function handleBarcodeSearch(barcode) {
+      showLoading();
+      const product = await getProductByBarcode(barcode);
+      if (product) {
+        showProduct(product);
+        addToRecentScans(product);
+        setTimeout(() => { searchInput.value = ''; keyboard.setInput(''); updateKeyboardDisplay(''); renderRecentScans(); }, 3000);
+      } else { showNotFound(barcode); }
+    }
+
+    // ─── Barcode Scanner ───────────────────────────────────
+    function startScanner() {
+      if (isScanning) return;
+      isScanning = true;
+      scannerContainer.classList.add('active');
+      Quagga.init({
+        inputStream: {
+          name: "Live", type: "LiveStream",
+          target: document.getElementById('scanner-video'),
+          constraints: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+        },
+        decoder: {
+          readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader", "upc_e_reader"]
+        },
+        locate: true,
+        locator: { halfSample: true, patchSize: "medium" }
+      }, function (err) {
+        if (err) { console.error('Scanner init error:', err); alert('Tidak dapat mengakses kamera'); stopScanner(); return; }
+        Quagga.start();
+      });
+
+      Quagga.onDetected(function (result) {
+        const code = result.codeResult.code;
+        if (code) {
+          stopScanner();
+          searchInput.value = code;
+          keyboard.setInput(code);
+          handleBarcodeSearch(code);
+          if (navigator.vibrate) navigator.vibrate(100);
+        }
+      });
+    }
+
+    function stopScanner() {
+      isScanning = false;
+      scannerContainer.classList.remove('active');
+      Quagga.stop();
+    }
+
+    // ─── Hardware Scanner Detection ───────────────────────
+    function isHardwareScannerInput(timeDiff) { return timeDiff < SCANNER_INPUT_THRESHOLD; }
+
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 1200; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.1);
+      } catch (e) { if (navigator.vibrate) navigator.vibrate(50); }
+    }
+
+    async function processScannerInput(barcode) {
+      searchInput.style.backgroundColor = 'rgba(0, 211, 149, 0.15)';
+      setTimeout(() => { searchInput.style.backgroundColor = ''; }, 300);
+      playBeep();
+      if (navigator.vibrate) navigator.vibrate(100);
+      showLoading();
+      const product = await getProductByBarcode(barcode);
+      if (product) { showProduct(product); } else { showNotFound(barcode); }
+      setTimeout(() => { searchInput.value = ''; keyboard.setInput(''); updateKeyboardDisplay(''); }, 2000);
+    }
+
+    // ─── Debounced Input Handler ───────────────────────────
+    function handleInputDebounced(value) {
+      clearTimeout(searchTimeout);
+      value = value.trim();
+      searchTimeout = setTimeout(() => {
+        if (/^\d{8,13}$/.test(value)) { handleBarcodeSearch(value); }
+        else if (value.length >= 2) { handleSearch(value); }
+        else if (value.length === 0) { showEmpty(); renderRecentScans(); }
+      }, 250);
+    }
+
+    // ─── Event Listeners ───────────────────────────────────
+    searchInput.addEventListener('click', () => {
+      searchInput.classList.add('scanner-ready');
+    });
+
+    // ─── Keyboard Input Handlers ───────────────────────────
+    // Physical Keyboard Support
+    document.addEventListener('keydown', (e) => {
+      // Ignore if typing in other inputs (settings modal url input, etc)
+      if (['TEXTAREA'].includes(e.target.tagName) || e.target.type === 'url') return;
+      if (settingsModal.classList.contains('active')) return;
+
+      // Handle Backspace
+      if (e.key === 'Backspace') {
+        let current = keyboard.getInput();
+        if (current.length > 0) {
+          let updated = current.slice(0, -1);
+          keyboard.setInput(updated);
+          onChange(updated);
+        }
+        return;
+      }
+
+      // Handle Enter
+      if (e.key === 'Enter') {
+        // If inputBuffer is short, it's likely a manual Enter keypress
+        // instead of a scanner auto-enter.
+        if (inputBuffer.length < 5) {
+          onKeyPress("{enter}");
+        }
+        return;
+      }
+
+      // Handle regular characters (Human Typing)
+      // Check if it's a single character and not part of a rapid scan
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const now = Date.now();
+        const timeDiff = now - lastInputTime;
+
+        // If typing is slow (human speed), update the keyboard buffer immediately
+        if (timeDiff > SCANNER_INPUT_THRESHOLD) {
+          let current = keyboard.getInput();
+          let updated = current + e.key;
+          keyboard.setInput(updated);
+          onChange(updated);
+        }
+      }
+    });
+
+    // Hardware scanner: listen on document for rapid keypress
+    document.addEventListener('keypress', (e) => {
+      if (['TEXTAREA'].includes(e.target.tagName) || e.target.type === 'url') return;
+      if (settingsModal.classList.contains('active')) return;
+
+      const now = Date.now();
+      const timeDiff = now - lastInputTime;
+
+      // Reset buffer if this is a new scan sequence
+      if (timeDiff > SCANNER_INPUT_THRESHOLD) inputBuffer = '';
+
+      lastInputTime = now;
+      if (e.key && e.key.length === 1) inputBuffer += e.key;
+
+      clearTimeout(scannerDetectTimeout);
+      scannerDetectTimeout = setTimeout(() => {
+        // Only process as scanner if it's a long string typed very fast
+        if (inputBuffer.length > 4) {
+          const finalValue = inputBuffer.trim();
+          // Wide regex for barcodes
+          if (/^[A-Z0-9]{5,25}$/i.test(finalValue)) {
+            console.log('[Scanner] Hardware barcode detected:', finalValue);
+            searchInput.value = finalValue;
+            keyboard.setInput(finalValue);
+            updateKeyboardDisplay(finalValue);
+            processScannerInput(finalValue);
+            inputBuffer = '';
+          }
+        }
+      }, SCANNER_COMPLETE_DELAY);
+    });
+
+    scanBtn.addEventListener('click', () => { isScanning ? stopScanner() : startScanner(); });
+    closeScanner.addEventListener('click', stopScanner);
+
+    settingsBtn.addEventListener('click', () => {
+      serverUrlInput.value = config.serverUrl;
+      settingsModal.classList.add('active');
+    });
+    closeSettings.addEventListener('click', () => { settingsModal.classList.remove('active'); });
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) settingsModal.classList.remove('active');
+    });
+
+    saveSettings.addEventListener('click', async () => {
+      const url = serverUrlInput.value.trim().replace(/\/$/, '');
+      if (!url) { alert('Masukkan alamat server'); return; }
+      config.serverUrl = url;
+      localStorage.setItem(CONFIG_KEY, url);
+      saveSettings.textContent = 'Mengetes...';
+      saveSettings.disabled = true;
+      const connected = await checkConnection();
+      saveSettings.textContent = 'Simpan & Test Koneksi';
+      saveSettings.disabled = false;
+      if (connected) { settingsModal.classList.remove('active'); alert('Berhasil terhubung ke server!'); }
+      else { alert('Gagal terhubung. Pastikan:\n1. Komputer POS menyala\n2. Alamat IP benar\n3. Terhubung ke WiFi yang sama'); }
+    });
+
+    // ─── Initialize ────────────────────────────────────────
+    (async function init() {
+      if (config.serverUrl) { await checkConnection(); }
+      else {
+        connectionBadge.classList.add('offline');
+        statusText.textContent = 'Belum dikonfigurasi';
+        setTimeout(() => settingsModal.classList.add('active'), 500);
+      }
+      renderRecentScans();
+      setInterval(checkConnection, 30000);
+    })();
+
+    // ─── Service Worker Registration ───────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW registered'))
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+
+</html>
