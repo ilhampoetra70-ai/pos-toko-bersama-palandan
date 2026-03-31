@@ -28,7 +28,7 @@ echo.
 echo ============================================
 set /p choice="Pilihan Anda (0-5): "
 
-cd /d "%~dp0\pos-app"
+cd /d "%~dp0"
 
 if "%choice%"=="1" goto full
 if "%choice%"=="2" goto quick
