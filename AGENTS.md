@@ -145,7 +145,7 @@ cd pos-app
 npm run dev                    # Jalankan Vite + Electron secara bersamaan
 ```
 
-### Build
+### Build (NPM Scripts)
 ```bash
 npm run build                  # Build renderer + package dengan electron-builder
 npm run build:renderer         # Build Vite saja (output: dist-renderer/)
@@ -153,6 +153,24 @@ npm run build:dir              # Build tanpa packaging (untuk testing)
 npm run build:portable         # Build versi portable
 npm run build:all              # Build lengkap dengan custom scripts
 ```
+
+### Build (File Batch - One Click)
+File batch tersedia di root project dan folder `pos-app/`:
+
+| File | Deskripsi |
+|------|-----------|
+| `BUILD_TOKO_BERSAMA.bat` | Menu utama build (pilih opsi 1-5) |
+| `pos-app/build-complete.bat` | Build lengkap: Unpacked + Portable + NPM Rebuild + Icon |
+| `pos-app/build-quick.bat` | Build cepat tanpa NPM rebuild |
+| `pos-app/build-portable-only.bat` | Build hanya versi portable |
+| `pos-app/build-unpacked-only.bat` | Build hanya versi unpacked |
+
+**Fitur File Batch:**
+- ✅ Otomatis npm rebuild native modules
+- ✅ Menggunakan icon dari `assets/tb_logo_1771832778678.png`
+- ✅ Menimpa (overwrite) folder build lama tanpa buat folder baru
+- ✅ Auto-fix icon executable dengan rcedit
+- ✅ Progress indicator dan error handling
 
 ### Utilities
 ```bash
