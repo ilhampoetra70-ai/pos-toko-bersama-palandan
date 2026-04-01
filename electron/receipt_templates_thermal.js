@@ -48,10 +48,19 @@ const thermalTemplates = {
               background: #ffffff !important;
               width: 100%;
               max-width: 210mm;
-              padding: 10mm;
+              margin: 0 auto;  /* Center for preview */
+              padding: 10mm 14mm;  /* Balanced padding */
               padding-top: 20mm;  /* Spasi jari di atas header */
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+            }
+            
+            @media print {
+              body {
+                margin: 0 !important;
+                padding: 10mm 10mm !important;
+                padding-top: 20mm !important;
+              }
             }
             
             /* Prevent header cutoff - keep header with first page */

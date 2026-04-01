@@ -43,6 +43,15 @@ const templates = {
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
+        
+        /* Print-safe: Remove margin/padding saat print ke thermal */
+        @media print {
+          body {
+            margin: 0 !important;
+            padding: 3px 2px !important;
+            padding-top: 15mm !important;
+          }
+        }
       </style>
       
       ${data.sections.logo ? data.logoHTML : ''}
@@ -136,6 +145,14 @@ const templates = {
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
+        
+        @media print {
+          body {
+            margin: 0 !important;
+            padding: 3px 2px !important;
+            padding-top: 15mm !important;
+          }
+        }
       </style>
       
       ${data.sections.store_name ? `<div class="center bold" style="font-size: 1.1em; margin-bottom: 2px;">${data.storeName}</div>` : ''}
@@ -232,6 +249,14 @@ const templates = {
           text-align: center; 
           margin-bottom: 8px;
         }
+        
+        @media print {
+          body {
+            margin: 0 !important;
+            padding: 3px 2px !important;
+            padding-top: 15mm !important;
+          }
+        }
       </style>
       
       ${data.sections.store_name ? `
@@ -312,6 +337,7 @@ const templates = {
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
         body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { body { margin: 0 !important; padding: 3px 2px !important; } }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -387,6 +413,7 @@ const templates = {
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
         body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { body { margin: 0 !important; padding: 3px 2px !important; } }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -471,6 +498,7 @@ const templates = {
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
         body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { body { margin: 0 !important; padding: 3px 2px !important; } }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -565,6 +593,7 @@ const templates = {
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
         body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @media print { body { margin: 0 !important; padding: 3px 2px !important; } }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -1498,6 +1527,14 @@ const templates = {
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
+        
+        @media print {
+          body {
+            margin: 0 !important;
+            padding: 10px 6px !important;
+            padding-top: 18mm !important;
+          }
+        }
       </style>
       
       ${data.sections.logo ? data.logoHTML : ''}
