@@ -15,7 +15,8 @@ const templates = {
           font-family: 'Courier New', 'Courier', monospace; 
           font-size: 12px;  /* Optimal for C58BT 58mm (384 dots) */
           width: ${data.widthPx}px; 
-          padding: 3px 4px;  /* Minimal horizontal padding untuk maksimalkan printable area 48mm */
+          margin: 0 auto;  /* Center content horizontally */
+          padding: 3px 8px;  /* Balanced padding kiri-kanan */
           padding-top: 15mm;  /* Spasi jari di atas header */
           line-height: 1.25;
           color: #000 !important;
@@ -109,7 +110,8 @@ const templates = {
           font-family: 'Courier New', 'Courier', monospace; 
           font-size: 11px;    /* Ekstra kecil untuk banyak item */
           width: ${data.widthPx}px; 
-          padding: 3px 4px;   /* Minimal horizontal padding untuk 48mm printable */
+          margin: 0 auto;     /* Center content horizontally */
+          padding: 3px 8px;   /* Balanced padding kiri-kanan */
           padding-top: 15mm;  /* Spasi jari di atas header */
           line-height: 1.15;
           color: #000 !important;
@@ -200,7 +202,8 @@ const templates = {
           font-family: 'Courier New', 'Courier', monospace; 
           font-size: 12px;
           width: ${data.widthPx}px; 
-          padding: 3px 4px;   /* Minimal horizontal padding untuk 48mm printable */
+          margin: 0 auto;     /* Center content horizontally */
+          padding: 3px 8px;   /* Balanced padding kiri-kanan */
           padding-top: 15mm;  /* Spasi jari di atas header */
           line-height: 1.25;
           color: #000 !important;
@@ -308,7 +311,7 @@ const templates = {
     render: (data) => `
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
-        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; padding: 3px 4px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -383,7 +386,7 @@ const templates = {
     render: (data) => `
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
-        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; padding: 3px 4px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -467,7 +470,7 @@ const templates = {
     render: (data) => `
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
-        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; padding: 3px 4px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -561,7 +564,7 @@ const templates = {
     render: (data) => `
       <style>
         /* OPTIMIZED FOR THERMAL PRINTERS */
-        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; padding: 3px 4px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { font-family: 'Courier New', 'Courier', monospace; font-size: ${data.fontSize}; width: ${data.widthPx}px; margin: 0 auto; padding: 3px 8px; line-height: 1.3; color: #000 !important; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .center { text-align: center; }
         .right  { text-align: right; }
         .bold   { font-weight: bold; }
@@ -1469,7 +1472,8 @@ const templates = {
           font-family: 'Courier New', 'Courier', monospace; 
           font-size: 14px;  /* Optimal for HPRT 80mm width */
           width: ${data.widthPx}px; 
-          padding: 10px;
+          margin: 0 auto;   /* Center content horizontally */
+          padding: 10px 14px;  /* Balanced padding kiri-kanan */
           padding-top: 18mm;  /* Spasi jari di atas header */
           line-height: 1.4; 
           color: #000 !important;
