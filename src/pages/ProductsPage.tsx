@@ -97,6 +97,9 @@ export default function ProductsPage() {
     const [catToDelete, setCatToDelete] = useState<any>(null);
     const [catError, setCatError] = useState('');
     const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(100); // Hybrid: paginate + virtualize per page
@@ -262,7 +265,20 @@ export default function ProductsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsSubmitting(true);
+        
         try {
+            // Validasi form
+            if (!form.name.trim()) {
+                throw new Error('Nama produk wajib diisi');
+            }
+            if (!form.barcode.trim()) {
+                throw new Error('Barcode wajib diisi');
+            }
+            if (parseInt(form.price) <= 0) {
+                throw new Error('Harga jual harus lebih dari 0');
+            }
+
             let categoryId = null;
 
             if (newCatName.trim()) {
@@ -270,8 +286,6 @@ export default function ProductsPage() {
                 if (existing) {
                     categoryId = existing.id;
                 } else {
-                    // We don't want to await here if we want optimistic updates, but for categories it's safer to just let the user save.
-                    // Actually, the original code awaited.
                     const cat = await window.api.createCategory(newCatName.trim(), '');
                     categoryId = cat ? cat.id : null;
                 }
@@ -307,13 +321,23 @@ export default function ProductsPage() {
                         }
                     }, {
                         onSuccess: () => {
+                            setSuccessMessage(`Produk "${data.name}" berhasil diperbarui!`);
+                            setShowSuccessDialog(true);
                             resetForm();
+                        },
+                        onError: (err: any) => {
+                            setError(err.message || 'Gagal memperbarui produk');
                         }
                     });
                 } else {
                     updateProductMutation.mutate({ id: editing.id, data }, {
                         onSuccess: () => {
+                            setSuccessMessage(`Produk "${data.name}" berhasil diperbarui!`);
+                            setShowSuccessDialog(true);
                             resetForm();
+                        },
+                        onError: (err: any) => {
+                            setError(err.message || 'Gagal memperbarui produk');
                         }
                     });
                 }
@@ -324,12 +348,19 @@ export default function ProductsPage() {
                 }
                 createProductMutation.mutate(data, {
                     onSuccess: () => {
+                        setSuccessMessage(`Produk "${data.name}" berhasil ditambahkan!`);
+                        setShowSuccessDialog(true);
                         resetForm();
+                    },
+                    onError: (err: any) => {
+                        setError(err.message || 'Gagal menambahkan produk');
                     }
                 });
             }
         } catch (err: any) {
-            setError('Gagal menyimpan: ' + (err.message || 'Error'));
+            setError(err.message || 'Terjadi kesalahan');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -895,7 +926,44 @@ export default function ProductsPage() {
 
                     <DialogFooter className="p-6 border-t bg-background/50 shrink-0 gap-2">
                         <Button type="button" variant="ghost" onClick={resetForm} className="h-12 font-bold flex-1">Batal</Button>
-                        <Button type="submit" form="product-form" className="h-12 font-bold flex-1 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20">Simpan Produk</Button>
+                        <Button type="submit" form="product-form" disabled={isSubmitting} className="h-12 font-bold flex-1 bg-primary-600 hover:bg-primary-700 shadow-lg shadow-primary-600/20 disabled:opacity-50">
+                            {isSubmitting ? (
+                                <span className="flex items-center gap-2">
+                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                    </svg>
+                                    Menyimpan...
+                                </span>
+                            ) : (
+                                'Simpan Produk'
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal Sukses */}
+            <Dialog open={showSuccessDialog} onOpenChange={() => setShowSuccessDialog(false)}>
+                <DialogContent className="sm:max-w-md p-0 overflow-hidden flex flex-col bg-card dark:bg-background">
+                    <DialogHeader className="p-6 border-b shrink-0 bg-emerald-50 dark:bg-emerald-900/20">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
+                                <Check className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl font-black text-emerald-700 dark:text-emerald-400">Berhasil!</DialogTitle>
+                                <DialogDescription className="text-emerald-600 dark:text-emerald-500">Operasi berhasil diselesaikan</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-6">
+                        <p className="text-center text-muted-foreground">{successMessage}</p>
+                    </div>
+                    <DialogFooter className="p-6 border-t bg-background/50 shrink-0">
+                        <Button onClick={() => setShowSuccessDialog(false)} className="w-full h-12 font-bold bg-emerald-600 hover:bg-emerald-700">
+                            Tutup
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
