@@ -720,3 +720,129 @@ html.dark .jspreadsheet-container .jdropdown-item:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN - Monitor Size Handler
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Small screens (laptops < 1366px) */
+@media screen and (max-width: 1366px) {
+  :root {
+    --font-scale: 0.95;
+  }
+  
+  body {
+    font-size: calc(14px * var(--font-scale));
+  }
+  
+  h1 { font-size: calc(1.5rem * var(--font-scale)); }
+  h2 { font-size: calc(1.25rem * var(--font-scale)); }
+  h3 { font-size: calc(1.125rem * var(--font-scale)); }
+  
+  /* Compact padding for smaller screens */
+  .p-6 { padding: 1rem; }
+  .p-8 { padding: 1.25rem; }
+  
+  /* Smaller cards */
+  .card {
+    padding: 1rem;
+  }
+}
+
+/* Medium screens (1367px - 1919px) - Default */
+@media screen and (min-width: 1367px) and (max-width: 1919px) {
+  :root {
+    --font-scale: 1;
+  }
+}
+
+/* Large screens (FHD 1920px+) */
+@media screen and (min-width: 1920px) {
+  :root {
+    --font-scale: 1.05;
+  }
+  
+  body {
+    font-size: calc(15px * var(--font-scale));
+  }
+  
+  h1 { font-size: calc(1.75rem * var(--font-scale)); }
+  h2 { font-size: calc(1.5rem * var(--font-scale)); }
+  h3 { font-size: calc(1.25rem * var(--font-scale)); }
+  
+  /* More spacious layout for large screens */
+  .p-6 { padding: 1.75rem; }
+  .p-8 { padding: 2rem; }
+  
+  .gap-4 { gap: 1.25rem; }
+  .gap-6 { gap: 1.75rem; }
+}
+
+/* Extra large screens (2K, 4K) */
+@media screen and (min-width: 2560px) {
+  :root {
+    --font-scale: 1.15;
+  }
+  
+  body {
+    font-size: calc(16px * var(--font-scale));
+  }
+  
+  /* Larger spacing for very big screens */
+  .p-6 { padding: 2rem; }
+  .p-8 { padding: 2.5rem; }
+  
+  /* Max-width container for readability */
+  main {
+    max-width: 1920px;
+    margin: 0 auto;
+  }
+}
+
+/* Height-based adjustments for short screens */
+@media screen and (max-height: 768px) {
+  .h-screen {
+    min-height: 600px;
+  }
+  
+  /* Compact header */
+  header, .header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  
+  /* Smaller buttons */
+  button, .btn {
+    min-height: 36px;
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+/* High DPI / Retina displays */
+@media (-webkit-min-device-pixel-ratio: 1.5), (min-resolution: 144dpi) {
+  /* Sharper text rendering */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Thinner borders for high DPI */
+  .border, .border-1 {
+    border-width: 0.5px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}

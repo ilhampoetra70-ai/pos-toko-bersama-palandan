@@ -33,12 +33,34 @@ let mainWindow;
 const isDev = !app.isPackaged;
 
 function createWindow() {
+  // Deteksi ukuran layar monitor
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  // Kalkulasi ukuran window optimal berdasarkan monitor
+  // Target aspect ratio 16:10 untuk POS
+  let windowWidth = 1280;
+  let windowHeight = 800;
+  
+  // Jika monitor kecil (laptop 1366x768), kurangi ukuran
+  if (screenWidth <= 1366) {
+    windowWidth = Math.min(1200, screenWidth - 40);
+    windowHeight = Math.min(720, screenHeight - 60);
+  }
+  // Jika monitor besar (Full HD atau lebih), gunakan ukuran lebih besar
+  else if (screenWidth >= 1920) {
+    windowWidth = 1400;
+    windowHeight = 900;
+  }
+  
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: windowWidth,
+    height: windowHeight,
     minWidth: 1024,
     minHeight: 700,
-    fullscreen: true,
+    fullscreen: false,  // Non-fullscreen agar bisa disesuaikan
+    center: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -78,6 +100,31 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    
+    // Set zoom factor berdasarkan ukuran layar untuk konsistensi UI
+    const { screen } = require('electron');
+    const display = screen.getPrimaryDisplay();
+    const dpiScale = display.scaleFactor;
+    
+    // Jika DPI scale tinggi (HiDPI/Retina), sesuaikan zoom
+    if (dpiScale >= 1.5) {
+      mainWindow.webContents.setZoomFactor(0.9);
+    } else if (dpiScale <= 1.0 && display.workAreaSize.width <= 1366) {
+      // Monitor kecil dengan DPI normal, sedikit zoom out
+      mainWindow.webContents.setZoomFactor(0.95);
+    }
+  });
+
+  // Handler resize window untuk maintain aspect ratio
+  mainWindow.on('resize', () => {
+    const [width, height] = mainWindow.getSize();
+    // Minimum aspect ratio check
+    if (width < 1024) {
+      mainWindow.setSize(1024, height);
+    }
+    if (height < 700) {
+      mainWindow.setSize(width, 700);
+    }
   });
 
   if (isDev) {
