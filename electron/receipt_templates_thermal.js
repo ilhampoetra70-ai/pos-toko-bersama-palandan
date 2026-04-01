@@ -138,7 +138,7 @@ const thermalTemplates = {
             
             .items-table td {
               padding: 1.5mm 1mm;
-              border-bottom: 1px solid #000;
+              border-bottom: 1px dashed #000;
               vertical-align: top;
             }
             
@@ -436,7 +436,7 @@ const thermalTemplates = {
             
             table.items td {
               padding: 1mm;
-              border-bottom: 0.5px solid #000;
+              border-bottom: 0.5px dashed #000;
               vertical-align: top;
             }
             

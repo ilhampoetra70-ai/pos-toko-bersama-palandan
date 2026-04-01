@@ -38,6 +38,7 @@ const templates = {
           padding: 2px 2px;
           vertical-align: top;
           font-size: 0.9em;
+          border-bottom: 1px dashed #000;
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
@@ -129,6 +130,7 @@ const templates = {
           padding: 1px 1px;
           vertical-align: top;
           font-size: 0.85em;
+          border-bottom: 1px dashed #000;
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
@@ -217,7 +219,7 @@ const templates = {
         }
         td { 
           padding: 2px 2px;
-          border-bottom: 1px dotted #ccc;
+          border-bottom: 1px dashed #000;
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
@@ -316,7 +318,7 @@ const templates = {
         table { width: 100%; border-collapse: collapse; }
         td { vertical-align: top; padding: 1px 0; }
         .lbl { width: 42%; }
-        .item-detail { font-size: 0.9em; }
+        .item-detail { font-size: 0.9em; border-bottom: 1px dashed #000; }
         .sum-total td { font-weight: bold; font-size: 1.05em; border-top: 1px solid #000; padding-top: 3px; }
       </style>
 
@@ -391,6 +393,7 @@ const templates = {
         table { width: 100%; border-collapse: collapse; }
         td, th { vertical-align: top; padding: 1px 0; }
         th { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; font-weight: bold; }
+        tbody tr { border-bottom: 1px dashed #000; }
         .c-name  { width: 52%; }
         .c-qty   { width: 12%; text-align: center; }
         .c-total { width: 36%; text-align: right; }
@@ -475,6 +478,7 @@ const templates = {
         td { vertical-align: top; padding: 1px 0; }
         .store-frame { border-top: 3px double #000; border-bottom: 3px double #000; padding: 4px 0; text-align: center; margin: 3px 0; }
         .item-name { font-weight: bold; }
+        tr.sm { border-bottom: 1px dashed #000; }
         .total-frame { border-top: 3px double #000; border-bottom: 3px double #000; padding: 4px 0; margin: 5px 0; }
         .total-frame td { font-weight: bold; font-size: 1.1em; }
         .lbl { width: 45%; }
@@ -567,6 +571,7 @@ const templates = {
         table { width: 100%; border-collapse: collapse; }
         td, th { vertical-align: top; padding: 0; }
         th { border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; font-weight: bold; font-size: 0.85em; }
+        tbody tr { border-bottom: 1px dashed #000; }
         .c-name  { width: 50%; }
         .c-qty   { width: 10%; text-align: center; }
         .c-sub   { width: 40%; text-align: right; }
