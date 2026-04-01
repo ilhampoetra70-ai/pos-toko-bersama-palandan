@@ -273,7 +273,7 @@ export default function ProductsPage() {
                     // We don't want to await here if we want optimistic updates, but for categories it's safer to just let the user save.
                     // Actually, the original code awaited.
                     const cat = await window.api.createCategory(newCatName.trim(), '');
-                    categoryId = cat.data ? cat.data.id : null;
+                    categoryId = cat ? cat.id : null;
                 }
             }
 
