@@ -68,8 +68,9 @@ const templates = {
           <span style="font-size: 0.85em;">${data.date}</span>
         </div>
         <div>Kasir: ${data.cashierName}</div>
-        ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.85em;">Cat: ${data.notes}</div>` : ''}
-        ${data.customerName ? `<div>Kpd: ${data.customerName}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px; font-size: 0.85em;">📝 ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -166,8 +167,9 @@ const templates = {
           <span>${data.date.split(' ')[1] || data.date}</span>
         </div>
         <div>Kasir: ${data.cashierName}</div>
-        ${data.notes ? `<div style="font-style: italic; font-size: 0.8em;">Cat: ${data.notes}</div>` : ''}
-        ${data.customerName ? `<div>Kpd: ${data.customerName}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 1px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.8em; margin-left: 6px;">📍 ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; font-size: 0.8em; margin-top: 1px;">📝 ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -271,8 +273,9 @@ const templates = {
       <div style="font-size: 0.85em; margin-bottom: 8px;">
         <div>${data.date} | ${data.cashierName}</div>
         <div>No: ${data.invoiceNumber}</div>
-        ${data.notes ? `<div style="font-style: italic;">Cat: ${data.notes}</div>` : ''}
-        ${data.customerName ? `<div>Kpd: ${data.customerName}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.8em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
       </div>
       ` : ''}
       
@@ -443,8 +446,9 @@ const templates = {
       <div class="sm">
         <div>No: ${data.invoiceNumber}</div>
         <div>Tgl: ${data.date} | Kasir: ${data.cashierName}</div>
-        ${data.customerName ? `<div>Kpd: ${data.customerName}${data.customerAddress ? `, ${data.customerAddress}` : ''}</div>` : ''}
-        ${data.notes ? `<div><i>Ket: ${data.notes}</i></div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -622,8 +626,10 @@ const templates = {
       ${data.sections.invoice_info ? `
       <div class="sm">
         <div>${data.invoiceNumber} | ${data.date}</div>
-        <div>Kasir: ${data.cashierName}${data.customerName ? ` | ${data.customerName}` : ''}</div>
-        ${data.notes ? `<div><i>${data.notes}</i></div>` : ''}
+        <div>Kasir: ${data.cashierName}</div>
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;">📍 ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -1549,9 +1555,9 @@ const templates = {
         <span>Tanggal: ${data.date}</span>
       </div>
       <div>Kasir: ${data.cashierName}</div>
-      ${data.notes ? `<div style="font-style: italic; margin-top: 4px;">Catatan: ${data.notes}</div>` : ''}
-      ${data.customerName ? `<div>Kpd: ${data.customerName}</div>` : ''}
-      ${data.customerAddress ? `<div>Alamat: ${data.customerAddress}</div>` : ''}
+      ${data.customerName ? `<div style="margin-top: 4px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
+      ${data.customerAddress ? `<div style="font-size: 0.9em; margin-left: 10px;">📍 ${data.customerAddress}</div>` : ''}
+      ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;">📝 ${data.notes}</div>` : ''}
       <div class="line"></div>
       ` : ''}
       <table>
