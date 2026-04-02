@@ -269,6 +269,8 @@ function seedSettings() {
         app_name: 'POS Kasir',
         app_logo: '',
         timezone_offset: 'auto',
+        // Font size setting (xs, sm, md, lg, xl)
+        app_font_size: 'md',
         // Print offset settings (in mm)
         print_margin_top: '10',
         print_margin_bottom: '10',
@@ -345,7 +347,7 @@ function runMigrations() {
     addColumnIfNotExists('users', 'last_login', 'DATETIME');
     addColumnIfNotExists('users', 'active', 'INTEGER DEFAULT 1');
     addColumnIfNotExists('users', 'password_changed', 'INTEGER DEFAULT 0');
-    
+
     // TOTP columns
     addColumnIfNotExists('users', 'totp_secret', 'TEXT');
     addColumnIfNotExists('users', 'totp_secret_temp', 'TEXT');
@@ -366,6 +368,13 @@ function runMigrations() {
     if (!timezoneOffset) {
         console.log('[Migrations] Adding default timezone_offset setting (+7)...');
         run("INSERT INTO settings (key, value) VALUES ('timezone_offset', '7')");
+    }
+
+    // Ensure app_font_size setting exists
+    const appFontSize = get("SELECT value FROM settings WHERE key = 'app_font_size'");
+    if (!appFontSize) {
+        console.log('[Migrations] Adding default app_font_size setting (medium)...');
+        run("INSERT INTO settings (key, value) VALUES ('app_font_size', 'medium')");
     }
 
     // Fix malformed invoice numbers (Migration for issue fixed on 2026-02-09)
@@ -421,6 +430,9 @@ function runMigrations() {
 
     // AI Insight cache: add days column for per-range cache isolation
     addColumnIfNotExists('ai_insight_cache', 'days', 'INTEGER NOT NULL DEFAULT 30');
+
+    // Kolom updated_at di transactions — dibutuhkan oleh voidTransaction() untuk mencatat waktu void
+    addColumnIfNotExists('transactions', 'updated_at', 'DATETIME');
 
     try { db.exec('ANALYZE'); } catch (e) { /* ignore */ }
     console.log('[Migrations] Migration check completed.');
@@ -1012,7 +1024,7 @@ function getStockAuditLogByProduct(productId) {
 
 function createStockTrail(data) {
     try {
-        console.log('[DB] createStockTrail input:', JSON.stringify(data));
+        // Debug log dihapus — terlalu verbose di production (setiap transaksi mencetak log ini)
         // Fallback: If user_id is present but user_name is missing, try to fetch it
         // This is crucial for transactions which only pass user_id
         if (data.user_id && !data.user_name) {
@@ -1162,8 +1174,14 @@ function getStockAuditLog(filters = {}) {
 }
 
 function cleanupOldAuditLogs(daysToKeep = 90) {
-    run("DELETE FROM stock_audit_log WHERE created_at < date('now', '-' || ? || ' days')", [daysToKeep]);
-    return { success: true };
+    const result = run("DELETE FROM stock_audit_log WHERE created_at < date('now', '-' || ? || ' days')", [daysToKeep]);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+    return { 
+        success: true, 
+        deleted: result.changes,
+        cutoffDate: cutoffDate.toISOString().split('T')[0]
+    };
 }
 
 // ─── Transactions ───────────────────────────────────────
@@ -1377,10 +1395,44 @@ function voidTransaction(id) {
     if (!tx || tx.status === 'voided') return null;
 
     const transaction = db.transaction(() => {
-        run("UPDATE transactions SET status = 'voided' WHERE id = ?", [id]);
+        // Set status voided sekaligus catat waktu perubahan
+        run("UPDATE transactions SET status = 'voided', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+
         for (const item of tx.items) {
             if (item.product_id) {
+                // Baca stok aktual SEBELUM dikembalikan (di dalam transaction untuk konsistensi)
+                const current = get('SELECT stock, name FROM products WHERE id = ?', [item.product_id]);
+                const stockBefore = current ? (current.stock ?? 0) : 0;
+                const stockAfter = stockBefore + item.quantity;
+
+                // Kembalikan stok produk
                 run('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+
+                // Catat ke stock_trail — event 'void' (kuantitas positif = stok kembali)
+                createStockTrail({
+                    product_id: item.product_id,
+                    product_name: current ? current.name : (item.product_name || 'Unknown'),
+                    event_type: 'void',
+                    quantity_before: stockBefore,
+                    quantity_change: item.quantity,
+                    quantity_after: stockAfter,
+                    user_id: tx.user_id || null,
+                    user_name: tx.cashier_name || null,
+                    notes: `Void transaksi #${tx.invoice_number}`,
+                    reference_id: id
+                });
+
+                // Catat ke stock_audit_log (backward compat dengan sistem lama)
+                createStockAuditLog({
+                    product_id: item.product_id,
+                    product_name: current ? current.name : (item.product_name || 'Unknown'),
+                    old_stock: stockBefore,
+                    new_stock: stockAfter,
+                    difference: item.quantity,
+                    reason: `Void transaksi #${tx.invoice_number}`,
+                    user_id: tx.user_id || null,
+                    user_name: tx.cashier_name || null
+                });
             }
         }
     });
