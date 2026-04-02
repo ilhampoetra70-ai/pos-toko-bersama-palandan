@@ -37,12 +37,12 @@ function createWindow() {
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-  
+
   // Kalkulasi ukuran window optimal berdasarkan monitor
   // Target aspect ratio 16:10 untuk POS
   let windowWidth = 1280;
   let windowHeight = 800;
-  
+
   // Jika monitor kecil (laptop 1366x768), kurangi ukuran
   if (screenWidth <= 1366) {
     windowWidth = Math.min(1200, screenWidth - 40);
@@ -53,7 +53,7 @@ function createWindow() {
     windowWidth = 1400;
     windowHeight = 900;
   }
-  
+
   mainWindow = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
@@ -93,19 +93,19 @@ function createWindow() {
   }
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.loadURL('http://localhost:6173');
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist-renderer', 'index.html'));
   }
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
+
     // Set zoom factor berdasarkan ukuran layar untuk konsistensi UI
     const { screen } = require('electron');
     const display = screen.getPrimaryDisplay();
     const dpiScale = display.scaleFactor;
-    
+
     // Jika DPI scale tinggi (HiDPI/Retina), sesuaikan zoom
     if (dpiScale >= 1.5) {
       mainWindow.webContents.setZoomFactor(0.9);
@@ -407,6 +407,107 @@ function registerIpcHandlers() {
   ipcMain.handle('auth:logout', (_, userId) => {
     auth.invalidateToken(userId);
     return { success: true };
+  });
+
+  // TOTP (Google Authenticator) handlers
+  ipcMain.handle('totp:isAvailable', () => {
+    return auth.isTOTPAvailable();
+  });
+
+  ipcMain.handle('totp:getStatus', async (_, userId) => {
+    // Jika tidak ada userId, gunakan dari current session
+    if (!userId && mainWindow?.webContents) {
+      // Coba dapatkan dari session storage
+      try {
+        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
+        if (session) {
+          const user = JSON.parse(session);
+          userId = user.id;
+        }
+      } catch (e) {
+        return { success: false, error: 'Tidak dapat mengambil status TOTP.' };
+      }
+    }
+    if (!userId) {
+      return { success: false, error: 'User tidak terautentikasi.' };
+    }
+    return auth.getTOTPStatus(userId);
+  });
+
+  ipcMain.handle('totp:generateSetup', async (_, userId) => {
+    if (!userId && mainWindow?.webContents) {
+      try {
+        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
+        if (session) {
+          const user = JSON.parse(session);
+          userId = user.id;
+        }
+      } catch (e) {
+        return { success: false, error: 'Tidak dapat menggenerate setup TOTP.' };
+      }
+    }
+    if (!userId) {
+      return { success: false, error: 'User tidak terautentikasi.' };
+    }
+    return auth.generateTOTPSetup(userId);
+  });
+
+  ipcMain.handle('totp:verifyAndEnable', async (_, token, userId) => {
+    if (!userId && mainWindow?.webContents) {
+      try {
+        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
+        if (session) {
+          const user = JSON.parse(session);
+          userId = user.id;
+        }
+      } catch (e) {
+        return { success: false, error: 'Tidak dapat mengaktifkan TOTP.' };
+      }
+    }
+    if (!userId) {
+      return { success: false, error: 'User tidak terautentikasi.' };
+    }
+    return auth.verifyAndEnableTOTP(userId, token);
+  });
+
+  ipcMain.handle('totp:disable', async (_, password, userId) => {
+    if (!userId && mainWindow?.webContents) {
+      try {
+        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
+        if (session) {
+          const user = JSON.parse(session);
+          userId = user.id;
+        }
+      } catch (e) {
+        return { success: false, error: 'Tidak dapat menonaktifkan TOTP.' };
+      }
+    }
+    if (!userId) {
+      return { success: false, error: 'User tidak terautentikasi.' };
+    }
+    return auth.disableTOTP(userId, password);
+  });
+
+  ipcMain.handle('totp:resetPassword', (_, username, totpCode, newPassword) => {
+    return auth.resetPasswordWithTOTP(username, totpCode, newPassword);
+  });
+
+  ipcMain.handle('totp:regenerateBackupCodes', async (_, password, userId) => {
+    if (!userId && mainWindow?.webContents) {
+      try {
+        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
+        if (session) {
+          const user = JSON.parse(session);
+          userId = user.id;
+        }
+      } catch (e) {
+        return { success: false, error: 'Tidak dapat meregenerate backup codes.' };
+      }
+    }
+    if (!userId) {
+      return { success: false, error: 'User tidak terautentikasi.' };
+    }
+    return auth.regenerateBackupCodes(userId, password);
   });
 
   // ─── Users ──────────────────────────────────────────

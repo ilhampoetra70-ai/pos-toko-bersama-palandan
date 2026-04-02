@@ -280,7 +280,9 @@ function seedSettings() {
         print_scale: '100',
         // Page break control (untuk menghemat kertas antar struk)
         print_page_gap: 'compact',      // Jarak antar struk: 'none', 'compact', 'normal'
-        print_min_height: 'auto'        // Minimal tinggi struk: 'auto', '50mm', '100mm', '150mm'
+        print_min_height: 'auto',        // Minimal tinggi struk: 'auto', '50mm', '100mm', '150mm'
+        // TOTP settings
+        totp_admin_enabled: '0',        // Apakah ada admin yang mengaktifkan TOTP
     };
     const insert = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
     const transaction = db.transaction((settings) => {
@@ -343,6 +345,14 @@ function runMigrations() {
     addColumnIfNotExists('users', 'last_login', 'DATETIME');
     addColumnIfNotExists('users', 'active', 'INTEGER DEFAULT 1');
     addColumnIfNotExists('users', 'password_changed', 'INTEGER DEFAULT 0');
+    
+    // TOTP columns
+    addColumnIfNotExists('users', 'totp_secret', 'TEXT');
+    addColumnIfNotExists('users', 'totp_secret_temp', 'TEXT');
+    addColumnIfNotExists('users', 'totp_backup_codes', 'TEXT');
+    addColumnIfNotExists('users', 'totp_backup_codes_temp', 'TEXT');
+    addColumnIfNotExists('users', 'totp_enabled', 'INTEGER DEFAULT 0');
+    addColumnIfNotExists('users', 'totp_enabled_at', 'INTEGER');
 
     // Ensure auto_start setting exists
     const autoStart = get("SELECT value FROM settings WHERE key = 'auto_start'");
@@ -455,6 +465,13 @@ function updateUser(id, user) {
     if (user.name !== undefined) { sets.push('name=?'); params.push(user.name); }
     if (user.role !== undefined) { sets.push('role=?'); params.push(user.role); }
     if (user.active !== undefined) { sets.push('active=?'); params.push(user.active); }
+    // TOTP fields
+    if (user.totp_secret !== undefined) { sets.push('totp_secret=?'); params.push(user.totp_secret); }
+    if (user.totp_secret_temp !== undefined) { sets.push('totp_secret_temp=?'); params.push(user.totp_secret_temp); }
+    if (user.totp_backup_codes !== undefined) { sets.push('totp_backup_codes=?'); params.push(user.totp_backup_codes); }
+    if (user.totp_backup_codes_temp !== undefined) { sets.push('totp_backup_codes_temp=?'); params.push(user.totp_backup_codes_temp); }
+    if (user.totp_enabled !== undefined) { sets.push('totp_enabled=?'); params.push(user.totp_enabled); }
+    if (user.totp_enabled_at !== undefined) { sets.push('totp_enabled_at=?'); params.push(user.totp_enabled_at); }
 
     if (sets.length === 0) return getUserById(id);
 

@@ -363,6 +363,30 @@ export interface AiInsightData {
     highlights: string[];
 }
 
+// ─── TOTP (Google Authenticator) ────────────────────────────────────────────────
+
+export interface TOTPStatus {
+    enabled: boolean;
+    enabledAt?: number;
+    remainingBackupCodes: number;
+}
+
+export interface TOTPSetupData {
+    qrCode: string;
+    manualEntryKey: string;
+    backupCodes: string[];
+}
+
+export interface TOTPResetResult {
+    adminName?: string;
+    usedBackupCode?: boolean;
+    warning?: string;
+}
+
+export interface BackupCodesResult {
+    backupCodes: string[];
+}
+
 // ─── Window API Interface ──────────────────────────────────────────────────────
 
 export interface WindowApi {
@@ -372,6 +396,15 @@ export interface WindowApi {
     resetPasswordWithMasterKey(username: string, masterKey: string, newPassword: string): Promise<ApiResult>;
     changeMasterKey(oldMasterKey: string, newMasterKey: string): Promise<ApiResult>;
     logoutUser(userId: number): Promise<ApiResult>;
+    
+    // TOTP (Google Authenticator)
+    isTOTPAvailable(): Promise<boolean>;
+    getTOTPStatus(userId?: number): Promise<ApiResult<TOTPStatus>>;
+    generateTOTPSetup(userId?: number): Promise<ApiResult<TOTPSetupData>>;
+    verifyAndEnableTOTP(token: string, userId?: number): Promise<ApiResult>;
+    disableTOTP(password: string, userId?: number): Promise<ApiResult>;
+    resetPasswordWithTOTP(username: string, totpCode: string, newPassword: string): Promise<ApiResult<TOTPResetResult>>;
+    regenerateBackupCodes(password: string, userId?: number): Promise<ApiResult<BackupCodesResult>>;
 
     // Users
     getUsers(): Promise<User[]>;

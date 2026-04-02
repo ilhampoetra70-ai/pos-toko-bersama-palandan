@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const database = require('./database');
+const totp = require('./totp');
 
 const TOKEN_EXPIRY = '12h';
 
@@ -152,16 +153,320 @@ function seedDefaultAdmin() {
   }
 }
 
+// ===================== TOTP FUNCTIONS =====================
+
+/**
+ * Cek apakah TOTP sudah diaktifkan untuk user
+ * @param {number} userId - ID user
+ * @returns {boolean}
+ */
+function isTOTPEnabled(userId) {
+  const user = database.getUserById(userId);
+  return user?.totp_enabled === 1;
+}
+
+/**
+ * Cek apakah TOTP tersedia di sistem (ada admin yang mengaktifkannya)
+ * @returns {boolean}
+ */
+function isTOTPAvailable() {
+  const settings = database.getSettings();
+  return !!settings.totp_admin_enabled;
+}
+
+/**
+ * Generate TOTP setup untuk admin
+ * @param {number} adminId - ID admin
+ * @returns {Promise<Object>} - Setup data
+ */
+async function generateTOTPSetup(adminId) {
+  const user = database.getUserById(adminId);
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Hanya admin yang dapat mengaktifkan TOTP.' };
+  }
+
+  const setup = await totp.createTOTPData(user.username);
+  
+  // Simpan encrypted secret sementara (belum aktif sampai diverifikasi)
+  database.updateUser(adminId, {
+    totp_secret_temp: setup.encryptedSecret,
+    totp_backup_codes_temp: JSON.stringify(setup.hashedBackupCodes),
+  });
+
+  return {
+    success: true,
+    qrCode: setup.qrCode,
+    manualEntryKey: setup.manualEntryKey,
+    backupCodes: setup.backupCodes, // Hanya ditampilkan sekali
+  };
+}
+
+/**
+ * Verifikasi dan aktifkan TOTP
+ * @param {number} adminId - ID admin
+ * @param {string} token - 6 digit token dari authenticator
+ * @returns {Object}
+ */
+function verifyAndEnableTOTP(adminId, token) {
+  if (!totp.isValidTokenFormat(token)) {
+    return { success: false, error: 'Format token tidak valid. Masukkan 6 digit angka.' };
+  }
+
+  const user = database.getUserById(adminId);
+  if (!user || !user.totp_secret_temp) {
+    return { success: false, error: 'Setup TOTP tidak ditemukan. Silakan mulai ulang setup.' };
+  }
+
+  const isValid = totp.verifyTOTP(token, user.totp_secret_temp);
+  if (!isValid) {
+    return { success: false, error: 'Token tidak valid. Pastikan waktu device Anda tepat.' };
+  }
+
+  // Aktifkan TOTP
+  database.updateUser(adminId, {
+    totp_secret: user.totp_secret_temp,
+    totp_backup_codes: user.totp_backup_codes_temp,
+    totp_enabled: 1,
+    totp_enabled_at: Date.now(),
+    // Hapus temp data
+    totp_secret_temp: null,
+    totp_backup_codes_temp: null,
+  });
+
+  // Mark system sebagai TOTP-enabled
+  database.updateSetting('totp_admin_enabled', '1');
+
+  return { success: true };
+}
+
+/**
+ * Disable TOTP
+ * @param {number} adminId - ID admin
+ * @param {string} password - Password admin untuk konfirmasi
+ * @returns {Object}
+ */
+function disableTOTP(adminId, password) {
+  const user = database.getUserById(adminId);
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized.' };
+  }
+
+  if (!verifyPassword(password, user.password_hash)) {
+    return { success: false, error: 'Password salah.' };
+  }
+
+  database.updateUser(adminId, {
+    totp_secret: null,
+    totp_backup_codes: null,
+    totp_enabled: 0,
+    totp_enabled_at: null,
+    totp_secret_temp: null,
+    totp_backup_codes_temp: null,
+  });
+
+  // Check if any other admin has TOTP enabled
+  const otherAdminWithTOTP = database.get(
+    'SELECT id FROM users WHERE role = ? AND totp_enabled = 1 AND id != ?',
+    ['admin', adminId]
+  );
+  
+  if (!otherAdminWithTOTP) {
+    database.updateSetting('totp_admin_enabled', '0');
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reset password dengan TOTP token atau backup code
+ * @param {string} username - Username
+ * @param {string} totpCode - 6 digit TOTP atau backup code
+ * @param {string} newPassword - Password baru
+ * @returns {Object}
+ */
+function resetPasswordWithTOTP(username, totpCode, newPassword) {
+  const user = database.getUserByUsername(username);
+  if (!user) {
+    return { success: false, error: 'User tidak ditemukan.' };
+  }
+
+  // Cek apakah TOTP tersedia di sistem
+  const settings = database.getSettings();
+  if (!settings.totp_admin_enabled) {
+    return { success: false, error: 'Fitur TOTP belum diaktifkan. Hubungi administrator.' };
+  }
+
+  // Jika user adalah admin, verifikasi TOTP mereka sendiri
+  if (user.role === 'admin') {
+    if (!user.totp_enabled) {
+      return { success: false, error: 'Admin belum mengaktifkan TOTP.' };
+    }
+
+    let isValid = false;
+    let usedBackupCode = false;
+
+    // Coba verifikasi sebagai TOTP token (6 digit)
+    if (totp.isValidTokenFormat(totpCode)) {
+      isValid = totp.verifyTOTP(totpCode, user.totp_secret);
+    }
+
+    // Jika gagal, coba sebagai backup code
+    if (!isValid && user.totp_backup_codes) {
+      const hashedCodes = JSON.parse(user.totp_backup_codes);
+      if (totp.verifyBackupCode(totpCode, hashedCodes)) {
+        isValid = true;
+        usedBackupCode = true;
+        
+        // Remove used backup code
+        const normalizedInput = totpCode.replace(/-/g, '').toUpperCase();
+        const newHashedCodes = hashedCodes.filter(hash => {
+          const testHash = crypto.createHash('sha256').update(normalizedInput).digest('hex');
+          return hash !== testHash;
+        });
+        database.updateUser(user.id, {
+          totp_backup_codes: JSON.stringify(newHashedCodes)
+        });
+      }
+    }
+
+    if (!isValid) {
+      return { success: false, error: 'Kode TOTP atau backup code tidak valid.' };
+    }
+
+    // Update password
+    const newHash = hashPassword(newPassword);
+    database.updateUser(user.id, { ...user, password_hash: newHash });
+    
+    return { 
+      success: true, 
+      usedBackupCode,
+      warning: usedBackupCode ? 'Backup code telah digunakan dan tidak dapat digunakan lagi.' : undefined
+    };
+  }
+
+  // Untuk non-admin: verifikasi dengan TOTP admin
+  const adminWithTOTP = database.get(
+    'SELECT * FROM users WHERE role = ? AND totp_enabled = 1 LIMIT 1',
+    ['admin']
+  );
+
+  if (!adminWithTOTP) {
+    return { success: false, error: 'Tidak ada admin dengan TOTP yang aktif.' };
+  }
+
+  let isValid = false;
+  let usedBackupCode = false;
+
+  // Coba verifikasi sebagai TOTP token
+  if (totp.isValidTokenFormat(totpCode)) {
+    isValid = totp.verifyTOTP(totpCode, adminWithTOTP.totp_secret);
+  }
+
+  // Jika gagal, coba sebagai backup code admin
+  if (!isValid && adminWithTOTP.totp_backup_codes) {
+    const hashedCodes = JSON.parse(adminWithTOTP.totp_backup_codes);
+    if (totp.verifyBackupCode(totpCode, hashedCodes)) {
+      isValid = true;
+      usedBackupCode = true;
+      
+      // Remove used backup code
+      const normalizedInput = totpCode.replace(/-/g, '').toUpperCase();
+      const newHashedCodes = hashedCodes.filter(hash => {
+        const testHash = crypto.createHash('sha256').update(normalizedInput).digest('hex');
+        return hash !== testHash;
+      });
+      database.updateUser(adminWithTOTP.id, {
+        totp_backup_codes: JSON.stringify(newHashedCodes)
+      });
+    }
+  }
+
+  if (!isValid) {
+    return { success: false, error: 'Kode TOTP atau backup code admin tidak valid.' };
+  }
+
+  // Update password user
+  const newHash = hashPassword(newPassword);
+  database.updateUser(user.id, { ...user, password_hash: newHash });
+
+  return { 
+    success: true,
+    adminName: adminWithTOTP.name,
+    usedBackupCode,
+    warning: usedBackupCode ? 'Backup code admin telah digunakan dan tidak dapat digunakan lagi.' : undefined
+  };
+}
+
+/**
+ * Regenerate backup codes
+ * @param {number} adminId - ID admin
+ * @param {string} password - Password untuk konfirmasi
+ * @returns {Object}
+ */
+function regenerateBackupCodes(adminId, password) {
+  const user = database.getUserById(adminId);
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized.' };
+  }
+
+  if (!user.totp_enabled) {
+    return { success: false, error: 'TOTP belum diaktifkan.' };
+  }
+
+  if (!verifyPassword(password, user.password_hash)) {
+    return { success: false, error: 'Password salah.' };
+  }
+
+  const newCodes = totp.generateBackupCodes(8);
+  const newHashedCodes = totp.hashBackupCodes(newCodes);
+
+  database.updateUser(adminId, {
+    totp_backup_codes: JSON.stringify(newHashedCodes)
+  });
+
+  return {
+    success: true,
+    backupCodes: newCodes,
+  };
+}
+
+/**
+ * Get TOTP status untuk admin
+ * @param {number} adminId - ID admin
+ * @returns {Object}
+ */
+function getTOTPStatus(adminId) {
+  const user = database.getUserById(adminId);
+  if (!user || user.role !== 'admin') {
+    return { success: false, error: 'Unauthorized.' };
+  }
+
+  const backupCodes = user.totp_backup_codes ? JSON.parse(user.totp_backup_codes) : [];
+
+  return {
+    success: true,
+    enabled: user.totp_enabled === 1,
+    enabledAt: user.totp_enabled_at,
+    remainingBackupCodes: backupCodes.length,
+  };
+}
+
+// ===================== LEGACY MASTER KEY FUNCTIONS (Deprecated) =====================
+// Master Key akan dihapus setelah migrasi TOTP selesai
+
 function seedMasterKey() {
   const settings = database.getSettings();
   if (!settings.master_key_hash) {
     const hash = hashPassword('master123');
     database.updateSetting('master_key_hash', hash);
-    console.log('Master Key seeded: master123');
+    console.log('[Deprecated] Master Key seeded: master123');
+    console.log('[Info] Sebaiknya aktifkan TOTP untuk keamanan yang lebih baik.');
   }
 }
 
 function resetPasswordWithMasterKey(username, masterKey, newPassword) {
+  console.log('[Warning] Menggunakan Master Key - pertimbangkan untuk migrasi ke TOTP');
+  
   const settings = database.getSettings();
   if (!settings.master_key_hash) {
     return { success: false, error: 'Master Key belum diatur.' };
@@ -182,6 +487,8 @@ function resetPasswordWithMasterKey(username, masterKey, newPassword) {
 }
 
 function changeMasterKey(oldMasterKey, newMasterKey) {
+  console.log('[Warning] Mengubah Master Key - pertimbangkan untuk migrasi ke TOTP');
+  
   const settings = database.getSettings();
 
   // Verify old master key
@@ -200,4 +507,26 @@ function changeMasterKey(oldMasterKey, newMasterKey) {
   return { success: true };
 }
 
-module.exports = { hashPassword, verifyPassword, generateToken, verifyToken, invalidateToken, requireAuth, login, seedDefaultAdmin, seedMasterKey, resetPasswordWithMasterKey, changeMasterKey };
+module.exports = { 
+  hashPassword, 
+  verifyPassword, 
+  generateToken, 
+  verifyToken, 
+  invalidateToken, 
+  requireAuth, 
+  login, 
+  seedDefaultAdmin, 
+  seedMasterKey, 
+  resetPasswordWithMasterKey, 
+  changeMasterKey,
+  
+  // TOTP exports
+  isTOTPEnabled,
+  isTOTPAvailable,
+  generateTOTPSetup,
+  verifyAndEnableTOTP,
+  disableTOTP,
+  resetPasswordWithTOTP,
+  regenerateBackupCodes,
+  getTOTPStatus,
+};

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { AlertCircle, CheckCircle2, Loader2, Key, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Key, Eye, EyeOff, Smartphone, Shield } from 'lucide-react';
 import { RetroUsers, RetroSettings } from '../components/RetroIcons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
     const { login } = useAuth();
@@ -48,7 +50,26 @@ export default function LoginPage() {
             setError(expiredMsg);
             sessionStorage.removeItem('session_expired_msg');
         }
+        
+        // Check TOTP availability
+        checkTOTPAvailability();
     }, []);
+    
+    // TOTP State
+    const [totpAvailable, setTotpAvailable] = useState(false);
+    const [checkingTOTP, setCheckingTOTP] = useState(true);
+
+    const checkTOTPAvailability = async () => {
+        try {
+            const available = await window.api.isTOTPAvailable();
+            setTotpAvailable(available);
+        } catch (err) {
+            console.error('Failed to check TOTP availability:', err);
+            setTotpAvailable(false);
+        } finally {
+            setCheckingTOTP(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,40 +88,76 @@ export default function LoginPage() {
         setLoading(false);
     };
 
+    // Reset Password State
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetUsername, setResetUsername] = useState('admin');
+    const [totpCode, setTotpCode] = useState('');
     const [masterKey, setMasterKey] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [resetError, setResetError] = useState('');
     const [resetSuccess, setResetSuccess] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+    const [usedBackupCode, setUsedBackupCode] = useState(false);
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         setResetError('');
         setResetSuccess('');
+        setUsedBackupCode(false);
 
-        if (!resetUsername || !masterKey || !newPassword) {
-            setResetError('Semua kolom harus diisi');
+        if (!resetUsername || !newPassword) {
+            setResetError('Username dan password baru harus diisi');
             return;
         }
 
+        // Validasi berdasarkan metode yang tersedia
+        if (totpAvailable && !totpCode) {
+            setResetError('Masukkan kode TOTP dari Google Authenticator');
+            return;
+        }
+        if (!totpAvailable && !masterKey) {
+            setResetError('Masukkan Master Key');
+            return;
+        }
+
+        setResetLoading(true);
         try {
-            const result = await window.api.resetPasswordWithMasterKey(resetUsername, masterKey, newPassword);
+            let result;
+            if (totpAvailable) {
+                // Gunakan TOTP
+                result = await window.api.resetPasswordWithTOTP(resetUsername, totpCode, newPassword);
+            } else {
+                // Fallback ke Master Key
+                result = await window.api.resetPasswordWithMasterKey(resetUsername, masterKey, newPassword);
+            }
+            
             if (result.success) {
-                setResetSuccess('Password berhasil direset. Silakan login dengan password baru.');
+                let successMsg = 'Password berhasil direset. Silakan login dengan password baru.';
+                if (result.usedBackupCode) {
+                    successMsg += ' (Backup code telah digunakan)';
+                    setUsedBackupCode(true);
+                }
+                setResetSuccess(successMsg);
+                setTotpCode('');
                 setMasterKey('');
                 setNewPassword('');
                 setTimeout(() => {
                     setShowResetModal(false);
                     setResetSuccess('');
-                }, 2000);
+                    setUsedBackupCode(false);
+                }, 3000);
             } else {
                 setResetError(result.error || 'Gagal mereset password');
             }
         } catch (err) {
             setResetError('Terjadi kesalahan sistem');
+        } finally {
+            setResetLoading(false);
         }
     };
+
+    const resetMethodLabel = totpAvailable ? 'TOTP/Backup Code' : 'Master Key';
+    const resetMethodIcon = totpAvailable ? <Smartphone className="w-6 h-6 text-primary" /> : <Key className="w-6 h-6 text-primary" />;
 
     return (
         <div className="relative min-h-screen bg-background text-foreground overflow-hidden flex items-center justify-center p-4">
@@ -328,23 +385,47 @@ export default function LoginPage() {
 
                     <div className="mt-8 text-center">
                         <span
-                            className="text-xs font-bold text-muted-foreground hover:text-primary cursor-pointer uppercase tracking-widest transition-colors"
-                            onClick={() => setShowResetModal(true)}
+                            className="text-xs font-bold text-muted-foreground hover:text-primary cursor-pointer uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                            onClick={() => {
+                                setShowResetModal(true);
+                                setResetError('');
+                                setResetSuccess('');
+                                setTotpCode('');
+                                setMasterKey('');
+                                setNewPassword('');
+                            }}
                         >
-                            Master Key (Reset Password)
+                            {totpAvailable ? (
+                                <>
+                                    <Smartphone className="w-3 h-3" /> Reset dengan TOTP
+                                </>
+                            ) : (
+                                <>
+                                    <Key className="w-3 h-3" /> Reset dengan Master Key
+                                </>
+                            )}
                         </span>
                     </div>
 
-                    {/* Reset Password Modal matching Arcade theme partially */}
+                    {/* Reset Password Modal */}
                     <Dialog open={showResetModal} onOpenChange={setShowResetModal}>
                         <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-background border-4 border-foreground rounded-2xl shadow-[8px_8px_0_hsl(var(--foreground))]">
                             <DialogHeader className="p-6 border-b-4 border-foreground shrink-0 bg-card">
                                 <DialogTitle className="text-2xl font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                                    <Key className="w-6 h-6 text-primary" /> Admin Override
+                                    {resetMethodIcon}
+                                    {totpAvailable ? 'Reset dengan TOTP' : 'Admin Override'}
                                 </DialogTitle>
                                 <DialogDescription className="text-muted-foreground font-bold mt-2">
-                                    Masukkan Master Key untuk mereset password akun.
+                                    {totpAvailable 
+                                        ? 'Masukkan kode TOTP dari Google Authenticator atau backup code untuk mereset password.'
+                                        : 'Masukkan Master Key untuk mereset password akun.'
+                                    }
                                 </DialogDescription>
+                                {totpAvailable && (
+                                    <Badge variant="outline" className="mt-2 w-fit bg-green-100 text-green-700 border-green-200">
+                                        <Shield className="w-3 h-3 mr-1" /> TOTP Aktif
+                                    </Badge>
+                                )}
                             </DialogHeader>
                             <form onSubmit={handleResetPassword} className="flex-1 overflow-y-auto min-h-0">
                                 <div className="p-6 space-y-5">
@@ -355,7 +436,10 @@ export default function LoginPage() {
                                         </div>
                                     )}
                                     {resetSuccess && (
-                                        <div className="alert-adaptive-success">
+                                        <div className={cn(
+                                            "alert-adaptive-success",
+                                            usedBackupCode && "bg-amber-50 border-amber-200 text-amber-800"
+                                        )}>
                                             <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
                                             {resetSuccess}
                                         </div>
@@ -371,19 +455,42 @@ export default function LoginPage() {
                                             required
                                         />
                                     </div>
+                                    
+                                    {totpAvailable ? (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black text-foreground uppercase tracking-widest px-1 flex items-center gap-2">
+                                                <Smartphone className="w-3 h-3" /> 
+                                                Kode TOTP / Backup Code
+                                            </Label>
+                                            <Input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={totpCode}
+                                                onChange={e => setTotpCode(e.target.value.replace(/[^0-9A-Za-z-]/g, '').toUpperCase())}
+                                                placeholder="6 digit atau XXXX-XXXX"
+                                                className="h-12 bg-white dark:bg-card border-2 border-foreground shadow-[inset_2px_2px_0_rgba(0,0,0,0.1)] font-bold text-lg text-center tracking-widest"
+                                                required
+                                            />
+                                            <p className="text-[10px] text-muted-foreground px-1">
+                                                Masukkan 6 digit dari Google Authenticator atau backup code (XXXX-XXXX)
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black text-foreground uppercase tracking-widest px-1">Master Key</Label>
+                                            <Input
+                                                type="password"
+                                                value={masterKey}
+                                                onChange={e => setMasterKey(e.target.value)}
+                                                placeholder="••••••••"
+                                                className="h-12 bg-white dark:bg-card border-2 border-foreground shadow-[inset_2px_2px_0_rgba(0,0,0,0.1)] font-bold text-lg"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                    
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black text-foreground uppercase tracking-widest px-1">Master Key</Label>
-                                        <Input
-                                            type="password"
-                                            value={masterKey}
-                                            onChange={e => setMasterKey(e.target.value)}
-                                            placeholder="••••••••"
-                                            className="h-12 bg-white dark:bg-card border-2 border-foreground shadow-[inset_2px_2px_0_rgba(0,0,0,0.1)] font-bold text-lg"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black text-foreground uppercase tracking-widest px-1">New Password</Label>
+                                        <Label className="text-[10px] font-black text-foreground uppercase tracking-widest px-1">Password Baru</Label>
                                         <Input
                                             type="password"
                                             value={newPassword}
@@ -395,9 +502,25 @@ export default function LoginPage() {
                                     </div>
                                 </div>
                                 <DialogFooter className="p-6 border-t-4 border-foreground shrink-0 gap-3 bg-muted/50">
-                                    <Button type="button" variant="ghost" onClick={() => setShowResetModal(false)} className="flex-1 font-black h-12 uppercase tracking-widest bg-white dark:bg-card border-2 border-foreground text-foreground hover:bg-muted">Cancel</Button>
-                                    <Button type="submit" className="flex-1 h-12 bg-primary border-2 border-foreground font-black text-white hover:bg-primary/90 uppercase tracking-widest shadow-[4px_4px_0_hsl(var(--foreground))] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all">
-                                        Override
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        onClick={() => setShowResetModal(false)} 
+                                        className="flex-1 font-black h-12 uppercase tracking-widest bg-white dark:bg-card border-2 border-foreground text-foreground hover:bg-muted"
+                                        disabled={resetLoading}
+                                    >
+                                        Batal
+                                    </Button>
+                                    <Button 
+                                        type="submit" 
+                                        disabled={resetLoading}
+                                        className="flex-1 h-12 bg-primary border-2 border-foreground font-black text-white hover:bg-primary/90 uppercase tracking-widest shadow-[4px_4px_0_hsl(var(--foreground))] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
+                                    >
+                                        {resetLoading ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            'Reset Password'
+                                        )}
                                     </Button>
                                 </DialogFooter>
                             </form>

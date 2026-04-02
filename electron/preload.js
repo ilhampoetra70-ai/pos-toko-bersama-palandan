@@ -7,6 +7,15 @@ contextBridge.exposeInMainWorld('api', {
   resetPasswordWithMasterKey: (username, masterKey, newPassword) => ipcRenderer.invoke('auth:resetPasswordWithMasterKey', username, masterKey, newPassword),
   changeMasterKey: (oldMasterKey, newMasterKey) => ipcRenderer.invoke('auth:changeMasterKey', oldMasterKey, newMasterKey),
   logoutUser: (userId) => ipcRenderer.invoke('auth:logout', userId),
+  
+  // TOTP (Google Authenticator)
+  isTOTPAvailable: () => ipcRenderer.invoke('totp:isAvailable'),
+  getTOTPStatus: () => ipcRenderer.invoke('totp:getStatus'),
+  generateTOTPSetup: () => ipcRenderer.invoke('totp:generateSetup'),
+  verifyAndEnableTOTP: (token) => ipcRenderer.invoke('totp:verifyAndEnable', token),
+  disableTOTP: (password) => ipcRenderer.invoke('totp:disable', password),
+  resetPasswordWithTOTP: (username, totpCode, newPassword) => ipcRenderer.invoke('totp:resetPassword', username, totpCode, newPassword),
+  regenerateBackupCodes: (password) => ipcRenderer.invoke('totp:regenerateBackupCodes', password),
 
   // Users
   getUsers: () => ipcRenderer.invoke('users:getAll'),

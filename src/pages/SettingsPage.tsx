@@ -1,8 +1,9 @@
 import { useState, useEffect, memo } from 'react';
 import ReceiptTemplateEditor from '../components/ReceiptTemplateEditor';
+import TOTPSettings from '../components/TOTPSettings';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Store, Settings2, Paintbrush, ShieldCheck, Info, Clock, Phone, MapPin, Percent, Monitor, CheckCircle2, Image as ImageIcon, RotateCcw, Cloud, Server, Zap, Lock, ChevronRight, Sun, Moon, Type, AlertCircle, Shield, Layout, Activity, Save, ArrowDownToLine } from 'lucide-react';
+import { Store, Settings2, Paintbrush, ShieldCheck, Info, Clock, Phone, MapPin, Percent, Monitor, CheckCircle2, Image as ImageIcon, RotateCcw, Cloud, Server, Zap, Lock, ChevronRight, Sun, Moon, Type, AlertCircle, Shield, Layout, Activity, Save, ArrowDownToLine, Smartphone } from 'lucide-react';
 import { RetroPrinter, RetroDatabase, RetroReceipt } from '../components/RetroIcons';
 import { Transaction } from '@/types/api';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
@@ -735,12 +736,12 @@ export default memo(function SettingsPage() {
               <Card className="border-none shadow-sm h-full bg-card dark:bg-background overflow-hidden">
                 <CardHeader className="bg-background/50 dark:bg-card/50 border-b dark:border-border">
                   <CardTitle className="text-lg font-black flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-red-600" /> Master Key Security
+                    <Smartphone className="w-5 h-5 text-green-600" /> Keamanan TOTP
                   </CardTitle>
-                  <CardDescription>Pemulihan password admin & akses darurat</CardDescription>
+                  <CardDescription>Google Authenticator untuk password reset</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <MasterKeySection onMessage={setMessage} />
+                  <TOTPSettings onMessage={setMessage} />
                 </CardContent>
               </Card>
             </div>
@@ -913,60 +914,6 @@ function ModeButton({ active, onClick, title, desc, danger }: any) {
       </div>
       <p className="text-[10px] text-muted-foreground font-medium leading-tight mt-0.5">{desc}</p>
     </button>
-  );
-}
-
-function MasterKeySection({ onMessage }: any) {
-  const [oldKey, setOldKey] = useState('');
-  const [newKey, setNewKey] = useState('');
-  const [confirmKey, setConfirmKey] = useState('');
-  const [showOld, setShowOld] = useState(false);
-  const [showNew, setShowNew] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!oldKey || !newKey || !confirmKey) { setError('Semua kolom harus diisi'); return; }
-    if (newKey !== confirmKey) { setError('Master Key baru tidak cocok'); return; }
-    setSaving(true);
-    try {
-      const result = await window.api.changeMasterKey(oldKey, newKey);
-      if (result.success) {
-        onMessage('Master Key berhasil diubah');
-        setOldKey(''); setNewKey(''); setConfirmKey('');
-      } else { setError(result.error || 'Gagal mengubah Master Key'); }
-    } catch (err) { setError('Terjadi kesalahan sistem'); } finally { setSaving(false); }
-  };
-
-  return (
-    <form onSubmit={handleChange} className="space-y-4">
-      {error && <div className="bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-400 p-3 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/20">{error}</div>}
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Master Key Lama</label>
-        <div className="relative">
-          <Input type={showOld ? 'text' : 'password'} className="h-11 bg-background dark:bg-card/50 border-none shadow-inner pr-10" value={oldKey} onChange={e => setOldKey(e.target.value)} />
-          <Button type="button" variant="ghost" size="icon" onClick={() => setShowOld(!showOld)} className="absolute right-1.5 top-1.5 h-8 w-8 text-muted-foreground"><Eye className="w-4 h-4" /></Button>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Key Baru</label>
-          <div className="relative">
-            <Input type={showNew ? 'text' : 'password'} className="h-11 bg-background dark:bg-card/50 border-none shadow-inner pr-10" value={newKey} onChange={e => setNewKey(e.target.value)} />
-            <Button type="button" variant="ghost" size="icon" onClick={() => setShowNew(!showNew)} className="absolute right-1.5 top-1.5 h-8 w-8 text-muted-foreground"><Eye className="w-4 h-4" /></Button>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Konfirmasi</label>
-          <Input type="password" className="h-11 bg-background dark:bg-card/50 border-none shadow-inner" value={confirmKey} onChange={e => setConfirmKey(e.target.value)} />
-        </div>
-      </div>
-      <Button type="submit" disabled={saving} className="w-full h-11 bg-muted dark:bg-card text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted shadow-none font-bold">
-        Update Master Key Keamanan
-      </Button>
-    </form>
   );
 }
 

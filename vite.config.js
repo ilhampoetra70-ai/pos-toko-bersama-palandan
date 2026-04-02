@@ -23,7 +23,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000
   },
   server: {
-    port: 5173,
+    port: 6173,
     strictPort: true,
     host: '127.0.0.1'
   },

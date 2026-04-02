@@ -1,5 +1,5 @@
 import { Suspense, lazy, ReactNode, useState, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './lib/queryClient';
 import { UserRole } from './lib/types';
+import { useKeyboardShortcuts, createNavigationShortcuts } from './hooks/useKeyboardShortcuts';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -38,6 +39,7 @@ interface ProtectedRouteProps {
 
 function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
     const { user, loading } = useAuth();
+    
     if (loading) return <div className="flex items-center justify-center h-screen"><div className="text-lg text-muted-foreground">Loading...</div></div>;
     if (!user) return <Navigate to="/login" replace />;
     if (roles && !roles.includes(user.role as UserRole)) return <Navigate to="/" replace />;
@@ -125,8 +127,15 @@ function ForcePasswordChangeModal() {
     );
 }
 
-export default function App() {
+function AppContent() {
     const { user, loading } = useAuth();
+    const navigate = useNavigate();
+
+    // Global navigation shortcuts
+    useKeyboardShortcuts(
+        createNavigationShortcuts(navigate, user?.role === 'cashier'),
+        [navigate, user?.role]
+    );
 
     if (loading) {
         return <div className="flex items-center justify-center h-screen"><div className="text-lg text-muted-foreground">Loading...</div></div>;
@@ -181,4 +190,8 @@ export default function App() {
             <ForcePasswordChangeModal />
         </QueryClientProvider>
     );
+}
+
+export default function App() {
+    return <AppContent />;
 }

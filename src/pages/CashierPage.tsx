@@ -6,7 +6,9 @@ import ProductCard from '../components/ProductCard';
 import PaymentModal from '../components/PaymentModal';
 import BarcodeScanner from '../components/BarcodeScanner';
 import ReceiptIframe from '../components/ReceiptIframe';
-import { Search, Scan, User as UserIcon, ChevronDown, ChevronUp, ChevronRight, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Scan, User as UserIcon, ChevronDown, ChevronUp, ChevronRight, Check, Loader2, AlertCircle, Calculator, HelpCircle } from 'lucide-react';
+import { ShortcutsHelp, useShortcutsHelp } from '../components/ShortcutsHelp';
+import { useKeyboardShortcuts, createCashierShortcuts } from '../hooks/useKeyboardShortcuts';
 import { RetroWallet, RetroPrinter, RetroBox, RetroCart, RetroBag, RetroTrash } from '../components/RetroIcons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,6 +75,10 @@ export default function CashierPage() {
 
   const [showPayment, setShowPayment] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [showHoldOrders, setShowHoldOrders] = useState(false);
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const { open: showHelp, setOpen: setShowHelp } = useShortcutsHelp();
   const [lastTx, setLastTx] = useState<any>(null);
   const [showTxSuccess, setShowTxSuccess] = useState(false);
   const [receiptHtml, setReceiptHtml] = useState('');
@@ -188,19 +194,45 @@ export default function CashierPage() {
   const total = subtotal + taxAmount - discount;
   const totalQty = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts(
+    createCashierShortcuts({
+      onNewTransaction: () => {
+        if (cart.length > 0) {
+          setCart([]);
+          setCustomerName('');
+          setCustomerAddress('');
+        }
+        setShowPayment(false);
+        searchRef.current?.focus();
+      },
+      onSearchProduct: () => {
+        searchRef.current?.focus();
+      },
+      onCheckout: () => {
+        if (cart.length > 0 && total > 0 && !createTxMutation.isPending) {
+          setShowPayment(true);
+        }
+      },
+      onOpenScanner: () => setShowScanner(true),
+      onPrintLast: () => {
+        if (lastTx) setShowTxSuccess(true);
+      },
+      onHoldOrder: () => setShowHoldOrders(true),
+      onCustomer: () => setShowCustomerDialog(true),
+      onCalculator: () => setShowCalculator(true),
+      onHelp: () => setShowHelp(true),
+      canCheckout: () => cart.length > 0 && total > 0 && !createTxMutation.isPending,
+    }),
+    [cart.length, total, createTxMutation.isPending, lastTx]
+  );
+
+  // Legacy keyboard support (Space to checkout)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'F2') {
-        e.preventDefault();
-        setShowScanner(true);
-      }
       if (e.key === ' ' && document.activeElement === document.body) {
         e.preventDefault();
         if (cart.length > 0 && total > 0 && !createTxMutation.isPending) setShowPayment(true);
-      }
-      if (e.key === 'k' && e.ctrlKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
       }
     };
     window.addEventListener('keydown', handleKey);
@@ -735,6 +767,42 @@ export default function CashierPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Shortcuts Help Modal */}
+      <ShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
+
+      {/* Calculator Modal */}
+      <Dialog open={showCalculator} onOpenChange={setShowCalculator}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5" />
+              Kalkulator Cepat
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-center text-muted-foreground">
+                Gunakan kalkulator sistem (calc:) atau aplikasi kalkulator bawaan
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              Tekan <kbd className="px-1.5 py-0.5 bg-muted rounded">F7</kbd> untuk buka/tutup kalkulator
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Floating Help Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="fixed bottom-4 right-4 h-10 w-10 rounded-full shadow-lg border-2 z-50"
+        onClick={() => setShowHelp(true)}
+        title="Bantuan (F1)"
+      >
+        <HelpCircle className="w-5 h-5" />
+      </Button>
     </div>
   );
 }
