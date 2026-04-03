@@ -32,24 +32,42 @@ const templates = {
         th { 
           border-bottom: 1px solid black; 
           text-align: left; 
-          padding: 3px 2px;
+          padding: 3px 1px;
           font-size: 0.85em;
         }
         td { 
-          padding: 2px 2px;
+          padding: 2px 1px;
           vertical-align: top;
           font-size: 0.9em;
           border-bottom: 1px dashed #000;
         }
         th.center, td.center { text-align: center; }
-        th.right, td.right { text-align: right; }
+        th.right, td.right { text-align: right; padding-left: 0; }
+        th.right { font-size: 0.8em; }
         
         /* Print-safe: Remove margin/padding saat print ke thermal */
+        /* Dynamic height untuk continuous feed thermal printer */
         @media print {
           body {
             margin: 0 !important;
             padding: 3px 2px !important;
             padding-top: 15mm !important;
+            height: auto !important;           /* Dynamic height: ikuti konten */
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;       /* Jangan potong konten */
+          }
+          
+          /* Hindari page break di tengah elemen */
+          table, tr, td, .item-row, .header, .footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          
+          /* Jangan buat page break baru */
+          html, body {
+            page-break-before: avoid !important;
+            page-break-after: avoid !important;
           }
         }
       </style>
@@ -68,9 +86,9 @@ const templates = {
           <span style="font-size: 0.85em;">${data.date}</span>
         </div>
         <div>Kasir: ${data.cashierName}</div>
-        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
-        ${data.notes ? `<div style="font-style: italic; margin-top: 2px; font-size: 0.85em;">📝 ${data.notes}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px; font-size: 0.85em;"><b>Cat:</b> ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -79,19 +97,19 @@ const templates = {
       <table>
         <thead>
           <tr>
-            <th width="32%">Item</th>
+            <th width="26%">Item</th>
             <th width="10%" class="center">Qty</th>
-            <th width="29%" class="right">Harga</th>
-            <th width="29%" class="right">Total</th>
+            <th width="32%" class="right">Harga</th>
+            <th width="32%" class="right">Total</th>
           </tr>
         </thead>
         <tbody>
           ${data.items.map(item => `
             <tr>
               <td>${item.name}</td>
-              <td class="center">${item.qty}</td>
-              <td class="right">${Number(item.price).toLocaleString('id-ID')}</td>
-              <td class="right">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+              <td class="center"><b>${item.qty}</b></td>
+              <td class="right" style="white-space:nowrap;font-size:0.8em;letter-spacing:-0.3px;">${Number(item.price).toLocaleString('id-ID')}</td>
+              <td class="right" style="white-space:nowrap;font-size:0.8em;letter-spacing:-0.3px;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -99,11 +117,11 @@ const templates = {
       
       <div class="line"></div>
       <div style="display:flex; justify-content:flex-end;">
-        <table style="width: 60%">
-          <tr><td>Total</td><td class="right bold">${Number(data.total).toLocaleString('id-ID')}</td></tr>
+        <table style="width: 75%">
+          <tr><td>Total</td><td class="right bold" style="white-space:nowrap;">${Number(data.total).toLocaleString('id-ID')}</td></tr>
           ${data.sections.payment_info ? (data.paymentMethod === 'cash' ? `
-          <tr><td>Tunai</td><td class="right">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
-          <tr><td>Kembali</td><td class="right">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>` : `<tr><td>Metode</td><td class="right">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`) : ''}
+          <tr><td>Tunai</td><td class="right" style="white-space:nowrap;">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
+          <tr><td>Kembali</td><td class="right" style="white-space:nowrap;">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>` : `<tr><td>Metode</td><td class="right">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`) : ''}
         </table>
       </div>
       <div class="line"></div>
@@ -145,7 +163,8 @@ const templates = {
           border-bottom: 1px dashed #000;
         }
         th.center, td.center { text-align: center; }
-        th.right, td.right { text-align: right; }
+        th.right, td.right { text-align: right; padding-left: 0; }
+        th.right { font-size: 0.75em; }
         
         @media print {
           body {
@@ -167,9 +186,9 @@ const templates = {
           <span>${data.date.split(' ')[1] || data.date}</span>
         </div>
         <div>Kasir: ${data.cashierName}</div>
-        ${data.customerName ? `<div style="margin-top: 1px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-        ${data.customerAddress ? `<div style="font-size: 0.8em; margin-left: 6px;">📍 ${data.customerAddress}</div>` : ''}
-        ${data.notes ? `<div style="font-style: italic; font-size: 0.8em; margin-top: 1px;">📝 ${data.notes}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 1px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.8em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; font-size: 0.8em; margin-top: 1px;"><b>Cat:</b> ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -178,19 +197,19 @@ const templates = {
       <table>
         <thead>
           <tr>
-            <th width="32%" style="font-size: 0.8em;">Item</th>
+            <th width="24%" style="font-size: 0.8em;">Item</th>
             <th width="10%" class="center" style="font-size: 0.8em;">Qty</th>
-            <th width="29%" class="right" style="font-size: 0.8em;">Harga</th>
-            <th width="29%" class="right" style="font-size: 0.8em;">Total</th>
+            <th width="33%" class="right" style="font-size: 0.8em;">Harga</th>
+            <th width="33%" class="right" style="font-size: 0.8em;">Total</th>
           </tr>
         </thead>
         <tbody>
           ${data.items.map(item => `
             <tr>
               <td style="font-size: 0.85em;">${item.name}</td>
-              <td class="center" style="font-size: 0.85em;">${item.qty}</td>
-              <td class="right" style="font-size: 0.85em;">${Number(item.price).toLocaleString('id-ID')}</td>
-              <td class="right" style="font-size: 0.85em;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+              <td class="center" style="font-size: 0.85em;"><b>${item.qty}</b></td>
+              <td class="right" style="white-space:nowrap;font-size:0.78em;letter-spacing:-0.3px;">${Number(item.price).toLocaleString('id-ID')}</td>
+              <td class="right" style="white-space:nowrap;font-size:0.78em;letter-spacing:-0.3px;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -198,14 +217,14 @@ const templates = {
       
       <div class="line"></div>
       <div style="display:flex; justify-content:flex-end;">
-        <table style="width: 55%">
+        <table style="width: 72%">
           <tr class="bold" style="font-size: 1.05em;">
             <td>TOTAL</td>
-            <td class="right">${Number(data.total).toLocaleString('id-ID')}</td>
+            <td class="right" style="white-space:nowrap;">${Number(data.total).toLocaleString('id-ID')}</td>
           </tr>
           ${data.paymentMethod === 'cash' ? `
-          <tr style="font-size: 0.85em;"><td>Tunai</td><td class="right">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
-          <tr style="font-size: 0.85em;"><td>Kembali</td><td class="right">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>
+          <tr style="font-size: 0.85em;"><td>Tunai</td><td class="right" style="white-space:nowrap;">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
+          <tr style="font-size: 0.85em;"><td>Kembali</td><td class="right" style="white-space:nowrap;">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>
           ` : ''}
         </table>
       </div>
@@ -273,9 +292,9 @@ const templates = {
       <div style="font-size: 0.85em; margin-bottom: 8px;">
         <div>${data.date} | ${data.cashierName}</div>
         <div>No: ${data.invoiceNumber}</div>
-        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-        ${data.customerAddress ? `<div style="font-size: 0.8em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
-        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.8em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
       </div>
       ` : ''}
       
@@ -283,19 +302,19 @@ const templates = {
       <table>
         <thead>
           <tr>
-            <th width="32%">Item</th>
+            <th width="26%">Item</th>
             <th width="10%" class="center">Qty</th>
-            <th width="29%" class="right">Harga</th>
-            <th width="29%" class="right">Total</th>
+            <th width="32%" class="right">Harga</th>
+            <th width="32%" class="right">Total</th>
           </tr>
         </thead>
         <tbody>
           ${data.items.map(item => `
             <tr>
               <td>${item.name}</td>
-              <td class="center">${item.qty}</td>
-              <td class="right">${Number(item.price).toLocaleString('id-ID')}</td>
-              <td class="right">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+              <td class="center"><b>${item.qty}</b></td>
+              <td class="right" style="white-space:nowrap;font-size:0.8em;letter-spacing:-0.3px;">${Number(item.price).toLocaleString('id-ID')}</td>
+              <td class="right" style="white-space:nowrap;font-size:0.8em;letter-spacing:-0.3px;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -378,7 +397,7 @@ const templates = {
           <tr><td colspan="2" class="bold">${item.name}</td></tr>
           <tr class="item-detail">
             <td>${item.qty} x ${Number(item.price).toLocaleString('id-ID')}</td>
-            <td class="right">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+            <td class="right" style="white-space:nowrap;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
           </tr>
         `).join('')}
       </table>
@@ -388,7 +407,7 @@ const templates = {
         <tr><td>Subtotal</td><td class="right">${data.formatCurrency(data.subtotal)}</td></tr>
         ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
         ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-        <tr class="sum-total"><td>TOTAL</td><td class="right">${data.formatCurrency(data.total)}</td></tr>
+        <tr class="sum-total"><td>TOTAL</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
       </table>
 
       ${data.sections.payment_info ? `
@@ -429,7 +448,7 @@ const templates = {
         tbody tr { border-bottom: 1px dashed #000; }
         .c-name  { width: 52%; }
         .c-qty   { width: 12%; text-align: center; }
-        .c-total { width: 36%; text-align: right; }
+        .c-total { width: 36%; text-align: right; white-space:nowrap; }
         .sum-lbl { width: 55%; }
         .sum-val { width: 45%; text-align: right; }
         .grand-total td { font-weight: bold; font-size: 1.05em; border-top: 1px solid #000; padding-top: 3px; }
@@ -446,9 +465,9 @@ const templates = {
       <div class="sm">
         <div>No: ${data.invoiceNumber}</div>
         <div>Tgl: ${data.date} | Kasir: ${data.cashierName}</div>
-        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 8px;">📍 ${data.customerAddress}</div>` : ''}
-        ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -468,8 +487,8 @@ const templates = {
                 ${item.name}
                 <br/><span class="sm">@ ${Number(item.price).toLocaleString('id-ID')}</span>
               </td>
-              <td class="c-qty" style="padding:2px 0; text-align:center;">${item.qty}</td>
-              <td class="c-total" style="padding:2px 0;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+              <td class="c-qty" style="padding:2px 0; text-align:center;"><b>${item.qty}</b></td>
+              <td class="c-total" style="padding:2px 0; white-space:nowrap;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -477,15 +496,15 @@ const templates = {
       <div class="line"></div>
 
       <table>
-        <tr><td class="sum-lbl">Subtotal</td><td class="sum-val">${data.formatCurrency(data.subtotal)}</td></tr>
-        ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td class="sum-lbl">Diskon</td><td class="sum-val">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
-        ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td class="sum-lbl">Pajak</td><td class="sum-val">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-        <tr class="grand-total"><td class="sum-lbl">TOTAL</td><td class="sum-val">${data.formatCurrency(data.total)}</td></tr>
+        <tr><td class="sum-lbl">Subtotal</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.subtotal)}</td></tr>
+        ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td class="sum-lbl">Diskon</td><td class="sum-val" style="white-space:nowrap;">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
+        ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td class="sum-lbl">Pajak</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
+        <tr class="grand-total"><td class="sum-lbl">TOTAL</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
         ${data.sections.payment_info ? `
         <tr class="sm"><td class="sum-lbl" style="padding-top:3px;">Metode Bayar</td><td class="sum-val" style="padding-top:3px;">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
         ${data.paymentMethod === 'cash' ? `
-        <tr class="sm"><td class="sum-lbl">Dibayar</td><td class="sum-val">${data.formatCurrency(data.amountPaid)}</td></tr>
-        <tr class="bold"><td class="sum-lbl">Kembali</td><td class="sum-val">${data.formatCurrency(data.changeAmount)}</td></tr>
+        <tr class="sm"><td class="sum-lbl">Dibayar</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+        <tr class="bold"><td class="sum-lbl">Kembali</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
         ` : ''} ` : ''}
       </table>
       <div class="line-s"></div>
@@ -550,7 +569,7 @@ const templates = {
           <tr><td colspan="2" class="item-name">${item.name}</td></tr>
           <tr class="sm">
             <td>${item.qty} x ${Number(item.price).toLocaleString('id-ID')}</td>
-            <td class="right">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+            <td class="right" style="white-space:nowrap;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
           </tr>
         `).join('')}
       </table>
@@ -577,8 +596,8 @@ const templates = {
       <table class="sm">
         <tr><td class="lbl">Metode</td><td>: ${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
         ${data.paymentMethod === 'cash' ? `
-        <tr><td class="lbl">Dibayar</td><td>: ${data.formatCurrency(data.amountPaid)}</td></tr>
-        <tr class="bold"><td class="lbl">Kembalian</td><td>: ${data.formatCurrency(data.changeAmount)}</td></tr>
+        <tr><td class="lbl">Dibayar</td><td style="white-space:nowrap;">: ${data.formatCurrency(data.amountPaid)}</td></tr>
+        <tr class="bold"><td class="lbl">Kembalian</td><td style="white-space:nowrap;">: ${data.formatCurrency(data.changeAmount)}</td></tr>
         ` : ''}
       </table>
       ` : ''}
@@ -627,9 +646,9 @@ const templates = {
       <div class="sm">
         <div>${data.invoiceNumber} | ${data.date}</div>
         <div>Kasir: ${data.cashierName}</div>
-        ${data.customerName ? `<div style="margin-top: 2px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;">📍 ${data.customerAddress}</div>` : ''}
-        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;">📝 ${data.notes}</div>` : ''}
+        ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+        ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+        ${data.notes ? `<div style="font-style: italic; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
       </div>
       <div class="line"></div>
       ` : ''}
@@ -649,8 +668,8 @@ const templates = {
                 ${item.name}
                 <br/><span class="sm">@ ${Number(item.price).toLocaleString('id-ID')}</span>
               </td>
-              <td class="c-qty" style="padding:2px 0; text-align:center;">${item.qty}</td>
-              <td class="c-sub" style="padding:2px 0;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
+              <td class="c-qty" style="padding:2px 0; text-align:center;"><b>${item.qty}</b></td>
+              <td class="c-sub" style="padding:2px 0; white-space:nowrap;">${Number(item.subtotal).toLocaleString('id-ID')}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -661,12 +680,12 @@ const templates = {
         <tr><td class="sum-lbl sm">Subtotal</td><td class="sum-val sm">${data.formatCurrency(data.subtotal)}</td></tr>
         ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td class="sum-lbl sm">Diskon</td><td class="sum-val sm">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
         ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td class="sum-lbl sm">Pajak</td><td class="sum-val sm">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-        <tr class="total-row"><td class="sum-lbl">TOTAL</td><td class="sum-val">${data.formatCurrency(data.total)}</td></tr>
+        <tr class="total-row"><td class="sum-lbl">TOTAL</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
         ${data.sections.payment_info ? `
         <tr><td class="sum-lbl sm" style="padding-top:2px;">Metode</td><td class="sum-val sm" style="padding-top:2px;">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
         ${data.paymentMethod === 'cash' ? `
-        <tr><td class="sum-lbl sm">Dibayar</td><td class="sum-val sm">${data.formatCurrency(data.amountPaid)}</td></tr>
-        <tr class="bold"><td class="sum-lbl">Kembali</td><td class="sum-val">${data.formatCurrency(data.changeAmount)}</td></tr>
+        <tr><td class="sum-lbl sm">Dibayar</td><td class="sum-val sm" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+        <tr class="bold"><td class="sum-lbl">Kembali</td><td class="sum-val" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
         ` : ''}
         ` : ''}
       </table>
@@ -835,7 +854,7 @@ const templates = {
               <tr>
                 <td>${i + 1}</td>
                 <td>${item.name}</td>
-                <td class="center">${item.qty}</td>
+                <td class="center"><b>${item.qty}</b></td>
                 <td class="right">${data.formatCurrency(item.price)}</td>
                 <td class="right">${data.formatCurrency(item.subtotal)}</td>
               </tr>
@@ -855,12 +874,12 @@ const templates = {
             <tr><td>Subtotal</td><td class="right">${data.formatCurrency(data.subtotal)}</td></tr>
             ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
             ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-            <tr class="total"><td>TOTAL</td><td class="right">${data.formatCurrency(data.total)}</td></tr>
+            <tr class="total"><td>TOTAL</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
             ${data.sections.payment_info ? `
             <tr class="pay"><td>Metode Bayar</td><td class="right">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
             ${data.paymentMethod === 'cash' ? `
-            <tr class="pay"><td>Jumlah Bayar</td><td class="right">${data.formatCurrency(data.amountPaid)}</td></tr>
-            <tr class="pay bold"><td>Kembalian</td><td class="right">${data.formatCurrency(data.changeAmount)}</td></tr>
+            <tr class="pay"><td>Jumlah Bayar</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+            <tr class="pay bold"><td>Kembalian</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
             ` : ''}` : ''}
           </table>
         </div>
@@ -960,7 +979,7 @@ const templates = {
               <tr>
                 <td>${i + 1}</td>
                 <td>${item.name}</td>
-                <td class="center">${item.qty}</td>
+                <td class="center"><b>${item.qty}</b></td>
                 <td class="right">${data.formatCurrency(item.price)}</td>
                 <td class="right">${data.formatCurrency(item.subtotal)}</td>
               </tr>
@@ -986,8 +1005,8 @@ const templates = {
               ${data.sections.payment_info ? `
               <tr class="pay"><td>Metode</td><td class="right">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
               ${data.paymentMethod === 'cash' ? `
-              <tr class="pay"><td>Dibayar</td><td class="right">${data.formatCurrency(data.amountPaid)}</td></tr>
-              <tr class="pay bold"><td>Kembalian</td><td class="right">${data.formatCurrency(data.changeAmount)}</td></tr>
+              <tr class="pay"><td>Dibayar</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+              <tr class="pay bold"><td>Kembalian</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
               ` : ''}` : ''}
             </table>
           </div>
@@ -1083,7 +1102,7 @@ const templates = {
               <tr>
                 <td>${i + 1}</td>
                 <td>${item.name}</td>
-                <td class="center">${item.qty}</td>
+                <td class="center"><b>${item.qty}</b></td>
                 <td class="right">${data.formatCurrency(item.price)}</td>
                 <td class="right">${data.formatCurrency(item.subtotal)}</td>
               </tr>
@@ -1109,8 +1128,8 @@ const templates = {
               ${data.sections.payment_info ? `
               <tr class="pay"><td>Metode Bayar</td><td class="right">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
               ${data.paymentMethod === 'cash' ? `
-              <tr class="pay"><td>Dibayar</td><td class="right">${data.formatCurrency(data.amountPaid)}</td></tr>
-              <tr class="pay bold"><td>Kembalian</td><td class="right">${data.formatCurrency(data.changeAmount)}</td></tr>
+              <tr class="pay"><td>Dibayar</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+              <tr class="pay bold"><td>Kembalian</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
               ` : ''}` : ''}
             </table>
           </div>
@@ -1216,7 +1235,7 @@ const templates = {
                 <tr>
                   <td>${i + 1}</td>
                   <td>${item.name}</td>
-                  <td class="center">${item.qty}</td>
+                  <td class="center"><b>${item.qty}</b></td>
                   <td class="right">${data.formatCurrency(item.price)}</td>
                   <td class="right">${data.formatCurrency(item.subtotal)}</td>
                 </tr>
@@ -1240,8 +1259,8 @@ const templates = {
               ${data.sections.payment_info ? `
               <tr class="pay"><td>Metode Bayar</td><td class="right">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
               ${data.paymentMethod === 'cash' ? `
-              <tr class="pay"><td>Dibayar</td><td class="right">${data.formatCurrency(data.amountPaid)}</td></tr>
-              <tr class="pay bold"><td>Kembalian</td><td class="right">${data.formatCurrency(data.changeAmount)}</td></tr>
+              <tr class="pay"><td>Dibayar</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.amountPaid)}</td></tr>
+              <tr class="pay bold"><td>Kembalian</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
               ` : ''}` : ''}
             </table>
           </div>
@@ -1333,7 +1352,7 @@ const templates = {
               <tr>
                 <td>${i + 1}</td>
                 <td>${item.name}</td>
-                <td class="center">${item.qty}</td>
+                <td class="center"><b>${item.qty}</b></td>
                 <td class="right">${data.formatCurrency(item.price)}</td>
                 <td class="right">${data.formatCurrency(item.subtotal)}</td>
               </tr>
@@ -1353,12 +1372,12 @@ const templates = {
             <tr><td>Subtotal</td><td class="right">${data.formatCurrency(data.subtotal)}</td></tr>
             ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right">- ${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
             ${data.sections.tax_line && data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-            <tr class="total"><td>TOTAL</td><td class="right">${data.formatCurrency(data.total)}</td></tr>
+            <tr class="total"><td>TOTAL</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
             ${data.sections.payment_info ? `
             <tr class="pay"><td>Metode</td><td class="right">${data.paymentMethod === 'cash' ? 'Tunai' : data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>
             ${data.paymentMethod === 'cash' ? `
             <tr class="pay"><td>Dibayar</td><td class="right">${data.formatCurrency(data.amountPaid)}</td></tr>
-            <tr class="pay bold"><td>Kembali</td><td class="right">${data.formatCurrency(data.changeAmount)}</td></tr>
+            <tr class="pay bold"><td>Kembali</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
             ` : ''}` : ''}
           </table>
         </div>
@@ -1458,7 +1477,7 @@ const templates = {
                 <tr>
                   <td>${i + 1}</td>
                   <td>${item.name}</td>
-                  <td class="center">${item.qty}</td>
+                  <td class="center"><b>${item.qty}</b></td>
                   <td class="right">${data.formatCurrency(item.price)}</td>
                   <td class="right">${data.formatCurrency(item.subtotal)}</td>
                 </tr>
@@ -1524,15 +1543,16 @@ const templates = {
         th { 
           border-bottom: 1px solid black; 
           text-align: left; 
-          padding: 5px 3px;
+          padding: 5px 2px;
           font-size: 0.9em;
         }
         td { 
-          padding: 4px 3px;
+          padding: 4px 2px;
           font-size: 0.95em;
         }
         th.center, td.center { text-align: center; }
         th.right, td.right { text-align: right; }
+        th.right { font-size: 0.85em; }
         
         @media print {
           body {
@@ -1555,38 +1575,38 @@ const templates = {
         <span>Tanggal: ${data.date}</span>
       </div>
       <div>Kasir: ${data.cashierName}</div>
-      ${data.customerName ? `<div style="margin-top: 4px;"><b>Kpd:</b> ${data.customerName}</div>` : ''}
-      ${data.customerAddress ? `<div style="font-size: 0.9em; margin-left: 10px;">📍 ${data.customerAddress}</div>` : ''}
-      ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;">📝 ${data.notes}</div>` : ''}
+      ${data.customerName ? `<div style="margin-top: 4px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+      ${data.customerAddress ? `<div style="font-size: 0.9em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+      ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;"><b>Cat:</b> ${data.notes}</div>` : ''}
       <div class="line"></div>
       ` : ''}
       <table>
         <thead>
           <tr>
-            <th width="40%">Item</th>
-            <th width="20%" class="center">Qty</th>
-            <th width="20%" class="right">Harga</th>
-            <th width="20%" class="right">Total</th>
+            <th width="30%">Item</th>
+            <th width="10%" class="center">Qty</th>
+            <th width="30%" class="right">Harga</th>
+            <th width="30%" class="right">Total</th>
           </tr>
         </thead>
         <tbody>
           ${data.items.map(item => `
             <tr>
               <td>${item.name}</td>
-              <td class="center">${item.qty}</td>
-              <td class="right">${data.formatCurrency(item.price)}</td>
-              <td class="right">${data.formatCurrency(item.subtotal)}</td>
+              <td class="center"><b>${item.qty}</b></td>
+              <td class="right" style="white-space:nowrap;font-size:0.92em;letter-spacing:-0.3px;">${data.formatCurrency(item.price)}</td>
+              <td class="right" style="white-space:nowrap;font-size:0.92em;letter-spacing:-0.3px;">${data.formatCurrency(item.subtotal)}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
       <div class="line"></div>
       <div style="display:flex; justify-content:flex-end;">
-        <table style="width: 50%">
-          <tr><td>Subtotal</td><td class="right">${data.formatCurrency(data.subtotal)}</td></tr>
-          ${data.sections.tax_line ? `<tr><td>Pajak</td><td class="right">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
-          ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right">${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
-          <tr class="bold" style="font-size:1.1em"><td>TOTAL</td><td class="right">${data.formatCurrency(data.total)}</td></tr>
+        <table style="width: 85%">
+          <tr><td>Subtotal</td><td class="right" style="white-space:nowrap;font-size:0.95em;">${data.formatCurrency(data.subtotal)}</td></tr>
+          ${data.sections.tax_line ? `<tr><td>Pajak</td><td class="right" style="white-space:nowrap;font-size:0.95em;">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
+          ${data.sections.discount_line && data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right" style="white-space:nowrap;font-size:0.95em;">${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
+          <tr class="bold" style="font-size:1.05em"><td>TOTAL</td><td class="right" style="white-space:nowrap;">${data.formatCurrency(data.total)}</td></tr>
         </table>
       </div>
       ${data.sections.footer_text ? `<div class="center" style="margin-top:20px;">${data.footerText}</div>` : ''}
@@ -1615,21 +1635,332 @@ const createVariation = (baseKey, overrides) => {
   };
 };
 
-// 58mm Variations - Updated for 4-column layout
-templates['58mm-4'] = createVariation('58mm-1', { name: 'Big Header', css: '.center.bold { font-size: 1.5em; text-transform: uppercase; }' });
-templates['58mm-5'] = createVariation('58mm-2', { name: 'Extra Compact', css: 'body { font-size: 10px; } th, td { padding: 1px !important; }' });
-templates['58mm-6'] = createVariation('58mm-3', { name: 'Boxed Total', css: '.header-box { background: #f5f5f5; }' });
-templates['58mm-7'] = createVariation('58mm-2', { name: 'Eco (Small)', css: 'body { font-size: 10px; } .line { border-top: 1px dotted #ccc; }' });
-templates['58mm-8'] = createVariation('58mm-3', { name: 'Outlined (Formal)', css: '.header-box { border: 2px solid #000; background: #fff; } body { border: 1px solid #ddd; padding: 5px; }' });
+// ==========================================
+// NEW DESIGN: Vertical Compact (58mm)
+// Optimized for nominal jutaan - Proposal 1
+// ==========================================
+templates['58mm-1'] = {
+  name: 'Vertical Compact (Jutaan)',
+  width: '58mm',
+  render: (data) => `
+    <style>
+      body { 
+        font-family: 'Courier New', 'Courier', monospace; 
+        font-size: 12px; 
+        width: ${data.widthPx}px; 
+        margin: 0 auto; 
+        padding: 3px 6px; 
+        padding-top: 15mm;
+        line-height: 1.3; 
+        color: #000 !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .center { text-align: center; }
+      .right { text-align: right; }
+      .bold { font-weight: bold; }
+      .line { border-top: 1px dashed black; margin: 6px 0; }
+      .item-separator { border-top: 1px dashed #999; margin: 4px 0; }
+      
+      @media print {
+        body { margin: 0 !important; padding: 3px 4px !important; padding-top: 15mm !important; }
+      }
+    </style>
+    
+    ${data.sections.logo ? data.logoHTML : ''}
+    ${data.sections.store_name ? `<div class="center bold" style="font-size: 1.1em; margin-bottom: 3px;">${data.storeName}</div>` : ''}
+    ${data.sections.store_address ? `<div class="center" style="font-size: 0.85em;">${data.storeAddress}</div>` : ''}
+    ${data.sections.store_phone ? `<div class="center" style="font-size: 0.85em;">${data.storePhone}</div>` : ''}
+    <div class="line"></div>
+    
+    ${data.sections.invoice_info ? `
+    <div style="font-size: 0.9em;">
+      <div style="display:flex; justify-content:space-between;">
+        <span>${data.invoiceNumber}</span>
+        <span style="font-size: 0.85em;">${data.date}</span>
+      </div>
+      <div>Kasir: ${data.cashierName}</div>
+      ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+      ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+      ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
+    </div>
+    <div class="line"></div>
+    ` : ''}
+    
+    <!-- Items: Vertical Layout -->
+    ${data.items.map((item, idx) => `
+      <div style="margin-bottom: 2px;">
+        <div style="font-weight: bold; font-size: 0.95em;">${item.name}</div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.9em; margin-top: 1px;">
+          <span><b>${item.qty}</b> × ${Number(item.price).toLocaleString('id-ID')}</span>
+          <span style="font-weight: bold; white-space: nowrap;">${Number(item.subtotal).toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+      ${idx < data.items.length - 1 ? '<div class="item-separator"></div>' : ''}
+    `).join('')}
+    
+    <div class="line"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <table style="width: 85%;">
+        <tr><td>Subtotal</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">${Number(data.subtotal).toLocaleString('id-ID')}</td></tr>
+        ${data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">${Number(data.taxAmount).toLocaleString('id-ID')}</td></tr>` : ''}
+        ${data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">-${Number(data.discountAmount).toLocaleString('id-ID')}</td></tr>` : ''}
+        <tr class="bold"><td style="font-size: 1.05em;">TOTAL</td><td class="right" style="white-space: nowrap; font-size: 1.05em;">${Number(data.total).toLocaleString('id-ID')}</td></tr>
+        ${data.paymentMethod === 'cash' ? `
+        <tr style="font-size: 0.9em;"><td style="padding-top: 3px;">Tunai</td><td class="right" style="white-space: nowrap; padding-top: 3px;">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
+        <tr style="font-size: 0.9em;"><td>Kembali</td><td class="right" style="white-space: nowrap;">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>
+        ` : `<tr style="font-size: 0.9em;"><td style="padding-top: 3px;">Metode</td><td class="right" style="padding-top: 3px;">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`}
+      </table>
+    </div>
+    ${data.sections.footer_text ? `<div class="center" style="margin-top: 10px; font-size: 0.9em;">${data.footerText}</div>` : ''}
+  `
+};
+
+// ==========================================
+// NEW DESIGN: 2-Column Minimal (58mm)
+// Optimized for nominal jutaan - Proposal 2
+// ==========================================
+templates['58mm-2'] = {
+  name: '2-Column Minimal (Jutaan)',
+  width: '58mm',
+  render: (data) => `
+    <style>
+      body { 
+        font-family: 'Courier New', 'Courier', monospace; 
+        font-size: 12px; 
+        width: ${data.widthPx}px; 
+        margin: 0 auto; 
+        padding: 3px 6px; 
+        padding-top: 15mm;
+        line-height: 1.3; 
+        color: #000 !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .center { text-align: center; }
+      .right { text-align: right; }
+      .bold { font-weight: bold; }
+      .line { border-top: 1px dashed black; margin: 6px 0; }
+      .item-separator { border-top: 1px dashed #999; margin: 3px 0; }
+      
+      @media print {
+        body { margin: 0 !important; padding: 3px 4px !important; padding-top: 15mm !important; }
+      }
+    </style>
+    
+    ${data.sections.logo ? data.logoHTML : ''}
+    ${data.sections.store_name ? `<div class="center bold" style="font-size: 1.1em; margin-bottom: 3px;">${data.storeName}</div>` : ''}
+    ${data.sections.store_address ? `<div class="center" style="font-size: 0.85em;">${data.storeAddress}</div>` : ''}
+    ${data.sections.store_phone ? `<div class="center" style="font-size: 0.85em;">${data.storePhone}</div>` : ''}
+    <div class="line"></div>
+    
+    ${data.sections.invoice_info ? `
+    <div style="font-size: 0.9em;">
+      <div style="display:flex; justify-content:space-between;">
+        <span>${data.invoiceNumber}</span>
+        <span style="font-size: 0.85em;">${data.date}</span>
+      </div>
+      <div>Kasir: ${data.cashierName}</div>
+      ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+      ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+      ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
+    </div>
+    <div class="line"></div>
+    ` : ''}
+    
+    <!-- Items: 2-Column Layout (Item + Total only) -->
+    ${data.items.map((item, idx) => `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1px;">
+        <div style="flex: 1; padding-right: 5px; font-size: 0.95em;">${item.name} <span style="color: #555; font-weight: bold;">×${item.qty}</span></div>
+        <div style="font-weight: bold; white-space: nowrap; font-size: 0.95em;">${Number(item.subtotal).toLocaleString('id-ID')}</div>
+      </div>
+      ${idx < data.items.length - 1 ? '<div class="item-separator"></div>' : ''}
+    `).join('')}
+    
+    <div class="line"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <table style="width: 85%;">
+        <tr><td>Subtotal</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">${Number(data.subtotal).toLocaleString('id-ID')}</td></tr>
+        ${data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">${Number(data.taxAmount).toLocaleString('id-ID')}</td></tr>` : ''}
+        ${data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right" style="white-space: nowrap; font-size: 0.95em;">-${Number(data.discountAmount).toLocaleString('id-ID')}</td></tr>` : ''}
+        <tr class="bold"><td style="font-size: 1.05em;">TOTAL</td><td class="right" style="white-space: nowrap; font-size: 1.05em;">${Number(data.total).toLocaleString('id-ID')}</td></tr>
+        ${data.paymentMethod === 'cash' ? `
+        <tr style="font-size: 0.9em;"><td style="padding-top: 3px;">Tunai</td><td class="right" style="white-space: nowrap; padding-top: 3px;">${Number(data.amountPaid).toLocaleString('id-ID')}</td></tr>
+        <tr style="font-size: 0.9em;"><td>Kembali</td><td class="right" style="white-space: nowrap;">${Number(data.changeAmount).toLocaleString('id-ID')}</td></tr>
+        ` : `<tr style="font-size: 0.9em;"><td style="padding-top: 3px;">Metode</td><td class="right" style="padding-top: 3px;">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`}
+      </table>
+    </div>
+    ${data.sections.footer_text ? `<div class="center" style="margin-top: 10px; font-size: 0.9em;">${data.footerText}</div>` : ''}
+  `
+};
+
+// ==========================================
+// NEW DESIGN: 80mm versions
+// ==========================================
+
+// 80mm - Vertical Compact
+templates['80mm-1'] = {
+  name: 'Vertical Compact 80mm (Jutaan)',
+  width: '80mm',
+  render: (data) => `
+    <style>
+      body { 
+        font-family: 'Courier New', 'Courier', monospace; 
+        font-size: 13px; 
+        width: ${data.widthPx}px; 
+        margin: 0 auto; 
+        padding: 10px 12px; 
+        padding-top: 18mm;
+        line-height: 1.4; 
+        color: #000 !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .center { text-align: center; }
+      .right { text-align: right; }
+      .bold { font-weight: bold; }
+      .line { border-top: 1px dashed black; margin: 8px 0; }
+      .item-separator { border-top: 1px dashed #999; margin: 5px 0; }
+      
+      @media print {
+        body { margin: 0 !important; padding: 10px 8px !important; padding-top: 18mm !important; }
+      }
+    </style>
+    
+    ${data.sections.logo ? data.logoHTML : ''}
+    ${data.sections.store_name ? `<div class="center bold" style="font-size: 1.2em; margin-bottom: 5px;">${data.storeName}</div>` : ''}
+    ${data.sections.store_address ? `<div class="center">${data.storeAddress}</div>` : ''}
+    ${data.sections.store_phone ? `<div class="center">${data.storePhone}</div>` : ''}
+    <div class="line"></div>
+    
+    ${data.sections.invoice_info ? `
+    <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+      <span>Faktur: ${data.invoiceNumber}</span>
+      <span>Tanggal: ${data.date}</span>
+    </div>
+    <div>Kasir: ${data.cashierName}</div>
+    ${data.customerName ? `<div style="margin-top: 4px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+    ${data.customerAddress ? `<div style="font-size: 0.9em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+    ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;"><b>Cat:</b> ${data.notes}</div>` : ''}
+    <div class="line"></div>
+    ` : ''}
+    
+    <!-- Items: Vertical Layout -->
+    ${data.items.map((item, idx) => `
+      <div style="margin-bottom: 3px;">
+        <div style="font-weight: bold; font-size: 1em;">${item.name}</div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.95em; margin-top: 2px;">
+          <span><b>${item.qty}</b> × ${data.formatCurrency(item.price)}</span>
+          <span style="font-weight: bold; white-space: nowrap;">${data.formatCurrency(item.subtotal)}</span>
+        </div>
+      </div>
+      ${idx < data.items.length - 1 ? '<div class="item-separator"></div>' : ''}
+    `).join('')}
+    
+    <div class="line"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <table style="width: 70%;">
+        <tr><td>Subtotal</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.subtotal)}</td></tr>
+        ${data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
+        ${data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right" style="white-space: nowrap;">-${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
+        <tr class="bold" style="font-size: 1.1em;"><td>TOTAL</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.total)}</td></tr>
+        ${data.paymentMethod === 'cash' ? `
+        <tr style="font-size: 0.95em;"><td style="padding-top: 4px;">Tunai</td><td class="right" style="white-space: nowrap; padding-top: 4px;">${data.formatCurrency(data.amountPaid)}</td></tr>
+        <tr style="font-size: 0.95em;"><td>Kembali</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
+        ` : `<tr style="font-size: 0.95em;"><td style="padding-top: 4px;">Metode</td><td class="right" style="padding-top: 4px;">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`}
+      </table>
+    </div>
+    ${data.sections.footer_text ? `<div class="center" style="margin-top: 15px;">${data.footerText}</div>` : ''}
+  `
+};
+
+// 80mm - 2-Column Minimal
+templates['80mm-2'] = {
+  name: '2-Column Minimal 80mm (Jutaan)',
+  width: '80mm',
+  render: (data) => `
+    <style>
+      body { 
+        font-family: 'Courier New', 'Courier', monospace; 
+        font-size: 13px; 
+        width: ${data.widthPx}px; 
+        margin: 0 auto; 
+        padding: 10px 12px; 
+        padding-top: 18mm;
+        line-height: 1.4; 
+        color: #000 !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .center { text-align: center; }
+      .right { text-align: right; }
+      .bold { font-weight: bold; }
+      .line { border-top: 1px dashed black; margin: 8px 0; }
+      .item-separator { border-top: 1px dashed #999; margin: 4px 0; }
+      
+      @media print {
+        body { margin: 0 !important; padding: 10px 8px !important; padding-top: 18mm !important; }
+      }
+    </style>
+    
+    ${data.sections.logo ? data.logoHTML : ''}
+    ${data.sections.store_name ? `<div class="center bold" style="font-size: 1.2em; margin-bottom: 5px;">${data.storeName}</div>` : ''}
+    ${data.sections.store_address ? `<div class="center">${data.storeAddress}</div>` : ''}
+    ${data.sections.store_phone ? `<div class="center">${data.storePhone}</div>` : ''}
+    <div class="line"></div>
+    
+    ${data.sections.invoice_info ? `
+    <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+      <span>Faktur: ${data.invoiceNumber}</span>
+      <span>Tanggal: ${data.date}</span>
+    </div>
+    <div>Kasir: ${data.cashierName}</div>
+    ${data.customerName ? `<div style="margin-top: 4px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
+    ${data.customerAddress ? `<div style="font-size: 0.9em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
+    ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;"><b>Cat:</b> ${data.notes}</div>` : ''}
+    <div class="line"></div>
+    ` : ''}
+    
+    <!-- Items: 2-Column Layout -->
+    ${data.items.map((item, idx) => `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px;">
+        <div style="flex: 1; padding-right: 8px; font-size: 1em;">${item.name} <span style="color: #555; font-weight: bold;">×${item.qty}</span></div>
+        <div style="font-weight: bold; white-space: nowrap; font-size: 1em;">${data.formatCurrency(item.subtotal)}</div>
+      </div>
+      ${idx < data.items.length - 1 ? '<div class="item-separator"></div>' : ''}
+    `).join('')}
+    
+    <div class="line"></div>
+    <div style="display: flex; justify-content: flex-end;">
+      <table style="width: 70%;">
+        <tr><td>Subtotal</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.subtotal)}</td></tr>
+        ${data.taxAmount > 0 ? `<tr><td>Pajak</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.taxAmount)}</td></tr>` : ''}
+        ${data.discountAmount > 0 ? `<tr><td>Diskon</td><td class="right" style="white-space: nowrap;">-${data.formatCurrency(data.discountAmount)}</td></tr>` : ''}
+        <tr class="bold" style="font-size: 1.1em;"><td>TOTAL</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.total)}</td></tr>
+        ${data.paymentMethod === 'cash' ? `
+        <tr style="font-size: 0.95em;"><td style="padding-top: 4px;">Tunai</td><td class="right" style="white-space: nowrap; padding-top: 4px;">${data.formatCurrency(data.amountPaid)}</td></tr>
+        <tr style="font-size: 0.95em;"><td>Kembali</td><td class="right" style="white-space: nowrap;">${data.formatCurrency(data.changeAmount)}</td></tr>
+        ` : `<tr style="font-size: 0.95em;"><td style="padding-top: 4px;">Metode</td><td class="right" style="padding-top: 4px;">${data.paymentMethod === 'transfer' ? 'Transfer' : data.paymentMethod === 'qris' ? 'QRIS' : data.paymentMethod}</td></tr>`}
+      </table>
+    </div>
+    ${data.sections.footer_text ? `<div class="center" style="margin-top: 15px;">${data.footerText}</div>` : ''}
+  `
+};
+
+// Variations for new designs
+templates['58mm-3'] = createVariation('58mm-2', { name: '2-Column Compact', css: 'body { font-size: 11px; } .item-separator { border-top: 1px dotted #ccc; }' });
+templates['58mm-4'] = createVariation('58mm-1', { name: 'Vertical Big Header', css: '.center.bold { font-size: 1.3em; }' });
+templates['58mm-5'] = createVariation('58mm-2', { name: '2-Column Eco', css: 'body { font-size: 11px; } .item-separator { margin: 2px 0; }' });
 
 // 80mm Variations
-templates['80mm-2'] = createVariation('80mm-1', { name: 'Corporate', css: 'body { font-family: "Times New Roman", serif; } .bold { font-family: Arial, sans-serif; }' });
-templates['80mm-3'] = createVariation('80mm-1', { name: 'Restaurant (Centered)', css: 'table { text-align: center; } th, td, .right { text-align: center; }' });
-templates['80mm-4'] = createVariation('80mm-1', { name: 'Striped', css: 'tr:nth-child(even) { background-color: #eee; }' });
-templates['80mm-5'] = createVariation('80mm-1', { name: 'Large Text', css: 'body { font-size: 14px; }' });
-templates['80mm-6'] = createVariation('80mm-1', { name: 'Boxed', css: 'body { border: 1px solid black; min-height: 500px; padding: 15px; }' });
-templates['80mm-7'] = createVariation('80mm-1', { name: 'Elegant', css: '.line { border-top: 1px double black; border-bottom: 2px solid black; height: 3px; }' });
-templates['80mm-8'] = createVariation('80mm-1', { name: 'Minimal', css: '.line { display: none; } th { border-bottom: 2px solid black; }' });
+templates['80mm-3'] = createVariation('80mm-2', { name: '2-Column Compact 80mm', css: 'body { font-size: 12px; } .item-separator { border-top: 1px dotted #ccc; }' });
+templates['80mm-4'] = createVariation('80mm-1', { name: 'Vertical Big Header 80mm', css: '.center.bold { font-size: 1.3em; }' });
+templates['80mm-5'] = createVariation('80mm-2', { name: '2-Column Elegant', css: '.line { border-top: 1px double black; } .item-separator { border-top: 1px dashed #bbb; }' });
+templates['80mm-6'] = createVariation('80mm-1', { name: 'Vertical Elegant', css: '.line { border-top: 1px double black; } .item-separator { border-top: 1px dashed #bbb; }' });
 
 
 // Import thermal-optimized templates

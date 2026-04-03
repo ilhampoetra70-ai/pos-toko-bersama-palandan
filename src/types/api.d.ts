@@ -464,6 +464,7 @@ export interface WindowApi {
     updateSettings(settings: Record<string, string>): Promise<{ success: boolean; error?: string }>;
     getMasterKeyDisplay(): Promise<{ key: string | null }>;
     clearMasterKeyDisplay(): Promise<{ success: boolean }>;
+    getPrinterValidationError(): Promise<{ saved: string; available: string[]; timestamp: number } | null>;
     getMarginStats(): Promise<MarginStats>;
     updateMargin(percent: number, mode: string): Promise<ApiResult>;
 

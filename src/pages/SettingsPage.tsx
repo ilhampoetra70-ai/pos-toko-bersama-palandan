@@ -46,6 +46,7 @@ export default memo(function SettingsPage() {
   const [masterKeyDisplay, setMasterKeyDisplay] = useState<string | null>(null);
   const [masterKeyVisible, setMasterKeyVisible] = useState(false);
   const [masterKeyConfirming, setMasterKeyConfirming] = useState(false);
+  const [printerError, setPrinterError] = useState<any>(null);
 
   const { hasRole } = useAuth() as any;
   const isCashier = !hasRole('admin', 'supervisor');
@@ -97,7 +98,15 @@ export default memo(function SettingsPage() {
       try {
         const mkRes = await window.api.getMasterKeyDisplay();
         if (mkRes?.key) setMasterKeyDisplay(mkRes.key);
-      } catch (_) { /* non-critical, jangan sampai gagalkan loadData */ }
+      } catch (_) { /* non-critical */ }
+    }
+
+    // Cek validasi printer (dari startup validation)
+    if (window.api.getPrinterValidationError) {
+      try {
+        const valRes = await window.api.getPrinterValidationError();
+        if (valRes?.saved) setPrinterError(valRes);
+      } catch (_) { /* non-critical */ }
     }
   };
 
@@ -310,6 +319,24 @@ export default memo(function SettingsPage() {
           </TabsContent>}
 
           <TabsContent value="printer" className="m-0 focus-visible:outline-none">
+            {/* Warning jika printer validation gagal */}
+            {printerError && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-red-800 dark:text-red-300 text-sm">Printer Tidak Ditemukan</h4>
+                    <p className="text-red-700 dark:text-red-400 text-xs mt-1">
+                      Printer "<strong>{printerError.saved}</strong>" yang tersimpan tidak ditemukan di sistem.
+                      Mungkin driver di-reinstall atau printer dicabut.
+                    </p>
+                    <p className="text-red-600 dark:text-red-500 text-xs mt-2">
+                      Silakan pilih ulang printer di bawah ini.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="border-none shadow-sm bg-card dark:bg-background overflow-hidden">
                 <CardHeader className="bg-background/50 dark:bg-card/50 border-b dark:border-border">

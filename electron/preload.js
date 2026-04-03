@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   resetPasswordWithMasterKey: (username, masterKey, newPassword) => ipcRenderer.invoke('auth:resetPasswordWithMasterKey', username, masterKey, newPassword),
   changeMasterKey: (oldMasterKey, newMasterKey) => ipcRenderer.invoke('auth:changeMasterKey', oldMasterKey, newMasterKey),
   logoutUser: (userId) => ipcRenderer.invoke('auth:logout', userId),
-  
+
   // TOTP (Google Authenticator)
   isTOTPAvailable: () => ipcRenderer.invoke('totp:isAvailable'),
   getTOTPStatus: () => ipcRenderer.invoke('totp:getStatus'),
@@ -73,6 +73,9 @@ contextBridge.exposeInMainWorld('api', {
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:getAll'),
   updateSettings: (settings) => ipcRenderer.invoke('settings:update', settings),
+  getMasterKeyDisplay: () => ipcRenderer.invoke('settings:getMasterKeyDisplay'),
+  clearMasterKeyDisplay: () => ipcRenderer.invoke('settings:clearMasterKeyDisplay'),
+  getPrinterValidationError: () => ipcRenderer.invoke('print:getValidationError'),
   getMarginStats: () => ipcRenderer.invoke('settings:getMarginStats'),
   updateMargin: (percent, mode) => ipcRenderer.invoke('settings:updateMargin', percent, mode),
 

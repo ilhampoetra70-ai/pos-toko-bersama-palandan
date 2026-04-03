@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const database = require('./database');
 const auth = require('./auth');
 const printer = require('./printer');
+const { printHtml, validatePrinter } = require('./print-handler');
 const apiServer = require('./api-server');
 const aiDownload = require('./ai-download');
 const aiAggregator = require('./ai-aggregator');
@@ -340,6 +341,35 @@ app.whenReady().then(async () => {
   console.log('[POS] IPC handlers registered');
   createWindow();
   console.log('[POS] Window created');
+  
+  // ─── Validasi Printer Settings ────────────────────────
+  // Cek apakah printer yang tersimpan masih tersedia di sistem
+  setTimeout(async () => {
+    try {
+      const settings = database.getSettings();
+      const savedPrinter = settings.printer_name;
+      
+      if (savedPrinter && mainWindow) {
+        const validation = await validatePrinter(mainWindow.webContents, savedPrinter);
+        
+        if (!validation.valid) {
+          console.warn('[POS] Printer validation failed:', savedPrinter);
+          // Simpan error untuk ditampilkan di UI
+          database.updateSetting('printer_validation_error', JSON.stringify({
+            saved: savedPrinter,
+            available: validation.available,
+            timestamp: Date.now()
+          }));
+        } else {
+          // Clear error jika sebelumnya ada
+          database.updateSetting('printer_validation_error', '');
+        }
+      }
+    } catch (err) {
+      console.error('[POS] Printer validation error:', err.message);
+    }
+  }, 3000); // Delay 3 detik agar window sudah siap
+  
   scheduleAutoBackup();
   scheduleAuditCleanup();
   scheduleAiCacheCleanup();
@@ -897,31 +927,16 @@ function registerIpcHandlers() {
 
   ipcMain.handle('reports:printHtml', async (_, htmlContent) => {
     try {
-      const printWindow = new BrowserWindow({
-        show: false,
-        width: 800,
-        height: 1100,
-        webPreferences: { nodeIntegration: false }
+      // Gunakan print handler untuk konsistensi dan error handling
+      const result = await printHtml({
+        html: htmlContent,
+        deviceName: null, // Gunakan default printer
+        printerType: 'a4',
+        silent: false, // Tampilkan dialog print untuk laporan
+        windowTitle: 'Report Print'
       });
 
-      await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const success = await new Promise((resolve) => {
-        printWindow.webContents.print({
-          silent: false,
-          printBackground: true,
-          pageSize: 'A4',
-          margins: { marginType: 'default' }
-        }, (success, failureReason) => {
-          printWindow.destroy(); // Gunakan destroy() untuk hidden window
-          resolve(success);
-        });
-      });
-
-      return { success };
+      return result;
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -993,33 +1008,23 @@ function registerIpcHandlers() {
         return { success: true, path: result.filePath };
       }
 
-      const printWindow = new BrowserWindow({
-        show: false,
-        width: 800,
-        height: 1100,
-        webPreferences: { nodeIntegration: false }
-      });
-
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:10mm}pre{font-family:'Courier New',monospace;font-size:10pt;line-height:1.4;white-space:pre;margin:0}
         @media print{body{padding:5mm}pre{font-size:9pt}}
       </style></head><body><pre>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`;
 
-      await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-
       const printerName = options && options.printer;
-      const printOptions = printerName ? { silent: true, deviceName: printerName } : {};
-
-      return new Promise((resolve) => {
-        printWindow.webContents.print(printOptions, (success, failureReason) => {
-          printWindow.destroy(); // Gunakan destroy() untuk hidden window
-          if (success) {
-            resolve({ success: true });
-          } else {
-            resolve({ success: false, error: failureReason || 'Print failed' });
-          }
-        });
+      
+      // Gunakan print handler dengan pageSize eksplisit
+      const result = await printHtml({
+        html,
+        deviceName: printerName,
+        printerType: 'a4', // Laporan pakai A4
+        silent: true,
+        windowTitle: 'Report Print'
       });
+
+      return result;
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -1058,6 +1063,20 @@ function registerIpcHandlers() {
   ipcMain.handle('print:getPrinters', async () => {
     if (!mainWindow) return [];
     return await printer.getPrinters(mainWindow);
+  });
+  
+  ipcMain.handle('print:validate', async (_, deviceName) => {
+    if (!mainWindow) return { valid: false, error: 'Window not ready' };
+    return await validatePrinter(mainWindow.webContents, deviceName);
+  });
+  
+  ipcMain.handle('print:getValidationError', () => {
+    const settings = database.getSettings();
+    try {
+      return JSON.parse(settings.printer_validation_error || '{}');
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle('print:openDrawer', () => {

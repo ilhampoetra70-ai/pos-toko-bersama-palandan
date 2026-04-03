@@ -1,4 +1,5 @@
 const { BrowserWindow } = require('electron');
+const { printHtml, detectPrinterType } = require('./print-handler');
 
 function escHtml(str) {
   return String(str ?? '')
@@ -249,72 +250,40 @@ function generateReceiptHTMLWithSettings(transaction, customSettings) {
   return generateReceiptHTML(transaction, customSettings);
 }
 
-const PRINT_TIMEOUT_MS = 15000;
-
 async function printReceipt(transaction, settings) {
-  let printWindow = null; // Angkat ke outer scope agar bisa di-cleanup oleh finally
-
   try {
-    const printPromise = new Promise((resolve, reject) => {
-      const html = generateReceiptHTML(transaction, settings);
-      printWindow = new BrowserWindow({
-        show: false,
-        width: 300,
-        height: 600,
-        webPreferences: { nodeIntegration: false }
-      });
+    const html = generateReceiptHTML(transaction, settings);
+    const printerName = settings.printer_name || '';
+    
+    // Deteksi tipe printer berdasarkan receipt_width settings
+    let printerType = '58mm'; // default
+    if (settings.receipt_width === 'cf' || settings.receipt_width === 'CF') {
+      printerType = 'cf';
+    } else if (settings.receipt_width === '80') {
+      printerType = '80mm';
+    } else if (settings.receipt_width === '58') {
+      printerType = '58mm';
+    } else if (printerName) {
+      // Fallback: deteksi dari nama printer
+      printerType = detectPrinterType(printerName);
+    }
+    
+    console.log(`[Print] Template: ${settings.receipt_template_id || 'default'}, Width: ${settings.receipt_width}, Type: ${printerType}`);
 
-      printWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-        printWindow.destroy();
-        printWindow = null;
-        reject(new Error(`Failed to load receipt for printing: ${errorDescription} (${errorCode})`));
-      });
-
-      printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
-
-      printWindow.webContents.on('did-finish-load', () => {
-        const printerName = settings.printer_name || '';
-        const isContinuousForm = settings.receipt_width === 'cf' || settings.receipt_width === 'CF';
-        
-        const options = {
-          silent: true,
-          printBackground: true,
-          margins: { marginType: 'none' },
-          // Optimized for thermal printers: no scaling, prefer CSS sizes
-          scaleFactor: 100,  // 100% scale - jangan resize, ikuti CSS asli
-          // For continuous form, use legal or custom page size
-          pageSize: isContinuousForm ? 'Legal' : 'A4'
-        };
-
-        if (printerName) {
-          options.deviceName = printerName;
-        }
-        
-        console.log(`[Print] Template: ${templateId}, Width: ${settings.receipt_width}, PageSize: ${options.pageSize}`);
-
-        printWindow.webContents.print(options, (success, failureReason) => {
-          printWindow.destroy();
-          printWindow = null;
-          if (success) {
-            resolve({ success: true });
-          } else {
-            reject(new Error(failureReason || 'Print failed'));
-          }
-        });
-      });
+    // Gunakan print handler yang baru dengan pageSize eksplisit dan timeout
+    const result = await printHtml({
+      html,
+      deviceName: printerName,
+      printerType: printerType,
+      silent: true,
+      windowTitle: 'Receipt Print'
     });
 
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Print timeout: printer tidak merespons setelah 15 detik')), PRINT_TIMEOUT_MS)
-    );
-
-    return await Promise.race([printPromise, timeoutPromise]);
-  } finally {
-    // Cleanup: jika timeout menang sebelum print callback dipanggil,
-    // printWindow masih hidup → destroy di sini untuk mencegah zombie window
-    if (printWindow && !printWindow.isDestroyed()) {
-      printWindow.destroy();
-    }
+    return result;
+    
+  } catch (err) {
+    console.error('[Print] Error:', err.message);
+    return { success: false, error: err.message };
   }
 }
 
