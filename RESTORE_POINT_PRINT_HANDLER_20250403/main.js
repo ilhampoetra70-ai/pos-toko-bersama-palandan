@@ -224,14 +224,6 @@ async function performAiGenerate(forceRefresh = false, days = 30) {
 async function runAutoGenerate() {
   if (autoGenerateRunning) { console.log('[AI Auto] Already running, skip'); return; }
 
-  const settings = database.getSettings();
-  
-  // SKIP jika onboarding belum selesai — user belum pilih mode AI
-  if (!settings.ai_onboarding_shown) {
-    console.log('[AI Auto] Skip: onboarding belum selesai, menunggu user pilih mode AI');
-    return;
-  }
-
   const schedules = [
     { days: 7, type: 'weekly', label: '7-hari (mingguan)' },
     { days: 30, type: 'monthly', label: '30-hari (bulanan)' },
@@ -2102,18 +2094,6 @@ function registerIpcHandlers() {
       // Reset LLM instance so the next generateInsight loads the default model
       await aiService.resetInstance().catch(e => console.warn('[AI] resetInstance on clear:', e.message));
 
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  // Complete AI onboarding — tandai user sudah memilih mode AI
-  ipcMain.handle('ai:completeOnboarding', async (_, mode) => {
-    try {
-      database.updateSetting('ai_onboarding_shown', 'true');
-      database.updateSetting('ai_mode', mode);
-      console.log(`[AI] Onboarding completed with mode: ${mode}`);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };

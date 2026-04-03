@@ -164,7 +164,6 @@ contextBridge.exposeInMainWorld('api', {
   saveLlmPreset: (preset) => ipcRenderer.invoke('ai:saveLlmPreset', preset),
   browseAiModelFile: () => ipcRenderer.invoke('ai:browseModelFile'),
   clearAiCustomModelPath: () => ipcRenderer.invoke('ai:clearCustomModelPath'),
-  completeOnboarding: (mode) => ipcRenderer.invoke('ai:completeOnboarding', mode),
   // AI API settings
   getAiApiSettings: () => ipcRenderer.invoke('ai:getApiSettings'),
   saveAiApiSettings: (settings) => ipcRenderer.invoke('ai:saveApiSettings', settings),

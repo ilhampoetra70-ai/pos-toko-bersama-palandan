@@ -3,6 +3,7 @@ import { Download, X, AlertCircle, Clock, ChevronRight, FolderOpen, Settings2, C
 import { RetroSparkle, RetroRefresh, RetroTrash } from '../components/RetroIcons';
 import { useAiStatus, useAiInsight } from '../lib/queries';
 import { Button } from '@/components/ui/button';
+import { AiOnboardingModal } from '../components/AiOnboardingModal';
 
 // ─── Types ────────────────────────────────────────────────
 interface InsightData {
@@ -481,7 +482,19 @@ const InsightPage = memo(function InsightPage() {
     const [aiMode, setAiMode] = useState('local');
     const [selectedDays, setSelectedDays] = useState(30);
     const [autoGeneratingDays, setAutoGeneratingDays] = useState<Set<number>>(new Set());
+    const [showOnboarding, setShowOnboarding] = useState(false);
 
+    // Cek apakah perlu onboarding saat pertama kali buka
+    useEffect(() => {
+      window.api.getSettings().then((s: any) => {
+        const settings = s?.data || s || {};
+        if (!settings.ai_onboarding_shown) {
+          setShowOnboarding(true);
+        }
+      });
+    }, []);
+
+    // Load AI mode
     useEffect(() => { window.api.getAiApiSettings().then((s) => { if (s.success) setAiMode(s.mode); }); }, []);
     useEffect(() => { const u = window.api.onAiDownloadProgress((p) => { setDownloadProgress(p.percent); setDownloadedMB(p.downloadedMB); refetchStatus(); }); return u; }, [refetchStatus]);
 
@@ -541,6 +554,16 @@ const InsightPage = memo(function InsightPage() {
     const handleCancel = useCallback(() => { window.api.cancelAiDownload().then(() => refetchStatus()); }, [refetchStatus]);
     const handleBrowse = useCallback(() => { setBrowseError(null); setIsChangingModel(true); window.api.browseAiModelFile().then((r) => { setIsChangingModel(false); if (r.status === 'cancelled') return; if (!r.success) { setBrowseError(r.error ?? 'Gagal.'); return; } refetchStatus(); }); }, [refetchStatus]);
     const handleClearCustomPath = useCallback(() => { window.api.clearAiCustomModelPath().then(() => refetchStatus()); }, [refetchStatus]);
+    
+    // Handler untuk onboarding modal
+    const handleOnboardingSelect = useCallback(async (mode: 'local' | 'api') => {
+      const result = await window.api.completeOnboarding(mode);
+      if (result.success) {
+        setAiMode(mode);
+        // Refresh status untuk update UI
+        refetchStatus();
+      }
+    }, [refetchStatus]);
 
     const handleGenerate = useCallback((force = false) => {
         setGenerateError(null);
@@ -654,6 +677,13 @@ const InsightPage = memo(function InsightPage() {
                     <Button onClick={() => handleGenerate(false)} disabled={autoGeneratingDays.has(selectedDays)} className="gap-2"><RetroSparkle className="w-4 h-4" />Generate Insight</Button>
                 </div>
             )}
+
+            {/* Onboarding Modal untuk first-time user */}
+            <AiOnboardingModal
+                isOpen={showOnboarding}
+                onSelectMode={handleOnboardingSelect}
+                onClose={() => setShowOnboarding(false)}
+            />
         </div>
     );
 });

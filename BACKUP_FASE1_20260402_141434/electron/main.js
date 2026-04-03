@@ -5,7 +5,6 @@ const crypto = require('crypto');
 const database = require('./database');
 const auth = require('./auth');
 const printer = require('./printer');
-const { printHtml, validatePrinter } = require('./print-handler');
 const apiServer = require('./api-server');
 const aiDownload = require('./ai-download');
 const aiAggregator = require('./ai-aggregator');
@@ -224,14 +223,6 @@ async function performAiGenerate(forceRefresh = false, days = 30) {
 async function runAutoGenerate() {
   if (autoGenerateRunning) { console.log('[AI Auto] Already running, skip'); return; }
 
-  const settings = database.getSettings();
-  
-  // SKIP jika onboarding belum selesai — user belum pilih mode AI
-  if (!settings.ai_onboarding_shown) {
-    console.log('[AI Auto] Skip: onboarding belum selesai, menunggu user pilih mode AI');
-    return;
-  }
-
   const schedules = [
     { days: 7, type: 'weekly', label: '7-hari (mingguan)' },
     { days: 30, type: 'monthly', label: '30-hari (bulanan)' },
@@ -349,35 +340,6 @@ app.whenReady().then(async () => {
   console.log('[POS] IPC handlers registered');
   createWindow();
   console.log('[POS] Window created');
-  
-  // ─── Validasi Printer Settings ────────────────────────
-  // Cek apakah printer yang tersimpan masih tersedia di sistem
-  setTimeout(async () => {
-    try {
-      const settings = database.getSettings();
-      const savedPrinter = settings.printer_name;
-      
-      if (savedPrinter && mainWindow) {
-        const validation = await validatePrinter(mainWindow.webContents, savedPrinter);
-        
-        if (!validation.valid) {
-          console.warn('[POS] Printer validation failed:', savedPrinter);
-          // Simpan error untuk ditampilkan di UI
-          database.updateSetting('printer_validation_error', JSON.stringify({
-            saved: savedPrinter,
-            available: validation.available,
-            timestamp: Date.now()
-          }));
-        } else {
-          // Clear error jika sebelumnya ada
-          database.updateSetting('printer_validation_error', '');
-        }
-      }
-    } catch (err) {
-      console.error('[POS] Printer validation error:', err.message);
-    }
-  }, 3000); // Delay 3 detik agar window sudah siap
-  
   scheduleAutoBackup();
   scheduleAuditCleanup();
   scheduleAiCacheCleanup();
@@ -767,19 +729,6 @@ function registerIpcHandlers() {
   // ─── Settings ───────────────────────────────────────
   ipcMain.handle('settings:getAll', () => database.getSettings());
 
-  // Membaca master key plaintext yang di-generate saat instalasi pertama
-  // Hanya tersedia jika belum pernah di-clear oleh admin
-  ipcMain.handle('settings:getMasterKeyDisplay', () => {
-    const settings = database.getSettings();
-    return { key: settings.master_key_display || null };
-  });
-
-  // Hapus plaintext master key dari DB setelah admin melihat dan mencatatnya
-  ipcMain.handle('settings:clearMasterKeyDisplay', () => {
-    database.updateSetting('master_key_display', '');
-    return { success: true };
-  });
-
   ipcMain.handle('settings:update', (_, settings) => {
     const result = database.updateSettings(settings);
 
@@ -935,16 +884,31 @@ function registerIpcHandlers() {
 
   ipcMain.handle('reports:printHtml', async (_, htmlContent) => {
     try {
-      // Gunakan print handler untuk konsistensi dan error handling
-      const result = await printHtml({
-        html: htmlContent,
-        deviceName: null, // Gunakan default printer
-        printerType: 'a4',
-        silent: false, // Tampilkan dialog print untuk laporan
-        windowTitle: 'Report Print'
+      const printWindow = new BrowserWindow({
+        show: false,
+        width: 800,
+        height: 1100,
+        webPreferences: { nodeIntegration: false }
       });
 
-      return result;
+      await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+
+      // Wait for content to load
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const success = await new Promise((resolve) => {
+        printWindow.webContents.print({
+          silent: false,
+          printBackground: true,
+          pageSize: 'A4',
+          margins: { marginType: 'default' }
+        }, (success, failureReason) => {
+          printWindow.destroy(); // Gunakan destroy() untuk hidden window
+          resolve(success);
+        });
+      });
+
+      return { success };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -1016,23 +980,33 @@ function registerIpcHandlers() {
         return { success: true, path: result.filePath };
       }
 
+      const printWindow = new BrowserWindow({
+        show: false,
+        width: 800,
+        height: 1100,
+        webPreferences: { nodeIntegration: false }
+      });
+
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
         body{margin:0;padding:10mm}pre{font-family:'Courier New',monospace;font-size:10pt;line-height:1.4;white-space:pre;margin:0}
         @media print{body{padding:5mm}pre{font-size:9pt}}
       </style></head><body><pre>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`;
 
-      const printerName = options && options.printer;
-      
-      // Gunakan print handler dengan pageSize eksplisit
-      const result = await printHtml({
-        html,
-        deviceName: printerName,
-        printerType: 'a4', // Laporan pakai A4
-        silent: true,
-        windowTitle: 'Report Print'
-      });
+      await printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
 
-      return result;
+      const printerName = options && options.printer;
+      const printOptions = printerName ? { silent: true, deviceName: printerName } : {};
+
+      return new Promise((resolve) => {
+        printWindow.webContents.print(printOptions, (success, failureReason) => {
+          printWindow.destroy(); // Gunakan destroy() untuk hidden window
+          if (success) {
+            resolve({ success: true });
+          } else {
+            resolve({ success: false, error: failureReason || 'Print failed' });
+          }
+        });
+      });
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -1071,20 +1045,6 @@ function registerIpcHandlers() {
   ipcMain.handle('print:getPrinters', async () => {
     if (!mainWindow) return [];
     return await printer.getPrinters(mainWindow);
-  });
-  
-  ipcMain.handle('print:validate', async (_, deviceName) => {
-    if (!mainWindow) return { valid: false, error: 'Window not ready' };
-    return await validatePrinter(mainWindow.webContents, deviceName);
-  });
-  
-  ipcMain.handle('print:getValidationError', () => {
-    const settings = database.getSettings();
-    try {
-      return JSON.parse(settings.printer_validation_error || '{}');
-    } catch {
-      return null;
-    }
   });
 
   ipcMain.handle('print:openDrawer', () => {
@@ -2102,18 +2062,6 @@ function registerIpcHandlers() {
       // Reset LLM instance so the next generateInsight loads the default model
       await aiService.resetInstance().catch(e => console.warn('[AI] resetInstance on clear:', e.message));
 
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  // Complete AI onboarding — tandai user sudah memilih mode AI
-  ipcMain.handle('ai:completeOnboarding', async (_, mode) => {
-    try {
-      database.updateSetting('ai_onboarding_shown', 'true');
-      database.updateSetting('ai_mode', mode);
-      console.log(`[AI] Onboarding completed with mode: ${mode}`);
       return { success: true };
     } catch (err) {
       return { success: false, error: err.message };

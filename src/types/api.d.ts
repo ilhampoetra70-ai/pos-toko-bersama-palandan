@@ -556,6 +556,7 @@ export interface WindowApi {
     saveLlmPreset(preset: string): Promise<{ success: boolean; error?: string }>;
     browseAiModelFile(): Promise<{ success: boolean; filePath?: string; status?: string; error?: string }>;
     clearAiCustomModelPath(): Promise<{ success: boolean; error?: string }>;
+    completeOnboarding(mode: 'local' | 'api'): Promise<{ success: boolean; error?: string }>;
     // AI API Settings
     getAiApiSettings(): Promise<{ success: boolean; mode: string; provider: string; apiKeys: Record<string, string>; model: string; baseUrl: string }>;
     saveAiApiSettings(settings: { mode: string; provider: string; apiKeys: Record<string, string>; model: string; baseUrl: string }): Promise<{ success: boolean; error?: string }>;
