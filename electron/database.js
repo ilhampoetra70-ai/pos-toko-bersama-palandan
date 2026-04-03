@@ -434,6 +434,53 @@ function runMigrations() {
     // Kolom updated_at di transactions — dibutuhkan oleh voidTransaction() untuk mencatat waktu void
     addColumnIfNotExists('transactions', 'updated_at', 'DATETIME');
 
+    // ─── Trigger Validasi event_type di stock_trail ───────────
+    // SQLite tidak support ALTER TABLE ADD CONSTRAINT, jadi gunakan trigger
+    try {
+        db.exec(`
+            CREATE TRIGGER IF NOT EXISTS chk_stock_trail_event_type
+            BEFORE INSERT ON stock_trail
+            WHEN NEW.event_type NOT IN ('initial', 'sale', 'restock', 'adjustment', 'void', 'return')
+            BEGIN
+                SELECT RAISE(ABORT, 'Invalid event_type: must be initial|sale|restock|adjustment|void|return');
+            END
+        `);
+        db.exec(`
+            CREATE TRIGGER IF NOT EXISTS chk_stock_trail_event_type_upd
+            BEFORE UPDATE ON stock_trail
+            WHEN NEW.event_type NOT IN ('initial', 'sale', 'restock', 'adjustment', 'void', 'return')
+            BEGIN
+                SELECT RAISE(ABORT, 'Invalid event_type: must be initial|sale|restock|adjustment|void|return');
+            END
+        `);
+        console.log('[Migrations] stock_trail event_type trigger: OK');
+    } catch (e) {
+        console.error('[Migrations] stock_trail trigger error:', e.message);
+    }
+
+    // ─── Trigger Validasi status di transactions ──────────────
+    try {
+        db.exec(`
+            CREATE TRIGGER IF NOT EXISTS chk_transactions_status
+            BEFORE INSERT ON transactions
+            WHEN NEW.status NOT IN ('completed', 'voided', 'pending')
+            BEGIN
+                SELECT RAISE(ABORT, 'Invalid status: must be completed|voided|pending');
+            END
+        `);
+        db.exec(`
+            CREATE TRIGGER IF NOT EXISTS chk_transactions_status_upd
+            BEFORE UPDATE ON transactions
+            WHEN NEW.status NOT IN ('completed', 'voided', 'pending')
+            BEGIN
+                SELECT RAISE(ABORT, 'Invalid status: must be completed|voided|pending');
+            END
+        `);
+        console.log('[Migrations] transactions status trigger: OK');
+    } catch (e) {
+        console.error('[Migrations] transactions status trigger error:', e.message);
+    }
+
     try { db.exec('ANALYZE'); } catch (e) { /* ignore */ }
     console.log('[Migrations] Migration check completed.');
 }
