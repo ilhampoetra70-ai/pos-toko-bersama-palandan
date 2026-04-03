@@ -396,7 +396,7 @@ export interface WindowApi {
     resetPasswordWithMasterKey(username: string, masterKey: string, newPassword: string): Promise<ApiResult>;
     changeMasterKey(oldMasterKey: string, newMasterKey: string): Promise<ApiResult>;
     logoutUser(userId: number): Promise<ApiResult>;
-    
+
     // TOTP (Google Authenticator)
     isTOTPAvailable(): Promise<boolean>;
     getTOTPStatus(userId?: number): Promise<ApiResult<TOTPStatus>>;
@@ -462,6 +462,8 @@ export interface WindowApi {
     // Settings
     getSettings(): Promise<Record<string, string>>;
     updateSettings(settings: Record<string, string>): Promise<{ success: boolean; error?: string }>;
+    getMasterKeyDisplay(): Promise<{ key: string | null }>;
+    clearMasterKeyDisplay(): Promise<{ success: boolean }>;
     getMarginStats(): Promise<MarginStats>;
     updateMargin(percent: number, mode: string): Promise<ApiResult>;
 

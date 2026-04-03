@@ -419,10 +419,12 @@ function registerIpcHandlers() {
     if (!userId && mainWindow?.webContents) {
       // Coba dapatkan dari session storage
       try {
-        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
-        if (session) {
-          const user = JSON.parse(session);
-          userId = user.id;
+        const token = await mainWindow.webContents.executeJavaScript('sessionStorage.getItem("pos_token")');
+        if (token) {
+          const decoded = auth.verifyToken(token);
+          if (decoded && decoded.id) {
+            userId = decoded.id;
+          }
         }
       } catch (e) {
         return { success: false, error: 'Tidak dapat mengambil status TOTP.' };
@@ -437,10 +439,12 @@ function registerIpcHandlers() {
   ipcMain.handle('totp:generateSetup', async (_, userId) => {
     if (!userId && mainWindow?.webContents) {
       try {
-        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
-        if (session) {
-          const user = JSON.parse(session);
-          userId = user.id;
+        const token = await mainWindow.webContents.executeJavaScript('sessionStorage.getItem("pos_token")');
+        if (token) {
+          const decoded = auth.verifyToken(token);
+          if (decoded && decoded.id) {
+            userId = decoded.id;
+          }
         }
       } catch (e) {
         return { success: false, error: 'Tidak dapat menggenerate setup TOTP.' };
@@ -455,10 +459,12 @@ function registerIpcHandlers() {
   ipcMain.handle('totp:verifyAndEnable', async (_, token, userId) => {
     if (!userId && mainWindow?.webContents) {
       try {
-        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
-        if (session) {
-          const user = JSON.parse(session);
-          userId = user.id;
+        const token = await mainWindow.webContents.executeJavaScript('sessionStorage.getItem("pos_token")');
+        if (token) {
+          const decoded = auth.verifyToken(token);
+          if (decoded && decoded.id) {
+            userId = decoded.id;
+          }
         }
       } catch (e) {
         return { success: false, error: 'Tidak dapat mengaktifkan TOTP.' };
@@ -473,10 +479,12 @@ function registerIpcHandlers() {
   ipcMain.handle('totp:disable', async (_, password, userId) => {
     if (!userId && mainWindow?.webContents) {
       try {
-        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
-        if (session) {
-          const user = JSON.parse(session);
-          userId = user.id;
+        const token = await mainWindow.webContents.executeJavaScript('sessionStorage.getItem("pos_token")');
+        if (token) {
+          const decoded = auth.verifyToken(token);
+          if (decoded && decoded.id) {
+            userId = decoded.id;
+          }
         }
       } catch (e) {
         return { success: false, error: 'Tidak dapat menonaktifkan TOTP.' };
@@ -495,10 +503,12 @@ function registerIpcHandlers() {
   ipcMain.handle('totp:regenerateBackupCodes', async (_, password, userId) => {
     if (!userId && mainWindow?.webContents) {
       try {
-        const session = await mainWindow.webContents.executeJavaScript('localStorage.getItem("user")');
-        if (session) {
-          const user = JSON.parse(session);
-          userId = user.id;
+        const token = await mainWindow.webContents.executeJavaScript('sessionStorage.getItem("pos_token")');
+        if (token) {
+          const decoded = auth.verifyToken(token);
+          if (decoded && decoded.id) {
+            userId = decoded.id;
+          }
         }
       } catch (e) {
         return { success: false, error: 'Tidak dapat meregenerate backup codes.' };
@@ -718,6 +728,19 @@ function registerIpcHandlers() {
 
   // ─── Settings ───────────────────────────────────────
   ipcMain.handle('settings:getAll', () => database.getSettings());
+
+  // Membaca master key plaintext yang di-generate saat instalasi pertama
+  // Hanya tersedia jika belum pernah di-clear oleh admin
+  ipcMain.handle('settings:getMasterKeyDisplay', () => {
+    const settings = database.getSettings();
+    return { key: settings.master_key_display || null };
+  });
+
+  // Hapus plaintext master key dari DB setelah admin melihat dan mencatatnya
+  ipcMain.handle('settings:clearMasterKeyDisplay', () => {
+    database.updateSetting('master_key_display', '');
+    return { success: true };
+  });
 
   ipcMain.handle('settings:update', (_, settings) => {
     const result = database.updateSettings(settings);

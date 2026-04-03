@@ -43,6 +43,9 @@ export default memo(function SettingsPage() {
   const [message, setMessage] = useState('');
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [apiServerInfo, setApiServerInfo] = useState<any>(null);
+  const [masterKeyDisplay, setMasterKeyDisplay] = useState<string | null>(null);
+  const [masterKeyVisible, setMasterKeyVisible] = useState(false);
+  const [masterKeyConfirming, setMasterKeyConfirming] = useState(false);
 
   const { hasRole } = useAuth() as any;
   const isCashier = !hasRole('admin', 'supervisor');
@@ -83,6 +86,19 @@ export default memo(function SettingsPage() {
       return p;
     });
     if (!isCashier) setApiServerInfo(apiInfo);
+
+    // Apply font size setting
+    if (s.app_font_size) {
+      document.documentElement.setAttribute('data-font-size', s.app_font_size);
+    }
+
+    // Cek apakah ada master key baru yang belum dikonfirmasi admin
+    if (!isCashier && window.api.getMasterKeyDisplay) {
+      try {
+        const mkRes = await window.api.getMasterKeyDisplay();
+        if (mkRes?.key) setMasterKeyDisplay(mkRes.key);
+      } catch (_) { /* non-critical, jangan sampai gagalkan loadData */ }
+    }
   };
 
   const handleSaveBranding = async () => {
@@ -336,7 +352,7 @@ export default memo(function SettingsPage() {
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* Print Offset Settings */}
                   <div className="mt-6 p-4 bg-muted/30 dark:bg-muted/20 rounded-xl">
                     <div className="flex items-center gap-2 mb-4">
@@ -346,9 +362,9 @@ export default memo(function SettingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Margin Atas</label>
-                        <Input 
-                          type="number" 
-                          min="0" 
+                        <Input
+                          type="number"
+                          min="0"
                           max="50"
                           className="h-10 bg-background dark:bg-card/50 border-none shadow-inner"
                           value={settings.print_margin_top || '10'}
@@ -358,9 +374,9 @@ export default memo(function SettingsPage() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Margin Bawah</label>
-                        <Input 
-                          type="number" 
-                          min="0" 
+                        <Input
+                          type="number"
+                          min="0"
                           max="50"
                           className="h-10 bg-background dark:bg-card/50 border-none shadow-inner"
                           value={settings.print_margin_bottom || '10'}
@@ -370,9 +386,9 @@ export default memo(function SettingsPage() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Margin Kiri</label>
-                        <Input 
-                          type="number" 
-                          min="0" 
+                        <Input
+                          type="number"
+                          min="0"
                           max="50"
                           className="h-10 bg-background dark:bg-card/50 border-none shadow-inner"
                           value={settings.print_margin_left || '5'}
@@ -382,9 +398,9 @@ export default memo(function SettingsPage() {
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Margin Kanan</label>
-                        <Input 
-                          type="number" 
-                          min="0" 
+                        <Input
+                          type="number"
+                          min="0"
                           max="50"
                           className="h-10 bg-background dark:bg-card/50 border-none shadow-inner"
                           value={settings.print_margin_right || '5'}
@@ -397,7 +413,7 @@ export default memo(function SettingsPage() {
                       💡 Tips: Naikkan "Margin Atas" jika header struk terpotong. Sesuaikan margin kiri/kanan jika tulisan terlalu mepet tepi kertas.
                     </p>
                   </div>
-                  
+
                   {/* Line Height & Spacing Settings */}
                   <div className="mt-4 p-4 bg-muted/30 dark:bg-muted/20 rounded-xl">
                     <div className="flex items-center gap-2 mb-4">
@@ -409,12 +425,12 @@ export default memo(function SettingsPage() {
                         <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">
                           Jarak Baris (Line Height)
                           <span className="block text-[9px] font-normal normal-case text-muted-foreground/70">
-                            {parseFloat(settings.print_line_height || '1.4') <= 1.1 ? 'Rapat (Hemat Kertas)' : 
-                             parseFloat(settings.print_line_height || '1.4') >= 1.6 ? 'Renggang (Mudah Baca)' : 'Normal'}
+                            {parseFloat(settings.print_line_height || '1.4') <= 1.1 ? 'Rapat (Hemat Kertas)' :
+                              parseFloat(settings.print_line_height || '1.4') >= 1.6 ? 'Renggang (Mudah Baca)' : 'Normal'}
                           </span>
                         </label>
-                        <Select 
-                          value={String(settings.print_line_height || '1.4')} 
+                        <Select
+                          value={String(settings.print_line_height || '1.4')}
                           onValueChange={val => handleChange('print_line_height', val)}
                         >
                           <SelectTrigger className="h-10 bg-background dark:bg-card/50 border-none shadow-inner">
@@ -438,8 +454,8 @@ export default memo(function SettingsPage() {
                             Jarak antar produk di struk
                           </span>
                         </label>
-                        <Select 
-                          value={settings.print_item_spacing || 'normal'} 
+                        <Select
+                          value={settings.print_item_spacing || 'normal'}
                           onValueChange={val => handleChange('print_item_spacing', val)}
                         >
                           <SelectTrigger className="h-10 bg-background dark:bg-card/50 border-none shadow-inner">
@@ -457,7 +473,7 @@ export default memo(function SettingsPage() {
                       💡 Tips: Pilih "Rapat" jika struk terlalu panjang. Pilih "Renggang" jika tulisan terlalu padat dan sulit dibaca.
                     </p>
                   </div>
-                  
+
                   {/* Page Break & Gap Control - Untuk menghemat kertas antar struk */}
                   <div className="mt-4 p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl">
                     <div className="flex items-center gap-2 mb-4">
@@ -470,11 +486,11 @@ export default memo(function SettingsPage() {
                           Jarak antar Struk
                           <span className="block text-[9px] font-normal normal-case text-amber-700/70 dark:text-amber-300/70">
                             {settings.print_page_gap === 'none' ? 'Tanpa jarak (paling hemat)' :
-                             settings.print_page_gap === 'compact' ? 'Jarak minimal' : 'Jarak standar'}
+                              settings.print_page_gap === 'compact' ? 'Jarak minimal' : 'Jarak standar'}
                           </span>
                         </label>
-                        <Select 
-                          value={settings.print_page_gap || 'compact'} 
+                        <Select
+                          value={settings.print_page_gap || 'compact'}
                           onValueChange={val => handleChange('print_page_gap', val)}
                         >
                           <SelectTrigger className="h-10 bg-background dark:bg-card/50 border-amber-200 dark:border-amber-900/30 shadow-inner">
@@ -494,8 +510,8 @@ export default memo(function SettingsPage() {
                             Untuk item sedikit agar tidak terlalu pendek
                           </span>
                         </label>
-                        <Select 
-                          value={settings.print_min_height || 'auto'} 
+                        <Select
+                          value={settings.print_min_height || 'auto'}
                           onValueChange={val => handleChange('print_min_height', val)}
                         >
                           <SelectTrigger className="h-10 bg-background dark:bg-card/50 border-amber-200 dark:border-amber-900/30 shadow-inner">
@@ -673,6 +689,26 @@ export default memo(function SettingsPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Font Size Settings Card */}
+              <Card className="border-none shadow-sm bg-card dark:bg-background overflow-hidden">
+                <CardHeader className="bg-background/50 dark:bg-card/50 border-b dark:border-border">
+                  <CardTitle className="text-lg font-black flex items-center gap-2">
+                    <Type className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Ukuran Font Aplikasi
+                  </CardTitle>
+                  <CardDescription>Sesuaikan ukuran teks tampilan aplikasi</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <FontSizeSettings
+                    currentSize={settings.app_font_size || 'md'}
+                    onChange={(size) => {
+                      handleChange('app_font_size', size);
+                      // Apply immediately
+                      document.documentElement.setAttribute('data-font-size', size);
+                    }}
+                  />
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -744,6 +780,105 @@ export default memo(function SettingsPage() {
                   <TOTPSettings onMessage={setMessage} />
                 </CardContent>
               </Card>
+
+              {/* ─── Master Key Display Banner ─────────────────────────────── */}
+              {/* Hanya muncul saat instalasi pertama — setelah dikonfirmasi, tidak pernah muncul lagi */}
+              {masterKeyDisplay && (
+                <div className="lg:col-span-2">
+                  <Card className="border-2 border-amber-400 dark:border-amber-600 shadow-lg bg-amber-50 dark:bg-amber-950/40 overflow-hidden">
+                    <CardHeader className="bg-amber-100/80 dark:bg-amber-900/40 border-b border-amber-200 dark:border-amber-800/60 pb-3">
+                      <CardTitle className="text-base font-black flex items-center gap-2 text-amber-800 dark:text-amber-300">
+                        <Lock className="w-5 h-5" />
+                        Master Key Baru Berhasil Dibuat
+                      </CardTitle>
+                      <CardDescription className="text-amber-700 dark:text-amber-400 font-medium">
+                        Catat Master Key ini sekarang! Key ini hanya ditampilkan <strong>sekali</strong> dan tidak bisa dipulihkan.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-5 space-y-4">
+                      {/* Key Display */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-widest px-1">
+                          Master Key Anda
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 relative">
+                            <input
+                              id="master-key-display-input"
+                              type={masterKeyVisible ? 'text' : 'password'}
+                              readOnly
+                              value={masterKeyDisplay}
+                              className="w-full h-11 px-4 rounded-xl bg-white dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 font-mono text-sm font-bold tracking-widest text-amber-900 dark:text-amber-200 focus:outline-none cursor-default select-all"
+                            />
+                          </div>
+                          {/* Toggle Visibility */}
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 shrink-0"
+                            onClick={() => setMasterKeyVisible(v => !v)}
+                            title={masterKeyVisible ? 'Sembunyikan' : 'Tampilkan'}
+                          >
+                            {masterKeyVisible
+                              ? <AlertCircle className="w-4 h-4" />
+                              : <Shield className="w-4 h-4" />
+                            }
+                          </Button>
+                          {/* Copy to Clipboard */}
+                          <Button
+                            variant="outline"
+                            className="h-11 px-4 border-amber-300 dark:border-amber-700 bg-white dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800/30 font-bold text-xs gap-2 shrink-0"
+                            onClick={() => {
+                              navigator.clipboard.writeText(masterKeyDisplay).then(() => {
+                                setMessage('Master Key berhasil disalin ke clipboard!');
+                                setTimeout(() => setMessage(''), 3000);
+                              });
+                            }}
+                          >
+                            <Save className="w-4 h-4" />
+                            Salin
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Warning */}
+                      <div className="p-3 bg-amber-200/50 dark:bg-amber-900/30 rounded-xl border border-amber-300/50 dark:border-amber-700/50">
+                        <p className="text-xs text-amber-800 dark:text-amber-300 font-medium leading-relaxed">
+                          ⚠️ <strong>Simpan key ini di tempat aman</strong> (password manager, catatan fisik tersembunyi). Key ini digunakan sebagai <em>last resort</em> untuk mereset password jika TOTP tidak tersedia. Setelah tombol <strong>"Sudah Dicatat"</strong> diklik, key tidak bisa dilihat lagi melalui aplikasi.
+                        </p>
+                      </div>
+
+                      {/* Confirm Button */}
+                      <div className="flex justify-end">
+                        <Button
+                          className="h-11 px-8 bg-amber-600 hover:bg-amber-700 dark:bg-amber-500 dark:hover:bg-amber-600 text-white font-black gap-2 shadow-md shadow-amber-600/20"
+                          disabled={masterKeyConfirming}
+                          onClick={async () => {
+                            setMasterKeyConfirming(true);
+                            try {
+                              await window.api.clearMasterKeyDisplay();
+                              setMasterKeyDisplay(null);
+                              setMasterKeyVisible(false);
+                              setMessage('Master Key telah disimpan dan dihapus dari sistem. Jaga baik-baik!');
+                              setTimeout(() => setMessage(''), 5000);
+                            } catch (e) {
+                              setMessage('Gagal konfirmasi. Coba lagi.');
+                              setTimeout(() => setMessage(''), 3000);
+                            } finally {
+                              setMasterKeyConfirming(false);
+                            }
+                          }}
+                        >
+                          {masterKeyConfirming
+                            ? <><RotateCcw className="w-4 h-4 animate-spin" /> Memproses...</>
+                            : <><CheckCircle2 className="w-4 h-4" /> Sudah Dicatat, Hapus dari Sistem</>
+                          }
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
           </TabsContent>}
         </div>
@@ -959,6 +1094,59 @@ function CloudflareSection() {
           {installing ? 'Memproses Instalasi...' : 'Instal Cloudflare Automation Service'}
         </Button>
       )}
+    </div>
+  );
+}
+
+// Font Size Options
+const FONT_SIZE_OPTIONS = [
+  { value: 'xs', label: 'Sangat Kecil', description: '90%', className: 'text-[13px]' },
+  { value: 'sm', label: 'Kecil', description: '95%', className: 'text-[14px]' },
+  { value: 'md', label: 'Normal', description: '100%', className: 'text-[15px]' },
+  { value: 'lg', label: 'Besar', description: '110%', className: 'text-[16px]' },
+  { value: 'xl', label: 'Sangat Besar', description: '120%', className: 'text-[18px]' },
+];
+
+interface FontSizeSettingsProps {
+  currentSize: string;
+  onChange: (size: string) => void;
+}
+
+function FontSizeSettings({ currentSize, onChange }: FontSizeSettingsProps) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-5 gap-2">
+        {FONT_SIZE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all",
+              currentSize === option.value
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-border hover:border-primary/50 hover:bg-muted"
+            )}
+          >
+            <span className={cn("font-bold mb-1", option.className)}>Aa</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide">{option.label}</span>
+            <span className="text-[9px] text-muted-foreground">{option.description}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4 bg-muted/50 rounded-xl">
+        <p className="text-xs text-muted-foreground text-center">
+          Preview: <span className={cn("font-medium text-foreground",
+            FONT_SIZE_OPTIONS.find(o => o.value === currentSize)?.className
+          )}>
+            Ukuran font saat ini
+          </span>
+        </p>
+      </div>
+
+      <p className="text-[10px] text-muted-foreground px-1">
+        💡 Tips: Ukuran font akan diterapkan ke seluruh tampilan aplikasi setelah disimpan.
+      </p>
     </div>
   );
 }
