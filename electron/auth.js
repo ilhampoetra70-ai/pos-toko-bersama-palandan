@@ -186,7 +186,7 @@ async function generateTOTPSetup(adminId) {
   }
 
   const setup = await totp.createTOTPData(user.username);
-  
+
   // Simpan encrypted secret sementara (belum aktif sampai diverifikasi)
   database.updateUser(adminId, {
     totp_secret_temp: setup.encryptedSecret,
@@ -195,9 +195,11 @@ async function generateTOTPSetup(adminId) {
 
   return {
     success: true,
-    qrCode: setup.qrCode,
-    manualEntryKey: setup.manualEntryKey,
-    backupCodes: setup.backupCodes, // Hanya ditampilkan sekali
+    data: {
+      qrCode: setup.qrCode,
+      manualEntryKey: setup.manualEntryKey,
+      backupCodes: setup.backupCodes,
+    }
   };
 }
 
@@ -269,7 +271,7 @@ function disableTOTP(adminId, password) {
     'SELECT id FROM users WHERE role = ? AND totp_enabled = 1 AND id != ?',
     ['admin', adminId]
   );
-  
+
   if (!otherAdminWithTOTP) {
     database.updateSetting('totp_admin_enabled', '0');
   }
@@ -316,7 +318,7 @@ function resetPasswordWithTOTP(username, totpCode, newPassword) {
       if (totp.verifyBackupCode(totpCode, hashedCodes)) {
         isValid = true;
         usedBackupCode = true;
-        
+
         // Remove used backup code
         const normalizedInput = totpCode.replace(/-/g, '').toUpperCase();
         const newHashedCodes = hashedCodes.filter(hash => {
@@ -336,9 +338,9 @@ function resetPasswordWithTOTP(username, totpCode, newPassword) {
     // Update password
     const newHash = hashPassword(newPassword);
     database.updateUser(user.id, { ...user, password_hash: newHash });
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       usedBackupCode,
       warning: usedBackupCode ? 'Backup code telah digunakan dan tidak dapat digunakan lagi.' : undefined
     };
@@ -368,7 +370,7 @@ function resetPasswordWithTOTP(username, totpCode, newPassword) {
     if (totp.verifyBackupCode(totpCode, hashedCodes)) {
       isValid = true;
       usedBackupCode = true;
-      
+
       // Remove used backup code
       const normalizedInput = totpCode.replace(/-/g, '').toUpperCase();
       const newHashedCodes = hashedCodes.filter(hash => {
@@ -389,7 +391,7 @@ function resetPasswordWithTOTP(username, totpCode, newPassword) {
   const newHash = hashPassword(newPassword);
   database.updateUser(user.id, { ...user, password_hash: newHash });
 
-  return { 
+  return {
     success: true,
     adminName: adminWithTOTP.name,
     usedBackupCode,
@@ -426,7 +428,9 @@ function regenerateBackupCodes(adminId, password) {
 
   return {
     success: true,
-    backupCodes: newCodes,
+    data: {
+      backupCodes: newCodes,
+    }
   };
 }
 
@@ -445,9 +449,11 @@ function getTOTPStatus(adminId) {
 
   return {
     success: true,
-    enabled: user.totp_enabled === 1,
-    enabledAt: user.totp_enabled_at,
-    remainingBackupCodes: backupCodes.length,
+    data: {
+      enabled: user.totp_enabled === 1,
+      enabledAt: user.totp_enabled_at,
+      remainingBackupCodes: backupCodes.length,
+    }
   };
 }
 
@@ -457,16 +463,21 @@ function getTOTPStatus(adminId) {
 function seedMasterKey() {
   const settings = database.getSettings();
   if (!settings.master_key_hash) {
-    const hash = hashPassword('master123');
+    // Generate master key random 12 karakter yang unik per instalasi
+    // Ini jauh lebih aman dari password default yang diketahui publik
+    const randomKey = crypto.randomBytes(6).toString('hex'); // 12 char hex
+    const hash = hashPassword(randomKey);
     database.updateSetting('master_key_hash', hash);
-    console.log('[Deprecated] Master Key seeded: master123');
+    database.updateSetting('master_key_display', randomKey); // Simpan plaintext sementara agar bisa ditampilkan sekali
+    console.log(`[Auth] Master Key random dibuat: ${randomKey}`);
+    console.log('[Auth] Catat Master Key ini! Tidak bisa dipulihkan jika hilang.');
     console.log('[Info] Sebaiknya aktifkan TOTP untuk keamanan yang lebih baik.');
   }
 }
 
 function resetPasswordWithMasterKey(username, masterKey, newPassword) {
   console.log('[Warning] Menggunakan Master Key - pertimbangkan untuk migrasi ke TOTP');
-  
+
   const settings = database.getSettings();
   if (!settings.master_key_hash) {
     return { success: false, error: 'Master Key belum diatur.' };
@@ -488,7 +499,7 @@ function resetPasswordWithMasterKey(username, masterKey, newPassword) {
 
 function changeMasterKey(oldMasterKey, newMasterKey) {
   console.log('[Warning] Mengubah Master Key - pertimbangkan untuk migrasi ke TOTP');
-  
+
   const settings = database.getSettings();
 
   // Verify old master key
@@ -507,19 +518,19 @@ function changeMasterKey(oldMasterKey, newMasterKey) {
   return { success: true };
 }
 
-module.exports = { 
-  hashPassword, 
-  verifyPassword, 
-  generateToken, 
-  verifyToken, 
-  invalidateToken, 
-  requireAuth, 
-  login, 
-  seedDefaultAdmin, 
-  seedMasterKey, 
-  resetPasswordWithMasterKey, 
+module.exports = {
+  hashPassword,
+  verifyPassword,
+  generateToken,
+  verifyToken,
+  invalidateToken,
+  requireAuth,
+  login,
+  seedDefaultAdmin,
+  seedMasterKey,
+  resetPasswordWithMasterKey,
   changeMasterKey,
-  
+
   // TOTP exports
   isTOTPEnabled,
   isTOTPAvailable,

@@ -112,7 +112,48 @@ function createAPIServer(database, port = 3001) {
   // Penting untuk rate limiter bekerja per-user, bukan per-proxy.
   app.set('trust proxy', 1);
 
+  // ─── Simple In-Memory Rate Limiter ───────────────────────
+  // Membatasi request per IP untuk mencegah brute force pada endpoint login PWA
+  const rateLimitStore = new Map(); // { ip: { count, resetAt } }
+  const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 menit
+  const RATE_LIMIT_MAX = 100; // max 100 request per 15 menit per IP
+
+  function rateLimit(req, res, next) {
+    // Hanya rate-limit endpoint login
+    if (req.path !== '/auth/login') return next();
+
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = rateLimitStore.get(ip);
+
+    if (!entry || now > entry.resetAt) {
+      rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+      return next();
+    }
+
+    entry.count++;
+    if (entry.count > RATE_LIMIT_MAX) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.set('Retry-After', retryAfter);
+      return res.status(429).json({ 
+        success: false, 
+        message: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} detik.` 
+      });
+    }
+
+    next();
+  }
+
+  // Bersihkan store setiap jam agar tidak memory leak
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of rateLimitStore.entries()) {
+      if (now > entry.resetAt) rateLimitStore.delete(ip);
+    }
+  }, 60 * 60 * 1000);
+
   // Middleware
+  app.use(rateLimit);
   app.use(cors({
     origin: '*', // Allow all origins for local network
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
