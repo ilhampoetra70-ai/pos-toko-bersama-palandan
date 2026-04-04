@@ -1136,12 +1136,12 @@ function getStockTrailAll(filters = {}) {
         params.push(filters.user_id);
     }
     if (filters.date_from) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_from));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_from));
         query += ` AND st.created_at >= ? `;
         params.push(range.start);
     }
     if (filters.date_to) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_to));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_to));
         query += ` AND st.created_at <= ? `;
         params.push(range.end);
     }
@@ -1188,12 +1188,12 @@ function getStockTrailCount(filters = {}) {
         params.push(filters.user_id);
     }
     if (filters.date_from) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_from));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_from));
         query += ` AND st.created_at >= ? `;
         params.push(range.start);
     }
     if (filters.date_to) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_to));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_to));
         query += ` AND st.created_at <= ? `;
         params.push(range.end);
     }
@@ -1224,8 +1224,8 @@ function cleanupOldAuditLogs(daysToKeep = 90) {
     const result = run("DELETE FROM stock_audit_log WHERE created_at < date('now', '-' || ? || ' days')", [daysToKeep]);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    return { 
-        success: true, 
+    return {
+        success: true,
         deleted: result.changes,
         cutoffDate: cutoffDate.toISOString().split('T')[0]
     };
@@ -1386,12 +1386,12 @@ function getTransactions(filters = {}) {
     const params = [];
 
     if (filters.date_from) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_from));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_from));
         whereClause += ` AND t.created_at >= ? `;
         params.push(range.start);
     }
     if (filters.date_to) {
-        const range = getLocalDayRangeUTC(new Date(filters.date_to));
+        const range = getLocalDayRangeUTC(parseDateLocal(filters.date_to));
         whereClause += ` AND t.created_at <= ? `;
         params.push(range.end);
     }
@@ -1540,6 +1540,20 @@ function getDashboardStats() {
     };
 }
 
+
+
+/**
+ * Helper untuk mencegah bug parsing date-only string sebagai UTC midnight.
+ * "2026-04-03" -> "2026-04-03T12:00:00" agar diparse sebagai local noon
+ */
+function parseDateLocal(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        if (dateStr.length === 10) return new Date(dateStr + 'T12:00:00');
+        if (!dateStr.includes('T')) return new Date(dateStr + 'T12:00:00');
+    }
+    return new Date(dateStr);
+}
 
 function getLocalDayRangeUTC(dateObj = new Date()) {
     // 1. Get cached offset (avoid DB query on every call)
@@ -1779,8 +1793,8 @@ function getEnhancedDashboardStats() {
 function getSalesReport(dateFrom, dateTo) {
     try {
         // Convert date strings (YYYY-MM-DD) to UTC boundaries
-        const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-        const endRange = getLocalDayRangeUTC(new Date(dateTo));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
 
         const startUTC = startRange.start;
         const endUTC = endRange.end;
@@ -1827,8 +1841,8 @@ function getSalesReport(dateFrom, dateTo) {
 
 function getProfitReport(dateFrom, dateTo) {
     try {
-        const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-        const endRange = getLocalDayRangeUTC(new Date(dateTo));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
 
         const startUTC = startRange.start;
         const endUTC = endRange.end;
@@ -1873,8 +1887,8 @@ function getProfitReport(dateFrom, dateTo) {
 function getPeriodComparison(dateFrom1, dateTo1, dateFrom2, dateTo2) {
     // [PERF] Use UTC range boundaries instead of date() function which bypasses index
     const getSummary = (from, to) => {
-        const startRange = getLocalDayRangeUTC(new Date(from));
-        const endRange = getLocalDayRangeUTC(new Date(to));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(from));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(to));
         return get(
             `SELECT COUNT(*) as count, COALESCE(SUM(total), 0) as revenue, COALESCE(AVG(total), 0) as average 
             FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ? `,
@@ -1899,8 +1913,8 @@ function getPeriodComparison(dateFrom1, dateTo1, dateFrom2, dateTo2) {
 
 function getHourlySalesPattern(dateFrom, dateTo) {
     try {
-        const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-        const endRange = getLocalDayRangeUTC(new Date(dateTo));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
         const startUTC = startRange.start;
         const endUTC = endRange.end;
 
@@ -1924,8 +1938,8 @@ function getHourlySalesPattern(dateFrom, dateTo) {
 
 function getBottomProducts(dateFrom, dateTo) {
     try {
-        const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-        const endRange = getLocalDayRangeUTC(new Date(dateTo));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
         const startUTC = startRange.start;
         const endUTC = endRange.end;
 
@@ -1969,8 +1983,8 @@ function getSlowMovingProducts(inactiveDays = 120, limit = 10) {
 
 function getTopProductsExpanded(dateFrom, dateTo, limit = 10) {
     // [PERF] Use UTC range boundaries instead of date() function which bypasses index
-    const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-    const endRange = getLocalDayRangeUTC(new Date(dateTo));
+    const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+    const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
     return all(
         `SELECT ti.product_id, ti.product_name, SUM(ti.quantity) as qty, COUNT(DISTINCT ti.transaction_id) as frequency,
         SUM(ti.subtotal) as total, SUM(ti.subtotal) - SUM(ti.quantity * COALESCE(p.cost, 0)) as profit
@@ -1984,8 +1998,8 @@ function getTopProductsExpanded(dateFrom, dateTo, limit = 10) {
 
 function getTransactionLog(dateFrom, dateTo, limitSize = 500) {
     try {
-        const startRange = getLocalDayRangeUTC(new Date(dateFrom));
-        const endRange = getLocalDayRangeUTC(new Date(dateTo));
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
         const startUTC = startRange.start;
         const endUTC = endRange.end;
 
@@ -2195,10 +2209,10 @@ function getCostMultiplier() {
 }
 
 function updateSetting(key, value) {
+    if (key === 'timezone_offset') cachedTimezoneOffset = null;
     run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
     settingsCache = null;
     cachedCostMultiplier = null;
-    if (key === 'timezone_offset') cachedTimezoneOffset = null;
 }
 
 function updateSettings(settings) {
