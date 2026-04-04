@@ -431,7 +431,7 @@ function createAPIServer(database, port = 3001) {
   });
 
   // ─── Reports Endpoints ──────────────────────────────────────────
-  apiRouter.get('/reports/sales-by-category', (req, res) => {
+  apiRouter.get('/reports/advanced', (req, res) => {
     try {
       const { start_date, end_date } = req.query;
       
@@ -439,7 +439,7 @@ function createAPIServer(database, port = 3001) {
       const endDate = end_date || new Date().toISOString().split('T')[0];
       const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
-      const data = db.getSalesByCategory(startDate, endDate);
+      const data = db.getAdvancedReport(startDate, endDate);
       
       res.json({
         success: true,
@@ -448,7 +448,7 @@ function createAPIServer(database, port = 3001) {
         data
       });
     } catch (error) {
-      console.error('[API] sales-by-category error:', error);
+      console.error('[API] advanced report error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   });

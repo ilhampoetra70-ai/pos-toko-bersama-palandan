@@ -1845,35 +1845,97 @@ function getSalesReport(dateFrom, dateTo) {
  * @param {string} dateTo - YYYY-MM-DD
  * @returns {Array} - [{ category, total_sales, transaction_count, product_count }]
  */
-function getSalesByCategory(dateFrom, dateTo) {
+/**
+ * Advanced Analytics Report untuk PWA
+ * @param {string} dateFrom - YYYY-MM-DD
+ * @param {string} dateTo - YYYY-MM-DD
+ * @returns {Object} - { hourlySales, topProducts, topCustomers, summary }
+ */
+function getAdvancedReport(dateFrom, dateTo) {
     try {
         const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
         const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
         const startUTC = startRange.start;
         const endUTC = endRange.end;
 
-        const result = all(
+        // 1. Hourly Sales Pattern (Pola Penjualan Per Jam)
+        const hourlySales = all(
             `SELECT 
-                COALESCE(c.name, 'TANPA KATEGORI') as category,
-                SUM(ti.subtotal) as total_sales,
-                COUNT(DISTINCT t.id) as transaction_count,
-                COUNT(DISTINCT p.id) as product_count
-            FROM transaction_items ti
-            JOIN transactions t ON ti.transaction_id = t.id
-            LEFT JOIN products p ON ti.product_id = p.id
-            LEFT JOIN categories c ON p.category_id = c.id
+                CAST(strftime('%H', datetime(t.created_at, 'localtime')) AS INTEGER) as hour,
+                COUNT(*) as transaction_count,
+                SUM(t.total) as total_revenue,
+                AVG(t.total) as avg_transaction
+            FROM transactions t
             WHERE t.status = 'completed' 
                 AND t.created_at >= ? 
                 AND t.created_at < ?
-            GROUP BY c.id, c.name
-            ORDER BY total_sales DESC`,
+            GROUP BY hour
+            ORDER BY hour ASC`,
             [startUTC, endUTC]
         );
 
-        return result || [];
+        // 2. Top 10 Products (Produk Terlaris)
+        const topProducts = all(
+            `SELECT 
+                ti.product_name as name,
+                SUM(ti.quantity) as total_qty,
+                SUM(ti.subtotal) as total_revenue,
+                COUNT(DISTINCT t.id) as transaction_count
+            FROM transaction_items ti
+            JOIN transactions t ON ti.transaction_id = t.id
+            WHERE t.status = 'completed' 
+                AND t.created_at >= ? 
+                AND t.created_at < ?
+            GROUP BY ti.product_id, ti.product_name
+            ORDER BY total_revenue DESC
+            LIMIT 10`,
+            [startUTC, endUTC]
+        );
+
+        // 3. Top Customers (Pelanggan VIP)
+        const topCustomers = all(
+            `SELECT 
+                COALESCE(t.customer_name, 'Umum') as customer_name,
+                COUNT(*) as transaction_count,
+                SUM(t.total) as total_spent,
+                AVG(t.total) as avg_transaction,
+                MAX(t.created_at) as last_transaction
+            FROM transactions t
+            WHERE t.status = 'completed' 
+                AND t.created_at >= ? 
+                AND t.created_at < ?
+                AND (t.customer_name IS NOT NULL OR t.total > 0)
+            GROUP BY t.customer_name
+            HAVING total_spent > 0
+            ORDER BY total_spent DESC
+            LIMIT 10`,
+            [startUTC, endUTC]
+        );
+
+        // 4. Summary Metrics
+        const summary = get(
+            `SELECT 
+                COUNT(*) as total_transactions,
+                SUM(total) as total_revenue,
+                AVG(total) as avg_transaction,
+                MAX(total) as max_transaction,
+                MIN(total) as min_transaction
+            FROM transactions
+            WHERE status = 'completed' 
+                AND created_at >= ? 
+                AND created_at < ?`,
+            [startUTC, endUTC]
+        ) || { total_transactions: 0, total_revenue: 0, avg_transaction: 0 };
+
+        return {
+            hourlySales: hourlySales || [],
+            topProducts: topProducts || [],
+            topCustomers: topCustomers || [],
+            summary: summary
+        };
     } catch (err) {
-        console.error('[Database] getSalesByCategory failed:', err.message);
-        return [];
+        console.error('[Database] getAdvancedReport failed:', err.message);
+        return { hourlySales: [], topProducts: [], topCustomers: [], summary: {} };
     }
 }
 
@@ -2707,7 +2769,7 @@ module.exports = {
     getPaymentHistory, addPayment, getOutstandingDebts, getDebtSummary, getOverdueTransactions,
     getSettings, updateSetting, updateSettings, resetSettings,
     getDashboardStats, getEnhancedDashboardStats,
-    getSalesReport, getSalesByCategory, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
+    getSalesReport, getAdvancedReport, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
     getSlowMovingProducts, getTopProductsExpanded,
     getDatabaseStats, checkDatabaseIntegrity, vacuumDatabase, analyzeDatabase,
     clearVoidedTransactions, getArchivableTransactions, deleteOldTransactions,
