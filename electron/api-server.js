@@ -386,6 +386,29 @@ function createAPIServer(database, port = 3001) {
     message: 'Terlalu banyak percobaan login. Coba lagi dalam 1 menit.'
   });
 
+  // ─── Reports Endpoint (Public - untuk PWA tanpa auth) ───────
+  apiRouter.get('/reports/advanced', (req, res) => {
+    try {
+      const { start_date, end_date } = req.query;
+      
+      // Default: 30 hari terakhir
+      const endDate = end_date || new Date().toISOString().split('T')[0];
+      const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const data = db.getAdvancedReport(startDate, endDate);
+      
+      res.json({
+        success: true,
+        start_date: startDate,
+        end_date: endDate,
+        data
+      });
+    } catch (error) {
+      console.error('[API] advanced report error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // ─── Auth Middleware — semua route di bawah ini butuh JWT ─
   // Public paths (/health, /auth/login, /store, /product/:barcode) di-handle
   // di dalam requireAuth sendiri, tidak perlu router terpisah.
@@ -430,28 +453,7 @@ function createAPIServer(database, port = 3001) {
     }
   });
 
-  // ─── Reports Endpoints ──────────────────────────────────────────
-  apiRouter.get('/reports/advanced', (req, res) => {
-    try {
-      const { start_date, end_date } = req.query;
-      
-      // Default: 30 hari terakhir
-      const endDate = end_date || new Date().toISOString().split('T')[0];
-      const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const data = db.getAdvancedReport(startDate, endDate);
-      
-      res.json({
-        success: true,
-        start_date: startDate,
-        end_date: endDate,
-        data
-      });
-    } catch (error) {
-      console.error('[API] advanced report error:', error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
+
 
   // ─── Products CRUD ──────────────────────────────────────────
   apiRouter.get('/products', (req, res) => {
