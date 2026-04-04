@@ -430,6 +430,29 @@ function createAPIServer(database, port = 3001) {
     }
   });
 
+  // ─── Reports Endpoints ──────────────────────────────────────────
+  apiRouter.get('/reports/sales-by-category', (req, res) => {
+    try {
+      const { start_date, end_date } = req.query;
+      
+      // Default: 30 hari terakhir
+      const endDate = end_date || new Date().toISOString().split('T')[0];
+      const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const data = db.getSalesByCategory(startDate, endDate);
+      
+      res.json({
+        success: true,
+        start_date: startDate,
+        end_date: endDate,
+        data
+      });
+    } catch (error) {
+      console.error('[API] sales-by-category error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // ─── Products CRUD ──────────────────────────────────────────
   apiRouter.get('/products', (req, res) => {
     try {

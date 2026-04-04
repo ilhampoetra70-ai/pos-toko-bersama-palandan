@@ -1839,6 +1839,44 @@ function getSalesReport(dateFrom, dateTo) {
     }
 }
 
+/**
+ * Get sales breakdown by category for chart/report
+ * @param {string} dateFrom - YYYY-MM-DD
+ * @param {string} dateTo - YYYY-MM-DD
+ * @returns {Array} - [{ category, total_sales, transaction_count, product_count }]
+ */
+function getSalesByCategory(dateFrom, dateTo) {
+    try {
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
+        const startUTC = startRange.start;
+        const endUTC = endRange.end;
+
+        const result = all(
+            `SELECT 
+                COALESCE(c.name, 'TANPA KATEGORI') as category,
+                SUM(ti.subtotal) as total_sales,
+                COUNT(DISTINCT t.id) as transaction_count,
+                COUNT(DISTINCT p.id) as product_count
+            FROM transaction_items ti
+            JOIN transactions t ON ti.transaction_id = t.id
+            LEFT JOIN products p ON ti.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE t.status = 'completed' 
+                AND t.created_at >= ? 
+                AND t.created_at < ?
+            GROUP BY c.id, c.name
+            ORDER BY total_sales DESC`,
+            [startUTC, endUTC]
+        );
+
+        return result || [];
+    } catch (err) {
+        console.error('[Database] getSalesByCategory failed:', err.message);
+        return [];
+    }
+}
+
 function getProfitReport(dateFrom, dateTo) {
     try {
         const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
@@ -2669,7 +2707,7 @@ module.exports = {
     getPaymentHistory, addPayment, getOutstandingDebts, getDebtSummary, getOverdueTransactions,
     getSettings, updateSetting, updateSettings, resetSettings,
     getDashboardStats, getEnhancedDashboardStats,
-    getSalesReport, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
+    getSalesReport, getSalesByCategory, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
     getSlowMovingProducts, getTopProductsExpanded,
     getDatabaseStats, checkDatabaseIntegrity, vacuumDatabase, analyzeDatabase,
     clearVoidedTransactions, getArchivableTransactions, deleteOldTransactions,
