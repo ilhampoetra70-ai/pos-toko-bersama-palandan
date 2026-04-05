@@ -1,5 +1,10 @@
-// Reports Fix - Version 7 (Complete Statbox Fix)
-console.log('[REPORTS FIX v7] Starting...');
+// Reports Fix - Version 15 (Fix Invalid Date Error)
+console.log('[REPORTS FIX v15] Starting...');
+
+// Global state
+let hourlyChartInstance = null;
+let dashboardChartInstance = null;
+let isProcessing = false;
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('id-ID', {
@@ -9,148 +14,302 @@ function formatCurrency(amount) {
   }).format(amount || 0);
 }
 
-// Current period tracker
-let currentPeriodDays = 7;
+// Get default dates
+function getDefaultDates(days = 7) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - days);
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
+    days: days
+  };
+}
 
-async function loadRealReportsData(startDate, endDate, periodDays) {
-  const end = endDate || new Date().toISOString().split('T')[0];
-  const start = startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const days = periodDays || currentPeriodDays;
-  currentPeriodDays = days;
-  
-  console.log('[REPORTS FIX] Loading data from', start, 'to', end, 'period:', days, 'days');
-  
-  const hourlyLoading = document.getElementById('hourly-loading');
-  const productsList = document.getElementById('top-products-list');
-  const customersList = document.getElementById('top-customers-list');
-  
-  if (hourlyLoading) {
-    hourlyLoading.style.display = 'block';
-    hourlyLoading.innerHTML = 'Memuat data<br><small>' + start + ' s/d ' + end + '</small>';
+// Load Chart.js
+function loadChartJs() {
+  return new Promise((resolve) => {
+    if (typeof Chart !== 'undefined') {
+      resolve(true);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+// Destroy charts
+function destroyCharts() {
+  if (hourlyChartInstance) {
+    try { hourlyChartInstance.destroy(); } catch(e){}
+    hourlyChartInstance = null;
   }
-  if (productsList) productsList.innerHTML = '<div class="loading-placeholder">Memuat data...</div>';
-  if (customersList) customersList.innerHTML = '<div class="loading-placeholder">Memuat data...</div>';
+  if (dashboardChartInstance) {
+    try { dashboardChartInstance.destroy(); } catch(e){}
+    dashboardChartInstance = null;
+  }
+}
+
+// OVERRIDE: Dashboard renderChart
+function overrideDashboardChart() {
+  console.log('[REPORTS FIX] Overriding dashboard renderChart');
+  
+  window.renderChart = function(period) {
+    console.log('[REPORTS FIX] renderChart called with:', period);
+    
+    const data = window.dashboardData?.[period] || [];
+    if (data.length === 0) return '<div style="text-align:center;padding:20px;">Tidak ada data</div>';
+    
+    setTimeout(async () => {
+      const container = document.getElementById('dashboard-chart-container');
+      if (!container) return;
+      
+      container.innerHTML = '<canvas id="dashboardChartCanvas" style="max-height:200px;"></canvas>';
+      const canvas = document.getElementById('dashboardChartCanvas');
+      if (!canvas) return;
+      
+      await loadChartJs();
+      
+      if (typeof Chart === 'undefined') {
+        let html = '<div style="display:flex;align-items:flex-end;justify-content:space-between;height:150px;padding:10px;gap:4px;">';
+        const max = Math.max(...data.map(d => d.amount || 0), 1);
+        data.forEach(d => {
+          const h = Math.max(((d.amount || 0) / max) * 120, 4);
+          html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div style="width:100%;background:#3b82f6;border-radius:2px;height:${h}px;"></div>
+            <div style="font-size:8px;color:#666;">${d.day || d.date?.slice(5) || ''}</div>
+          </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+        return;
+      }
+      
+      try {
+        const ctx = canvas.getContext('2d');
+        
+        if (dashboardChartInstance) {
+          dashboardChartInstance.destroy();
+        }
+        
+        dashboardChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map(d => d.day || d.date?.slice(5) || ''),
+            datasets: [{
+              label: 'Penjualan',
+              data: data.map(d => d.amount || 0),
+              backgroundColor: 'rgba(59, 130, 246, 0.8)',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000)+'K' : v } }
+            }
+          }
+        });
+      } catch(e) {
+        console.error('[REPORTS FIX] Dashboard chart error:', e);
+      }
+    }, 10);
+    
+    return '<canvas id="dashboardChartCanvas" style="max-height:200px;"></canvas>';
+  };
+  
+  if (window.initDashboardChart) {
+    window.initDashboardChart = function() {
+      window.renderChart('week');
+    };
+  }
+  
+  if (document.getElementById('dashboard-chart-container')) {
+    window.renderChart('week');
+  }
+}
+
+// Reports Chart
+async function renderReportsChart(hourlyData) {
+  if (isProcessing) return;
+  isProcessing = true;
+  
+  let canvas = document.getElementById('hourlyChart');
+  let container = document.querySelector('.chart-container');
+  
+  if (!canvas && container) {
+    container.innerHTML = '<canvas id="hourlyChart"></canvas>';
+    canvas = document.getElementById('hourlyChart');
+  }
+  
+  if (!canvas) {
+    isProcessing = false;
+    return;
+  }
+  
+  if (hourlyChartInstance) {
+    try { hourlyChartInstance.destroy(); } catch(e){}
+  }
+  
+  if (hourlyData.length === 0) {
+    canvas.parentElement.innerHTML = '<div style="text-align:center;padding:40px;">Tidak ada data</div>';
+    isProcessing = false;
+    return;
+  }
+  
+  await loadChartJs();
+  
+  if (typeof Chart === 'undefined') {
+    const max = Math.max(...hourlyData.map(d => d.total_revenue || 0), 1);
+    let html = '<div style="display:flex;align-items:flex-end;height:180px;padding:10px;gap:2px;">';
+    hourlyData.forEach(d => {
+      const h = Math.max(((d.total_revenue || 0) / max) * 150, 4);
+      html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="width:100%;background:linear-gradient(to top,#10b981,#34d399);height:${h}px;border-radius:2px;"></div>
+        <div style="font-size:9px;color:#666;">${d.hour}</div>
+      </div>`;
+    });
+    html += '</div>';
+    canvas.parentElement.innerHTML = html;
+    isProcessing = false;
+    return;
+  }
+  
+  try {
+    const ctx = canvas.getContext('2d');
+    hourlyChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: hourlyData.map(d => d.hour + ':00'),
+        datasets: [{
+          data: hourlyData.map(d => d.total_revenue || 0),
+          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000)+'K' : v } }
+        }
+      }
+    });
+  } catch(e) {
+    console.error('[REPORTS FIX] Reports chart error:', e);
+  }
+  
+  isProcessing = false;
+}
+
+// Load Reports Data
+async function loadReportsData(start, end, days) {
+  // FIX: Use default dates if not provided
+  if (!start || !end) {
+    const defaults = getDefaultDates(days || 7);
+    start = defaults.start;
+    end = defaults.end;
+    days = defaults.days;
+  }
+  
+  console.log('[REPORTS FIX] Loading reports:', start, 'to', end, '(' + days + ' days)');
+  
+  const customersList = document.getElementById('top-customers-list');
+  const productsList = document.getElementById('top-products-list');
+  
+  if (customersList) customersList.innerHTML = 'Memuat...';
+  if (productsList) productsList.innerHTML = 'Memuat...';
+  
+  destroyCharts();
   
   try {
     const res = await fetch('/api/reports/advanced?start_date=' + start + '&end_date=' + end);
     const json = await res.json();
     
-    console.log('[REPORTS FIX] API response:', json);
-    window.debugReportData = json;
-    
     if (!json.success) {
-      console.error('[REPORTS FIX] API failed:', json.message);
-      if (customersList) customersList.innerHTML = '<div class="empty-state">Error: ' + json.message + '</div>';
+      if (customersList) customersList.innerHTML = 'Error: ' + json.message;
       return;
     }
     
     const data = json.data || {};
-    
-    // Calculate summary from hourly data
     const hourlyData = data.hourly_sales || data.hourlySales || [];
-    const totalTransactions = hourlyData.reduce((sum, h) => sum + (h.transaction_count || 0), 0);
-    const totalRevenue = hourlyData.reduce((sum, h) => sum + (h.total_revenue || 0), 0);
-    const avgTransaction = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
     
-    console.log('[REPORTS FIX] Calculated stats:', { totalRevenue, totalTransactions, avgTransaction, days });
+    const totalTx = hourlyData.reduce((s, h) => s + (h.transaction_count || 0), 0);
+    const totalRev = hourlyData.reduce((s, h) => s + (h.total_revenue || 0), 0);
+    const avgTx = totalTx > 0 ? Math.round(totalRev / totalTx) : 0;
     
-    // Update ALL Statboxes
-    updateStatboxes(totalRevenue, totalTransactions, avgTransaction, days);
+    document.querySelectorAll('.stat-box').forEach(box => {
+      const label = box.querySelector('.stat-label')?.textContent?.trim();
+      const valueEl = box.querySelector('.stat-value');
+      if (!valueEl) return;
+      
+      if (label?.includes('Penjualan')) {
+        box.querySelector('.stat-label').textContent = 'Total Penjualan (' + days + ' Hari)';
+        valueEl.textContent = formatCurrency(totalRev);
+      } else if (label?.includes('Transaksi')) {
+        valueEl.textContent = totalTx;
+      } else if (label?.includes('Rata')) {
+        valueEl.textContent = formatCurrency(avgTx);
+      }
+    });
     
-    // Fix Customers
+    await renderReportsChart(hourlyData);
+    
     if (customersList) {
       const customers = data.top_customers || data.topCustomers || [];
-      if (customers.length > 0) {
-        customersList.innerHTML = customers.map((c, i) => {
-          const name = c.customer_name || c.name || 'Pelanggan ' + (i + 1);
-          const tx = c.transaction_count || 0;
-          const rev = c.total_revenue || c.total_spent || 0;
-          return '<div class="data-item"><div class="item-rank">' + (i + 1) + '</div><div class="item-info"><div class="item-name">' + name + '</div><div class="item-meta">' + tx + ' transaksi</div></div><div class="item-value">' + formatCurrency(rev) + '</div></div>';
-        }).join('');
-      } else {
-        customersList.innerHTML = '<div class="empty-state">Tidak ada data pelanggan</div>';
-      }
+      customersList.innerHTML = customers.map((c, i) => 
+        `<div class="data-item"><div class="item-rank">${i+1}</div><div class="item-info"><div class="item-name">${c.customer_name || c.name || 'Pelanggan '+(i+1)}</div><div class="item-meta">${c.transaction_count || 0} transaksi</div></div><div class="item-value">${formatCurrency(c.total_revenue || 0)}</div></div>`
+      ).join('') || '<div class="empty-state">Tidak ada data</div>';
     }
     
-    // Fix Products
     if (productsList) {
       const products = data.top_products || data.topProducts || [];
-      if (products.length > 0) {
-        productsList.innerHTML = products.map((p, i) => {
-          const name = p.product_name || p.name || 'Produk ' + (i + 1);
-          const qty = p.qty || p.total_qty || 0;
-          const tx = p.transaction_count || 0;
-          const rev = p.total_revenue || 0;
-          return '<div class="data-item"><div class="item-rank">' + (i + 1) + '</div><div class="item-info"><div class="item-name">' + name + '</div><div class="item-meta">' + qty + ' terjual • ' + tx + ' transaksi</div></div><div class="item-value">' + formatCurrency(rev) + '</div></div>';
-        }).join('');
-      } else {
-        productsList.innerHTML = '<div class="empty-state">Tidak ada data produk</div>';
-      }
+      productsList.innerHTML = products.map((p, i) => 
+        `<div class="data-item"><div class="item-rank">${i+1}</div><div class="item-info"><div class="item-name">${p.product_name || p.name || 'Produk '+(i+1)}</div><div class="item-meta">${p.qty || 0} terjual</div></div><div class="item-value">${formatCurrency(p.total_revenue || 0)}</div></div>`
+      ).join('') || '<div class="empty-state">Tidak ada data</div>';
     }
     
-    if (hourlyLoading) hourlyLoading.style.display = 'none';
-    
-  } catch (err) {
+  } catch(err) {
     console.error('[REPORTS FIX] Error:', err);
-    if (customersList) customersList.innerHTML = '<div class="empty-state">Error: ' + err.message + '</div>';
-    if (hourlyLoading) hourlyLoading.style.display = 'none';
+    if (customersList) customersList.innerHTML = 'Error: ' + err.message;
   }
-}
-
-function updateStatboxes(totalRevenue, totalTransactions, avgTransaction, days) {
-  console.log('[REPORTS FIX] Updating statboxes with:', { totalRevenue, totalTransactions, avgTransaction, days });
-  
-  // Find all statboxes
-  const statBoxes = document.querySelectorAll('.stat-box');
-  console.log('[REPORTS FIX] Found statboxes:', statBoxes.length);
-  
-  statBoxes.forEach((box, index) => {
-    const labelEl = box.querySelector('.stat-label');
-    const valueEl = box.querySelector('.stat-value');
-    
-    if (!labelEl || !valueEl) return;
-    
-    const label = labelEl.textContent.trim();
-    console.log('[REPORTS FIX] Statbox', index, ':', label);
-    
-    if (label.includes('Penjualan') || label.includes('Total')) {
-      // Update label to show correct period
-      labelEl.textContent = 'Total Penjualan (' + days + ' Hari)';
-      valueEl.textContent = formatCurrency(totalRevenue);
-      console.log('[REPORTS FIX] Updated Total Penjualan:', formatCurrency(totalRevenue));
-    }
-    else if (label === 'Transaksi' || label.includes('Transaksi')) {
-      valueEl.textContent = totalTransactions;
-      console.log('[REPORTS FIX] Updated Transaksi:', totalTransactions);
-    }
-    else if (label === 'Rata-rata' || label.includes('Rata')) {
-      valueEl.textContent = formatCurrency(avgTransaction);
-      console.log('[REPORTS FIX] Updated Rata-rata:', formatCurrency(avgTransaction));
-    }
-    // Piutang tidak diupdate karena datanya tidak ada di API reports/advanced
-  });
 }
 
 // Override window.loadAdvancedData
 window.loadAdvancedData = function(start, end) {
-  // Detect period from date range
+  // FIX: Validate dates
+  if (!start || !end) {
+    console.warn('[REPORTS FIX] Invalid dates, using defaults');
+    const defaults = getDefaultDates(7);
+    start = defaults.start;
+    end = defaults.end;
+  }
+  
   const startDate = new Date(start);
   const endDate = new Date(end);
-  const diffTime = Math.abs(endDate - startDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
-  console.log('[REPORTS FIX] Detected period:', diffDays, 'days');
-  loadRealReportsData(start, end, diffDays);
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    console.error('[REPORTS FIX] Invalid date values:', start, end);
+    const defaults = getDefaultDates(7);
+    loadReportsData(defaults.start, defaults.end, defaults.days);
+    return;
+  }
+  
+  const days = Math.ceil(Math.abs(endDate - startDate) / (1000 * 60 * 60 * 24));
+  destroyCharts();
+  loadReportsData(start, end, days);
 };
 
-console.log('[REPORTS FIX] window.loadAdvancedData overridden!');
-
-// Setup toggle buttons
-function setupToggleListeners() {
-  const toggleBtns = document.querySelectorAll('.period-btn, .period-toggle .toggle-btn, [data-period]');
-  console.log('[REPORTS FIX] Found toggle buttons:', toggleBtns.length);
-  
-  toggleBtns.forEach(btn => {
+// Setup toggles
+function setupToggles() {
+  document.querySelectorAll('.period-btn, [data-period]').forEach(btn => {
     const newBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(newBtn, btn);
     
@@ -158,38 +317,40 @@ function setupToggleListeners() {
       e.preventDefault();
       e.stopPropagation();
       
-      // Update active state
-      document.querySelectorAll('.period-btn, .period-toggle .toggle-btn, [data-period]').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.period-btn, [data-period]').forEach(b => b.classList.remove('active'));
       newBtn.classList.add('active');
       
-      const days = parseInt(newBtn.dataset.period);
-      console.log('[REPORTS FIX] Toggle clicked, days:', days);
+      const days = parseInt(newBtn.dataset.period) || 7;
+      const defaults = getDefaultDates(days);
       
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      loadRealReportsData(startDate, endDate, days);
+      destroyCharts();
+      loadReportsData(defaults.start, defaults.end, days);
     });
   });
 }
 
-window.loadRealReportsData = loadRealReportsData;
+// Init
+window.loadRealReportsData = loadReportsData;
 
-// Run setup
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-      loadRealReportsData();
-      setupToggleListeners();
-    }, 1000);
-  });
-} else {
-  setTimeout(function() {
-    loadRealReportsData();
-    setupToggleListeners();
-  }, 1000);
+function init() {
+  console.log('[REPORTS FIX] Init');
+  
+  if (document.getElementById('dashboard-chart-container')) {
+    overrideDashboardChart();
+  }
+  
+  if (document.getElementById('top-customers-list')) {
+    loadReportsData();
+    setupToggles();
+  }
 }
 
-setTimeout(setupToggleListeners, 3000);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => setTimeout(init, 300));
+} else {
+  setTimeout(init, 300);
+}
 
-console.log('[REPORTS FIX v7] Setup done');
+setTimeout(init, 1500);
+
+console.log('[REPORTS FIX v15] Ready');
