@@ -15,15 +15,22 @@ const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
 
-// Konfigurasi TOTP
-authenticator.options = {
+// Nama aplikasi untuk QR code
+const APP_NAME = 'Toko Bersama';
+
+// Default TOTP options
+const TOTP_OPTIONS = {
   window: 2, // Accept 2 steps before and after current time (±60 detik)
   step: 30,  // 30 seconds per token
   digits: 6, // 6 digit token
 };
 
-// Nama aplikasi untuk QR code
-const APP_NAME = 'Toko Bersama';
+// Set options pada authenticator global
+authenticator.options = {
+  window: TOTP_OPTIONS.window,
+  step: TOTP_OPTIONS.step,
+  digits: TOTP_OPTIONS.digits
+};
 
 /**
  * Generate encryption key dari machine-specific data
@@ -37,7 +44,7 @@ function getEncryptionKey() {
     require('os').hostname(),
     require('os').platform(),
   ];
-  
+
   const baseKey = factors.join('|');
   return crypto.scryptSync(baseKey, 'tokobersama-salt', 32);
 }
@@ -52,12 +59,12 @@ const ENCRYPTION_KEY = getEncryptionKey();
 function encryptSecret(plaintext) {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
-  
+
   let encrypted = cipher.update(plaintext, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
+
   const authTag = cipher.getAuthTag();
-  
+
   return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
 }
 
@@ -69,20 +76,20 @@ function encryptSecret(plaintext) {
 function decryptSecret(encryptedData) {
   try {
     const [ivHex, authTagHex, encrypted] = encryptedData.split(':');
-    
+
     if (!ivHex || !authTagHex || !encrypted) {
       return null;
     }
-    
+
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
-    
+
     const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
     decipher.setAuthTag(authTag);
-    
+
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   } catch (error) {
     console.error('[TOTP] Decryption failed:', error.message);
@@ -96,12 +103,12 @@ function decryptSecret(encryptedData) {
  * @returns {Object} - Secret, QR code data URL, dan manual entry key
  */
 async function generateTOTPSetup(username) {
-  // Generate secret baru
+  // Generate secret baru menggunakan otplib
   const secret = authenticator.generateSecret();
-  
+
   // Generate OTPAuth URL
   const otpauth = authenticator.keyuri(username, APP_NAME, secret);
-  
+
   // Generate QR code
   const qrCodeDataUrl = await QRCode.toDataURL(otpauth, {
     width: 300,
@@ -111,7 +118,7 @@ async function generateTOTPSetup(username) {
       light: '#ffffff',
     },
   });
-  
+
   return {
     secret, // Plain secret - harus dienkripsi sebelum disimpan
     qrCode: qrCodeDataUrl,
@@ -170,8 +177,11 @@ function verifyTOTP(token, encryptedSecret) {
     if (!secret) {
       return false;
     }
-    
-    return authenticator.verify({ token, secret });
+
+    return authenticator.verify({
+      token,
+      secret
+    });
   } catch (error) {
     console.error('[TOTP] Verification error:', error.message);
     return false;
@@ -187,7 +197,7 @@ async function createTOTPData(username) {
   const setup = await generateTOTPSetup(username);
   const backupCodes = generateBackupCodes(8);
   const hashedBackupCodes = hashBackupCodes(backupCodes);
-  
+
   return {
     secret: setup.secret, // Plain secret untuk QR (sebelum disimpan perlu dienkripsi)
     encryptedSecret: encryptSecret(setup.secret),
@@ -222,21 +232,21 @@ module.exports = {
   generateTOTPSetup,
   verifyTOTP,
   createTOTPData,
-  
+
   // Encryption
   encryptSecret,
   decryptSecret,
-  
+
   // Backup codes
   generateBackupCodes,
   hashBackupCodes,
   verifyBackupCode,
-  
+
   // Validation
   isValidTokenFormat,
   isValidBackupCodeFormat,
-  
+
   // Constants
   APP_NAME,
-  authenticator,
+  TOTP_OPTIONS,
 };

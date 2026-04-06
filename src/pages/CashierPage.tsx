@@ -330,16 +330,10 @@ export default function CashierPage() {
     };
 
     // Validasi produk aktif sebelum checkout
-    const productIds = items.filter(i => i.product_id != null).map(i => i.product_id);
+    const productIds = [...new Set(items.filter(i => i.product_id != null).map(i => i.product_id))];
     if (productIds.length > 0) {
-      const invalidItems: string[] = [];
-      for (const item of items) {
-        if (!item.product_id) continue;
-        const product = await window.api.getProductById(item.product_id);
-        if (!product || (product as any).data?.active === 0 || (product as any).active === 0) {
-          invalidItems.push(item.product_name);
-        }
-      }
+      const validation = await window.api.validateProductsActiveBulk(productIds);
+      const invalidItems = (validation?.inactiveProducts || []).map((p: any) => p.name);
       if (invalidItems.length > 0) {
         setErrorDialog({
           show: true,

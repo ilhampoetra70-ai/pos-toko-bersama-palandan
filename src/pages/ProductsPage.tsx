@@ -287,7 +287,7 @@ export default function ProductsPage() {
                     categoryId = existing.id;
                 } else {
                     const cat = await window.api.createCategory(newCatName.trim(), '');
-                    categoryId = cat ? cat.id : null;
+                    categoryId = cat?.data?.id || null;
                 }
             }
 

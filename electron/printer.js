@@ -14,6 +14,52 @@ function formatCurrency(amount) {
   return 'Rp ' + Number(amount).toLocaleString('id-ID');
 }
 
+function getEffectiveTimezoneOffsetHours(settings = {}) {
+  const systemOffsetHours = -(new Date().getTimezoneOffset() / 60);
+  const raw = settings.timezone_offset;
+  if (raw !== undefined && raw !== null && String(raw) !== '' && String(raw) !== 'auto') {
+    const parsed = Number(raw);
+    if (!Number.isNaN(parsed)) {
+      // Guard legacy value "0" (UTC) setelah opsi timezone disembunyikan.
+      // Jika timezone sistem bukan UTC, pakai timezone sistem agar waktu struk tidak bergeser.
+      if (parsed === 0 && systemOffsetHours !== 0) return systemOffsetHours;
+      return parsed;
+    }
+  }
+  return systemOffsetHours;
+}
+
+function parseUtcDateLike(input) {
+  if (!input) return null;
+  if (input instanceof Date) return input;
+  if (typeof input !== 'string') return null;
+
+  // SQLite CURRENT_TIMESTAMP format: "YYYY-MM-DD HH:mm:ss" (UTC)
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(input)) {
+    return new Date(input.replace(' ', 'T') + 'Z');
+  }
+
+  const d = new Date(input);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatReceiptDate(createdAt, settings = {}) {
+  const parsed = parseUtcDateLike(createdAt);
+  if (!parsed) return new Date().toLocaleString('id-ID');
+
+  const offsetHours = getEffectiveTimezoneOffsetHours(settings);
+  const local = new Date(parsed.getTime() + offsetHours * 3600000);
+
+  const dd = String(local.getUTCDate()).padStart(2, '0');
+  const mm = String(local.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = local.getUTCFullYear();
+  const hh = String(local.getUTCHours()).padStart(2, '0');
+  const mi = String(local.getUTCMinutes()).padStart(2, '0');
+  const ss = String(local.getUTCSeconds()).padStart(2, '0');
+
+  return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
+}
+
 function parseTemplate(settings) {
   const defaults = {
     sections: {
@@ -127,7 +173,7 @@ function generateReceiptHTML(transaction, settings) {
     headerText: settings.receipt_header || '',
     footerText: settings.receipt_footer || '',
     invoiceNumber: transaction.invoice_number,
-    date: transaction.created_at || new Date().toLocaleString('id-ID'),
+    date: formatReceiptDate(transaction.created_at, settings),
     cashierName: transaction.cashier_name || '-',
     notes: transaction.payment_notes || '', // Cashier notes
     customerName: transaction.customer_name || '',

@@ -67,7 +67,7 @@ function invalidateToken(userId) {
 }
 
 // Public API paths yang tidak butuh autentikasi
-const PUBLIC_API_PATHS = new Set(['/health', '/auth/login', '/store', '/products/search', '/reports/advanced']);
+const PUBLIC_API_PATHS = new Set(['/health', '/auth/login', '/store', '/products/search', '/reports/advanced', '/api/reports/advanced']);
 
 function requireAuth(req, res, next) {
   // Lewati autentikasi untuk endpoint publik

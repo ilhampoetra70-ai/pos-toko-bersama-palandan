@@ -75,6 +75,10 @@ export interface ProductsResponse {
     total: number;
 }
 
+export interface ProductActiveValidation {
+    inactiveProducts: Array<{ id: number; name: string }>;
+}
+
 export interface ProductFilters {
     search?: string;
     category_id?: number | string;
@@ -422,6 +426,7 @@ export interface WindowApi {
     // Products
     getProducts(filters?: ProductFilters): Promise<Product[] | ProductsResponse>;
     getProductById(id: number): Promise<{ success: boolean; data: Product }>;
+    validateProductsActiveBulk(productIds: number[]): Promise<ProductActiveValidation>;
     getProductByBarcode(barcode: string): Promise<{ success: boolean; data: Product | null }>;
     createProduct(data: Omit<Product, 'id'>): Promise<{ success: boolean; data: Product }>;
     updateProduct(id: number, data: Partial<Product>): Promise<{ success: boolean; error?: string }>;

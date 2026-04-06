@@ -833,6 +833,75 @@ html.dark .jspreadsheet-container .jdropdown-item:hover {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   FONT SIZE SETTINGS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Extra Small - 90% */
+:root[data-font-size="xs"] {
+  font-size: 13px;
+}
+:root[data-font-size="xs"] body {
+  font-size: 13px;
+}
+:root[data-font-size="xs"] h1 { font-size: 1.6rem; }
+:root[data-font-size="xs"] h2 { font-size: 1.4rem; }
+:root[data-font-size="xs"] h3 { font-size: 1.2rem; }
+:root[data-font-size="xs"] .text-sm { font-size: 0.8rem; }
+:root[data-font-size="xs"] .text-xs { font-size: 0.7rem; }
+
+/* Small - 95% */
+:root[data-font-size="sm"] {
+  font-size: 14px;
+}
+:root[data-font-size="sm"] body {
+  font-size: 14px;
+}
+:root[data-font-size="sm"] h1 { font-size: 1.7rem; }
+:root[data-font-size="sm"] h2 { font-size: 1.5rem; }
+:root[data-font-size="sm"] h3 { font-size: 1.25rem; }
+:root[data-font-size="sm"] .text-sm { font-size: 0.85rem; }
+:root[data-font-size="sm"] .text-xs { font-size: 0.75rem; }
+
+/* Medium (Default) - 100% */
+:root[data-font-size="md"],
+:root {
+  font-size: 15px;
+}
+:root[data-font-size="md"] body,
+body {
+  font-size: 15px;
+}
+:root[data-font-size="md"] h1 { font-size: 1.75rem; }
+:root[data-font-size="md"] h2 { font-size: 1.5rem; }
+:root[data-font-size="md"] h3 { font-size: 1.25rem; }
+
+/* Large - 110% */
+:root[data-font-size="lg"] {
+  font-size: 16px;
+}
+:root[data-font-size="lg"] body {
+  font-size: 16px;
+}
+:root[data-font-size="lg"] h1 { font-size: 1.9rem; }
+:root[data-font-size="lg"] h2 { font-size: 1.65rem; }
+:root[data-font-size="lg"] h3 { font-size: 1.4rem; }
+:root[data-font-size="lg"] .text-sm { font-size: 0.9rem; }
+:root[data-font-size="lg"] .text-xs { font-size: 0.8rem; }
+
+/* Extra Large - 120% */
+:root[data-font-size="xl"] {
+  font-size: 18px;
+}
+:root[data-font-size="xl"] body {
+  font-size: 18px;
+}
+:root[data-font-size="xl"] h1 { font-size: 2.1rem; }
+:root[data-font-size="xl"] h2 { font-size: 1.8rem; }
+:root[data-font-size="xl"] h3 { font-size: 1.5rem; }
+:root[data-font-size="xl"] .text-sm { font-size: 0.95rem; }
+:root[data-font-size="xl"] .text-xs { font-size: 0.85rem; }
+
+/* ═══════════════════════════════════════════════════════════════
    PRINT STYLES
    ═══════════════════════════════════════════════════════════════ */
 @media print {

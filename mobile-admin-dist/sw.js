@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pos-admin-v100';90';80';70';60';55';50';45';30';
+const CACHE_NAME = 'pos-admin-v109';
 
 // Shell minimal yang wajib ada untuk SPA bisa berjalan offline
 const SHELL_ASSETS = [
@@ -6,6 +6,7 @@ const SHELL_ASSETS = [
   './index.html',
   './manifest.json',
   './reports-fix.js',
+  './assets/vendor/chart.umd.min.js',
 ];
 
 // ─── Install: pre-cache shell app ───────────────────────────

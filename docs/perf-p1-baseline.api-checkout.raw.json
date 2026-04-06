@@ -1,0 +1,147 @@
+﻿{
+  "timestamp": "2026-04-06T01:09:56.372Z",
+  "bench_root": "C:\\Users\\HAMBA\\AppData\\Local\\Temp\\tb-p1-bench-7Z4bKV",
+  "note": "Isolated benchmark DB. Hasil ini untuk backfill baseline P0 setelah implementasi berjalan.",
+  "server": {
+    "port": 3001,
+    "localUrl": "http://localhost:3001",
+    "networkUrl": "http://192.168.1.76:3001",
+    "localIP": "192.168.1.76"
+  },
+  "api_benchmark": [
+    {
+      "endpoint": "products",
+      "c1": {
+        "concurrency": 1,
+        "requests": 120,
+        "latency": {
+          "count": 120,
+          "avg_ms": 3.746,
+          "p95_ms": 4.746,
+          "min_ms": 1.283,
+          "max_ms": 111.832
+        },
+        "status_counts": {
+          "200": 120
+        },
+        "process_cpu_percent": 153.46
+      },
+      "c5": {
+        "concurrency": 5,
+        "requests": 200,
+        "latency": {
+          "count": 200,
+          "avg_ms": 8.603,
+          "p95_ms": 13.562,
+          "min_ms": 4.405,
+          "max_ms": 27.908
+        },
+        "status_counts": {
+          "200": 200
+        },
+        "process_cpu_percent": 104.88
+      }
+    },
+    {
+      "endpoint": "dashboard_stats",
+      "c1": {
+        "concurrency": 1,
+        "requests": 120,
+        "latency": {
+          "count": 120,
+          "avg_ms": 1.092,
+          "p95_ms": 3.491,
+          "min_ms": 0.566,
+          "max_ms": 5.651
+        },
+        "status_counts": {
+          "200": 120
+        },
+        "process_cpu_percent": 132.59
+      },
+      "c5": {
+        "concurrency": 5,
+        "requests": 200,
+        "latency": {
+          "count": 200,
+          "avg_ms": 3.706,
+          "p95_ms": 6.723,
+          "min_ms": 1.425,
+          "max_ms": 10.206
+        },
+        "status_counts": {
+          "200": 200
+        },
+        "process_cpu_percent": 164.38
+      }
+    },
+    {
+      "endpoint": "transactions",
+      "c1": {
+        "concurrency": 1,
+        "requests": 120,
+        "latency": {
+          "count": 120,
+          "avg_ms": 1.543,
+          "p95_ms": 2.932,
+          "min_ms": 0.947,
+          "max_ms": 6.341
+        },
+        "status_counts": {
+          "200": 120
+        },
+        "process_cpu_percent": 101.93
+      },
+      "c5": {
+        "concurrency": 5,
+        "requests": 200,
+        "latency": {
+          "count": 200,
+          "avg_ms": 5.728,
+          "p95_ms": 8.825,
+          "min_ms": 4.268,
+          "max_ms": 12.613
+        },
+        "status_counts": {
+          "200": 200
+        },
+        "process_cpu_percent": 100.65
+      }
+    }
+  ],
+  "checkout_backend_benchmark": [
+    {
+      "cart_size": 5,
+      "rounds": 20,
+      "latency": {
+        "count": 20,
+        "avg_ms": 0.535,
+        "p95_ms": 0.772,
+        "min_ms": 0.404,
+        "max_ms": 0.829
+      }
+    },
+    {
+      "cart_size": 20,
+      "rounds": 20,
+      "latency": {
+        "count": 20,
+        "avg_ms": 1.519,
+        "p95_ms": 2.05,
+        "min_ms": 0.792,
+        "max_ms": 11.1
+      }
+    },
+    {
+      "cart_size": 50,
+      "rounds": 20,
+      "latency": {
+        "count": 20,
+        "avg_ms": 3.743,
+        "p95_ms": 12.038,
+        "min_ms": 1.719,
+        "max_ms": 18.492
+      }
+    }
+  ]
+}

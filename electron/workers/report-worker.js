@@ -32,6 +32,20 @@ function get(db, sql, params = []) {
 
 // ─── Timezone helper (replicated from database.js) ───────────────────────────
 
+
+/**
+ * Helper untuk mencegah bug parsing date-only string sebagai UTC midnight.
+ * "2026-04-03" -> "2026-04-03T12:00:00" agar diparse sebagai local noon
+ */
+function parseDateLocal(dateStr) {
+    if (!dateStr) return new Date();
+    if (typeof dateStr === 'string') {
+        if (dateStr.length === 10) return new Date(dateStr + 'T12:00:00');
+        if (!dateStr.includes('T')) return new Date(dateStr + 'T12:00:00');
+    }
+    return new Date(dateStr);
+}
+
 function getLocalDayRangeUTC(db, dateObj = new Date()) {
     let offsetHours = 7; // WIB default
     try {
@@ -61,9 +75,28 @@ function getLocalDayRangeUTC(db, dateObj = new Date()) {
 }
 
 function toUtcRange(db, dateFrom, dateTo) {
-    const startRange = getLocalDayRangeUTC(db, new Date(dateFrom));
-    const endRange = getLocalDayRangeUTC(db, new Date(dateTo));
+    const startRange = getLocalDayRangeUTC(db, parseDateLocal(dateFrom));
+    const endRange = getLocalDayRangeUTC(db, parseDateLocal(dateTo));
     return { startUTC: startRange.start, endUTC: endRange.end };
+}
+
+function getTimezoneOffsetHours(db) {
+    let offsetHours = 7;
+    try {
+        const row = get(db, "SELECT value FROM settings WHERE key = 'timezone_offset'");
+        if (row && row.value && row.value !== 'auto') {
+            offsetHours = parseFloat(row.value);
+        } else {
+            offsetHours = -(new Date().getTimezoneOffset() / 60);
+        }
+    } catch (_) { }
+    return offsetHours;
+}
+
+function getSqliteTimezoneModifier(db) {
+    const hrs = getTimezoneOffsetHours(db);
+    const sign = hrs >= 0 ? '+' : '';
+    return `${sign}${hrs} hours`;
 }
 
 // ─── Report sub-functions (mirror of database.js) ────────────────────────────
@@ -110,11 +143,12 @@ function getSalesReport(db, dateFrom, dateTo) {
         [startUTC, endUTC]
     );
 
+    const tzModifier = getSqliteTimezoneModifier(db);
     const dailyBreakdown = all(db,
-        `SELECT date(created_at, 'localtime') as date, COUNT(*) as count, SUM(total) as total
+        `SELECT date(created_at, ?) as date, COUNT(*) as count, SUM(total) as total
          FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ?
-         GROUP BY date(created_at, 'localtime') ORDER BY date(created_at, 'localtime')`,
-        [startUTC, endUTC]
+         GROUP BY date(created_at, ?) ORDER BY date(created_at, ?)`,
+        [tzModifier, startUTC, endUTC, tzModifier, tzModifier]
     );
 
     const topProducts = all(db,
@@ -164,11 +198,12 @@ function getProfitReport(db, dateFrom, dateTo) {
 
 function getHourlySalesPattern(db, dateFrom, dateTo) {
     const { startUTC, endUTC } = toUtcRange(db, dateFrom, dateTo);
+    const tzModifier = getSqliteTimezoneModifier(db);
     const rows = all(db,
-        `SELECT CAST(strftime('%H', created_at, 'localtime') AS INTEGER) as hour, COUNT(*) as count, SUM(total) as total
+        `SELECT CAST(strftime('%H', datetime(created_at, ?)) AS INTEGER) as hour, COUNT(*) as count, SUM(total) as total
          FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ?
          GROUP BY hour ORDER BY hour`,
-        [startUTC, endUTC]
+        [tzModifier, startUTC, endUTC]
     );
     const result = [];
     for (let h = 0; h < 24; h++) {

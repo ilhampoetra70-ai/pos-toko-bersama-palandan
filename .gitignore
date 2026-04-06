@@ -37,5 +37,8 @@ icon.png
 .tmp.driveupload/
 TBERSAMA FINAL EVALUASI APLIKASI/
 
+# Workspace duplikat lokal (source sudah disinkronkan ke root)
 TOKO BERSAMA APP/
+
+# Output build lain di root
 TOKO BERSAMA BARU/

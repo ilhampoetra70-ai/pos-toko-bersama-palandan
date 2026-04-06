@@ -11,13 +11,24 @@ let cachedCostMultiplier = null;
 
 // ─── Prepared Statement Cache ───────────────────────────
 const stmtCache = new Map();
+const MAX_STMT_CACHE_SIZE = 500;
 
 function cachedPrepare(sql) {
     let stmt = stmtCache.get(sql);
-    if (!stmt) {
-        stmt = db.prepare(sql);
+    if (stmt) {
+        // Refresh insertion order so Map behaves like LRU.
+        stmtCache.delete(sql);
         stmtCache.set(sql, stmt);
+        return stmt;
     }
+
+    stmt = db.prepare(sql);
+    stmtCache.set(sql, stmt);
+    if (stmtCache.size > MAX_STMT_CACHE_SIZE) {
+        const oldestKey = stmtCache.keys().next().value;
+        if (oldestKey) stmtCache.delete(oldestKey);
+    }
+
     return stmt;
 }
 
@@ -366,8 +377,13 @@ function runMigrations() {
     // Ensure timezone_offset setting exists
     const timezoneOffset = get("SELECT value FROM settings WHERE key = 'timezone_offset'");
     if (!timezoneOffset) {
-        console.log('[Migrations] Adding default timezone_offset setting (+7)...');
-        run("INSERT INTO settings (key, value) VALUES ('timezone_offset', '7')");
+        console.log('[Migrations] Adding default timezone_offset setting (auto)...');
+        run("INSERT INTO settings (key, value) VALUES ('timezone_offset', 'auto')");
+    } else if (String(timezoneOffset.value).trim() === '0') {
+        // Legacy value "0" menyebabkan semua jam dibaca UTC.
+        // Karena opsi timezone sudah disederhanakan ke otomatis, normalisasi ke auto.
+        console.log('[Migrations] Normalizing legacy timezone_offset=0 to auto...');
+        run("UPDATE settings SET value = 'auto' WHERE key = 'timezone_offset'");
     }
 
     // Ensure app_font_size setting exists
@@ -738,6 +754,28 @@ function getProducts(searchOrFilters = '', categoryId = null, limit = null, offs
 function getProductById(id) { return get('SELECT * FROM products WHERE id = ?', [id]); }
 function getProductByBarcode(barcode) { return get('SELECT * FROM products WHERE barcode = ? AND active = 1', [barcode]); }
 function getProductByName(name) { return get('SELECT * FROM products WHERE UPPER(name) = UPPER(?) AND active = 1', [name]); }
+
+function validateProductsActiveBulk(productIds = []) {
+    const ids = [...new Set((productIds || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0))];
+
+    if (ids.length === 0) return { inactiveProducts: [] };
+
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = all(`SELECT id, name, active FROM products WHERE id IN (${placeholders})`, ids);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    const inactiveProducts = [];
+    for (const id of ids) {
+        const row = byId.get(id);
+        if (!row || row.active === 0) {
+            inactiveProducts.push({ id, name: row?.name || `ID:${id}` });
+        }
+    }
+
+    return { inactiveProducts };
+}
 
 function searchProducts(query, limit = 50) {
     // Trim query to remove accidental spaces
@@ -1274,12 +1312,18 @@ function resolvePaymentStatus(data) {
 
 function decrementProductStock(productId, quantity, userId, userName, invoiceNumber, txId) {
     const updateResult = run(
-        "UPDATE products SET stock = stock - ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND stock >= ?",
+        "UPDATE products SET stock = stock - ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND active = 1 AND stock >= ?",
         [quantity, productId, quantity]
     );
     if (updateResult.changes === 0) {
         // Stock tidak cukup — ambil stok aktual untuk pesan error yang informatif
-        const current = get("SELECT stock, name FROM products WHERE id = ?", [productId]);
+        const current = get("SELECT stock, name, active FROM products WHERE id = ?", [productId]);
+        if (!current) {
+            throw new Error(`Produk dengan ID ${productId} tidak ditemukan.`);
+        }
+        if (current.active === 0) {
+            throw new Error(`Produk "${current.name}" sudah tidak aktif dan tidak bisa dijual.`);
+        }
         const stockNow = current ? current.stock : 0;
         const productName = current ? current.name : `ID ${productId}`;
         throw new Error(`Stok tidak mencukupi untuk produk "${productName}". Stok saat ini: ${stockNow}, dibutuhkan: ${quantity}`);
@@ -1509,7 +1553,7 @@ function getDashboardStats() {
     const day7ago = new Date(now);
     day7ago.setDate(day7ago.getDate() - 6);
     const range7start = getLocalDayRangeUTC(day7ago).start;
-    const offsetHrs = cachedTimezoneOffset || 7;
+    const offsetHrs = getTimezoneOffsetHours();
 
     const daily7Rows = all(`
         SELECT date(created_at, ? || ' hours') as local_date,
@@ -1610,6 +1654,12 @@ function getLocalDayRangeUTC(dateObj = new Date()) {
     };
 }
 
+function getSqliteTimezoneModifier() {
+    const offsetHrs = getTimezoneOffsetHours();
+    const sign = offsetHrs >= 0 ? '+' : '';
+    return `${sign}${offsetHrs} hours`;
+}
+
 /**
  * Shared aggregation engine for Dashboard and Reports
  * Ensures "Today" sales on Dashboard matches "Hari Ini" report exactly.
@@ -1670,7 +1720,7 @@ function getDailySalesBreakdown(days, todayRangeEnd) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - (days - 1));
     const rangeStart = getLocalDayRangeUTC(startDate).start;
-    const offsetHrs = cachedTimezoneOffset || 7;
+    const offsetHrs = getTimezoneOffsetHours();
 
     const offsetSign = offsetHrs >= 0 ? '+' : '';
     const offsetStr = `${offsetSign}${offsetHrs} hours`;
@@ -1814,11 +1864,12 @@ function getSalesReport(dateFrom, dateTo) {
             [startUTC, endUTC]
         );
 
+        const tzModifier = getSqliteTimezoneModifier();
         const dailyBreakdown = all(
-            `SELECT date(created_at, 'localtime') as date, COUNT(*) as count, SUM(total) as total
+            `SELECT date(created_at, ?) as date, COUNT(*) as count, SUM(total) as total
          FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ?
-            GROUP BY date(created_at, 'localtime') ORDER BY date(created_at, 'localtime')`,
-            [startUTC, endUTC]
+            GROUP BY date(created_at, ?) ORDER BY date(created_at, ?)`,
+            [tzModifier, startUTC, endUTC, tzModifier, tzModifier]
         );
 
         const topProducts = all(
@@ -1836,106 +1887,6 @@ function getSalesReport(dateFrom, dateTo) {
     } catch (err) {
         console.error('[Database] getSalesReport failed:', err.message);
         throw err;
-    }
-}
-
-/**
- * Get sales breakdown by category for chart/report
- * @param {string} dateFrom - YYYY-MM-DD
- * @param {string} dateTo - YYYY-MM-DD
- * @returns {Array} - [{ category, total_sales, transaction_count, product_count }]
- */
-/**
- * Advanced Analytics Report untuk PWA
- * @param {string} dateFrom - YYYY-MM-DD
- * @param {string} dateTo - YYYY-MM-DD
- * @returns {Object} - { hourlySales, topProducts, topCustomers, summary }
- */
-function getAdvancedReport(dateFrom, dateTo) {
-    try {
-        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
-        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
-        const startUTC = startRange.start;
-        const endUTC = endRange.end;
-
-        // 1. Hourly Sales Pattern (Pola Penjualan Per Jam)
-        const hourlySales = all(
-            `SELECT 
-                CAST(strftime('%H', datetime(t.created_at, 'localtime')) AS INTEGER) as hour,
-                COUNT(*) as transaction_count,
-                SUM(t.total) as total_revenue,
-                AVG(t.total) as avg_transaction
-            FROM transactions t
-            WHERE t.status = 'completed' 
-                AND t.created_at >= ? 
-                AND t.created_at < ?
-            GROUP BY hour
-            ORDER BY hour ASC`,
-            [startUTC, endUTC]
-        );
-
-        // 2. Top 10 Products (Produk Terlaris)
-        const topProducts = all(
-            `SELECT 
-                ti.product_name as name,
-                SUM(ti.quantity) as total_qty,
-                SUM(ti.subtotal) as total_revenue,
-                COUNT(DISTINCT t.id) as transaction_count
-            FROM transaction_items ti
-            JOIN transactions t ON ti.transaction_id = t.id
-            WHERE t.status = 'completed' 
-                AND t.created_at >= ? 
-                AND t.created_at < ?
-            GROUP BY ti.product_id, ti.product_name
-            ORDER BY total_revenue DESC
-            LIMIT 10`,
-            [startUTC, endUTC]
-        );
-
-        // 3. Top Customers (Pelanggan VIP)
-        const topCustomers = all(
-            `SELECT 
-                COALESCE(t.customer_name, 'Umum') as customer_name,
-                COUNT(*) as transaction_count,
-                SUM(t.total) as total_spent,
-                AVG(t.total) as avg_transaction,
-                MAX(t.created_at) as last_transaction
-            FROM transactions t
-            WHERE t.status = 'completed' 
-                AND t.created_at >= ? 
-                AND t.created_at < ?
-                AND (t.customer_name IS NOT NULL OR t.total > 0)
-            GROUP BY t.customer_name
-            HAVING total_spent > 0
-            ORDER BY total_spent DESC
-            LIMIT 10`,
-            [startUTC, endUTC]
-        );
-
-        // 4. Summary Metrics
-        const summary = get(
-            `SELECT 
-                COUNT(*) as total_transactions,
-                SUM(total) as total_revenue,
-                AVG(total) as avg_transaction,
-                MAX(total) as max_transaction,
-                MIN(total) as min_transaction
-            FROM transactions
-            WHERE status = 'completed' 
-                AND created_at >= ? 
-                AND created_at < ?`,
-            [startUTC, endUTC]
-        ) || { total_transactions: 0, total_revenue: 0, avg_transaction: 0 };
-
-        return {
-            hourlySales: hourlySales || [],
-            topProducts: topProducts || [],
-            topCustomers: topCustomers || [],
-            summary: summary
-        };
-    } catch (err) {
-        console.error('[Database] getAdvancedReport failed:', err.message);
-        return { hourlySales: [], topProducts: [], topCustomers: [], summary: {} };
     }
 }
 
@@ -1984,6 +1935,108 @@ function getProfitReport(dateFrom, dateTo) {
     }
 }
 
+function getSalesByCategory(dateFrom, dateTo) {
+    try {
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
+
+        const startUTC = startRange.start;
+        const endUTC = endRange.end;
+
+        const rows = all(`
+            SELECT 
+                COALESCE(c.name, 'Tanpa Kategori') as category_name,
+                SUM(ti.quantity) as total_quantity,
+                SUM(ti.subtotal) as total_revenue
+            FROM transaction_items ti
+            JOIN transactions t ON ti.transaction_id = t.id
+            LEFT JOIN products p ON ti.product_id = p.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE t.status = 'completed' AND t.created_at >= ? AND t.created_at < ?
+            GROUP BY p.category_id
+            ORDER BY total_revenue DESC
+        `, [startUTC, endUTC]);
+
+        return rows;
+    } catch (err) {
+        console.error('[Database] getSalesByCategory failed:', err.message);
+        return [];
+    }
+}
+
+function getAdvancedReport(dateFrom, dateTo) {
+    try {
+        const startRange = getLocalDayRangeUTC(parseDateLocal(dateFrom));
+        const endRange = getLocalDayRangeUTC(parseDateLocal(dateTo));
+
+        const startUTC = startRange.start;
+        const endUTC = endRange.end;
+
+        const tzModifier = getSqliteTimezoneModifier();
+        const hourlySales = all(`
+            SELECT 
+                CAST(strftime('%H', datetime(created_at, ?)) AS INTEGER) as hour,
+                COUNT(*) as transaction_count,
+                SUM(total) as total_revenue
+            FROM transactions 
+            WHERE status = 'completed' AND created_at >= ? AND created_at < ?
+            GROUP BY hour
+            ORDER BY hour ASC
+        `, [tzModifier, startUTC, endUTC]);
+
+        const topProductsData = all(`
+            SELECT 
+                ti.product_name,
+                SUM(ti.quantity) as qty,
+                SUM(ti.subtotal) as total_revenue
+            FROM transaction_items ti 
+            JOIN transactions t ON ti.transaction_id = t.id
+            WHERE t.status = 'completed' AND t.created_at >= ? AND t.created_at < ?
+            GROUP BY ti.product_name
+            ORDER BY qty DESC
+            LIMIT 10
+        `, [startUTC, endUTC]);
+
+        const topProducts = topProductsData.map((p, i) => ({ rank: i + 1, ...p }));
+
+        const topCustomersData = all(`
+            SELECT 
+                TRIM(customer_name) as customer_name,
+                COUNT(*) as transaction_count,
+                SUM(total) as total_revenue
+            FROM transactions
+            WHERE status = 'completed' 
+              AND created_at >= ? AND created_at < ?
+              AND customer_name IS NOT NULL 
+              AND TRIM(customer_name) != ''
+            GROUP BY TRIM(customer_name)
+            ORDER BY total_revenue DESC
+            LIMIT 10
+        `, [startUTC, endUTC]);
+
+        const topCustomers = topCustomersData.map((c, i) => ({ rank: i + 1, ...c }));
+
+        // Calculate summary
+        const totalTransactions = hourlySales.reduce((sum, h) => sum + h.transaction_count, 0);
+        const totalRevenue = hourlySales.reduce((sum, h) => sum + h.total_revenue, 0);
+        const avgTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+
+        return {
+            hourly_sales: hourlySales,
+            top_products: topProducts,
+            top_customers: topCustomers,
+            summary: {
+                total_transactions: totalTransactions,
+                total_revenue: totalRevenue,
+                avg_transaction: Math.round(avgTransaction)
+            }
+        };
+    } catch (err) {
+        console.error('[Database] getAdvancedReport failed:', err.message);
+        throw err;
+    }
+}
+
 function getPeriodComparison(dateFrom1, dateTo1, dateFrom2, dateTo2) {
     // [PERF] Use UTC range boundaries instead of date() function which bypasses index
     const getSummary = (from, to) => {
@@ -2018,11 +2071,12 @@ function getHourlySalesPattern(dateFrom, dateTo) {
         const startUTC = startRange.start;
         const endUTC = endRange.end;
 
+        const tzModifier = getSqliteTimezoneModifier();
         const rows = all(
-            `SELECT CAST(strftime('%H', created_at, 'localtime') AS INTEGER) as hour, COUNT(*) as count, SUM(total) as total
+            `SELECT CAST(strftime('%H', datetime(created_at, ?)) AS INTEGER) as hour, COUNT(*) as count, SUM(total) as total
              FROM transactions WHERE status = 'completed' AND created_at >= ? AND created_at < ?
             GROUP BY hour ORDER BY hour`,
-            [startUTC, endUTC]
+            [tzModifier, startUTC, endUTC]
         );
         const result = [];
         for (let h = 0; h < 24; h++) {
@@ -2760,7 +2814,7 @@ module.exports = {
     upsertDeviceSession, getDeviceSessions, getDeviceSessionByDeviceId, countDeviceSessions,
     getOldestDeviceSession, deleteDeviceSessionById, deleteDeviceSession,
     getCategories, getCategoryById, createCategory, updateCategory, deleteCategory,
-    getProducts, getProductById, getProductByBarcode, searchProducts, getProductByName, getLowStockProducts,
+    getProducts, getProductById, getProductByBarcode, searchProducts, getProductByName, getLowStockProducts, validateProductsActiveBulk,
     createProduct, updateProduct, deleteProduct, restoreProduct, bulkUpsertProducts, bulkDeleteProducts, bulkUpdateField,
     generateProductBarcode, generateMultipleBarcodes,
     createStockAuditLog, getStockAuditLogByProduct, getStockAuditLog, getStockAuditLogSummary, cleanupOldAuditLogs,
@@ -2769,7 +2823,7 @@ module.exports = {
     getPaymentHistory, addPayment, getOutstandingDebts, getDebtSummary, getOverdueTransactions,
     getSettings, updateSetting, updateSettings, resetSettings,
     getDashboardStats, getEnhancedDashboardStats,
-    getSalesReport, getAdvancedReport, getProfitReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
+    getSalesReport, getProfitReport, getSalesByCategory, getAdvancedReport, getPeriodComparison, getHourlySalesPattern, getBottomProducts, getTransactionLog, getComprehensiveReport,
     getSlowMovingProducts, getTopProductsExpanded,
     getDatabaseStats, checkDatabaseIntegrity, vacuumDatabase, analyzeDatabase,
     clearVoidedTransactions, getArchivableTransactions, deleteOldTransactions,

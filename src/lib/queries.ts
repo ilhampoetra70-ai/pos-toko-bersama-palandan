@@ -239,7 +239,14 @@ export const useDeleteCategory = () => {
 
 // Dashboard
 export const useDashboardStats = () =>
-    useQuery({ queryKey: dashboardKeys.enhancedStats(), queryFn: dashboardApi.getStats, refetchInterval: 30000 });
+    useQuery({
+        queryKey: dashboardKeys.enhancedStats(),
+        queryFn: dashboardApi.getStats,
+        // Hindari polling saat app/background tab tidak aktif agar beban API turun.
+        refetchInterval: () => (document.visibilityState === 'visible' ? 30000 : false),
+        refetchIntervalInBackground: false,
+        staleTime: 30000,
+    });
 
 export const useSlowMovingProducts = (days: number, limit: number) =>
     useQuery({

@@ -1662,9 +1662,42 @@ templates['58mm-1'] = {
       .bold { font-weight: bold; }
       .line { border-top: 1px dashed black; margin: 6px 0; }
       .item-separator { border-top: 1px dashed #999; margin: 4px 0; }
+      .meta-card {
+        font-size: 0.9em;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .meta-row {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1px;
+      }
+      .meta-label {
+        width: 44px;
+        flex: 0 0 44px;
+      }
+      .meta-sep {
+        width: 8px;
+        flex: 0 0 8px;
+      }
+      .meta-value {
+        flex: 1;
+        min-width: 0;
+      }
+      .meta-value--invoice {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .meta-value--time {
+        white-space: nowrap;
+      }
       
       @media print {
         body { margin: 0 !important; padding: 3px 4px !important; padding-top: 15mm !important; }
+        .meta-card, .meta-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
       }
     </style>
     
@@ -1675,12 +1708,22 @@ templates['58mm-1'] = {
     <div class="line"></div>
     
     ${data.sections.invoice_info ? `
-    <div style="font-size: 0.9em;">
-      <div style="display:flex; justify-content:space-between;">
-        <span>${data.invoiceNumber}</span>
-        <span style="font-size: 0.85em;">${data.date}</span>
+    <div class="meta-card">
+      <div class="meta-row">
+        <span class="meta-label">No</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--invoice">${data.invoiceNumber}</span>
       </div>
-      <div>Kasir: ${data.cashierName}</div>
+      <div class="meta-row">
+        <span class="meta-label">Waktu</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--time">${data.date}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Kasir</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value">${data.cashierName}</span>
+      </div>
       ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
       ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
       ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
@@ -1744,9 +1787,42 @@ templates['58mm-2'] = {
       .bold { font-weight: bold; }
       .line { border-top: 1px dashed black; margin: 6px 0; }
       .item-separator { border-top: 1px dashed #999; margin: 3px 0; }
+      .meta-card {
+        font-size: 0.9em;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .meta-row {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1px;
+      }
+      .meta-label {
+        width: 44px;
+        flex: 0 0 44px;
+      }
+      .meta-sep {
+        width: 8px;
+        flex: 0 0 8px;
+      }
+      .meta-value {
+        flex: 1;
+        min-width: 0;
+      }
+      .meta-value--invoice {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .meta-value--time {
+        white-space: nowrap;
+      }
       
       @media print {
         body { margin: 0 !important; padding: 3px 4px !important; padding-top: 15mm !important; }
+        .meta-card, .meta-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
       }
     </style>
     
@@ -1757,12 +1833,22 @@ templates['58mm-2'] = {
     <div class="line"></div>
     
     ${data.sections.invoice_info ? `
-    <div style="font-size: 0.9em;">
-      <div style="display:flex; justify-content:space-between;">
-        <span>${data.invoiceNumber}</span>
-        <span style="font-size: 0.85em;">${data.date}</span>
+    <div class="meta-card">
+      <div class="meta-row">
+        <span class="meta-label">No</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--invoice">${data.invoiceNumber}</span>
       </div>
-      <div>Kasir: ${data.cashierName}</div>
+      <div class="meta-row">
+        <span class="meta-label">Waktu</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--time">${data.date}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Kasir</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value">${data.cashierName}</span>
+      </div>
       ${data.customerName ? `<div style="margin-top: 2px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
       ${data.customerAddress ? `<div style="font-size: 0.85em; margin-left: 6px;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
       ${data.notes ? `<div style="font-style: italic; font-size: 0.85em; margin-top: 2px;"><b>Cat:</b> ${data.notes}</div>` : ''}
@@ -1824,9 +1910,42 @@ templates['80mm-1'] = {
       .bold { font-weight: bold; }
       .line { border-top: 1px dashed black; margin: 8px 0; }
       .item-separator { border-top: 1px dashed #999; margin: 5px 0; }
+      .meta-card {
+        font-size: 0.95em;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .meta-row {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 2px;
+      }
+      .meta-label {
+        width: 62px;
+        flex: 0 0 62px;
+      }
+      .meta-sep {
+        width: 10px;
+        flex: 0 0 10px;
+      }
+      .meta-value {
+        flex: 1;
+        min-width: 0;
+      }
+      .meta-value--invoice {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .meta-value--time {
+        white-space: nowrap;
+      }
       
       @media print {
         body { margin: 0 !important; padding: 10px 8px !important; padding-top: 18mm !important; }
+        .meta-card, .meta-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
       }
     </style>
     
@@ -1837,11 +1956,23 @@ templates['80mm-1'] = {
     <div class="line"></div>
     
     ${data.sections.invoice_info ? `
-    <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-      <span>Faktur: ${data.invoiceNumber}</span>
-      <span>Tanggal: ${data.date}</span>
+    <div class="meta-card">
+      <div class="meta-row">
+        <span class="meta-label">No. Faktur</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--invoice">${data.invoiceNumber}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Waktu</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--time">${data.date}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Kasir</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value">${data.cashierName}</span>
+      </div>
     </div>
-    <div>Kasir: ${data.cashierName}</div>
     ${data.customerName ? `<div style="margin-top: 4px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
     ${data.customerAddress ? `<div style="font-size: 0.9em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
     ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;"><b>Cat:</b> ${data.notes}</div>` : ''}
@@ -1901,9 +2032,42 @@ templates['80mm-2'] = {
       .bold { font-weight: bold; }
       .line { border-top: 1px dashed black; margin: 8px 0; }
       .item-separator { border-top: 1px dashed #999; margin: 4px 0; }
+      .meta-card {
+        font-size: 0.95em;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .meta-row {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 2px;
+      }
+      .meta-label {
+        width: 62px;
+        flex: 0 0 62px;
+      }
+      .meta-sep {
+        width: 10px;
+        flex: 0 0 10px;
+      }
+      .meta-value {
+        flex: 1;
+        min-width: 0;
+      }
+      .meta-value--invoice {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .meta-value--time {
+        white-space: nowrap;
+      }
       
       @media print {
         body { margin: 0 !important; padding: 10px 8px !important; padding-top: 18mm !important; }
+        .meta-card, .meta-row {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
       }
     </style>
     
@@ -1914,11 +2078,23 @@ templates['80mm-2'] = {
     <div class="line"></div>
     
     ${data.sections.invoice_info ? `
-    <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-      <span>Faktur: ${data.invoiceNumber}</span>
-      <span>Tanggal: ${data.date}</span>
+    <div class="meta-card">
+      <div class="meta-row">
+        <span class="meta-label">No. Faktur</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--invoice">${data.invoiceNumber}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Waktu</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value meta-value--time">${data.date}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Kasir</span>
+        <span class="meta-sep">:</span>
+        <span class="meta-value">${data.cashierName}</span>
+      </div>
     </div>
-    <div>Kasir: ${data.cashierName}</div>
     ${data.customerName ? `<div style="margin-top: 4px;"><b>Cust:</b> ${data.customerName}</div>` : ''}
     ${data.customerAddress ? `<div style="font-size: 0.9em;"><b>Alamat:</b> ${data.customerAddress}</div>` : ''}
     ${data.notes ? `<div style="font-style: italic; margin-top: 3px; font-size: 0.9em;"><b>Cat:</b> ${data.notes}</div>` : ''}

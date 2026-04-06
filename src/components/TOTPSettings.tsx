@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Shield, Smartphone, Key, AlertTriangle, CheckCircle2, Eye, EyeOff, Copy, RefreshCw, Power, ChevRight } from 'lucide-react';
+import { Shield, Smartphone, Key, AlertTriangle, CheckCircle2, Eye, EyeOff, Copy, RefreshCw, Power, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';

@@ -259,17 +259,21 @@ export default memo(function SettingsPage() {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Zona Waktu</label>
-                      <Select value={String(settings.timezone_offset || 'auto')} onValueChange={val => handleChange('timezone_offset', val)}>
-                        <SelectTrigger className="h-11 bg-background dark:bg-card/50 border-none shadow-inner data-[state=open]:bg-card dark:data-[state=open]:bg-background">
-                          <SelectValue placeholder="Pilih WIT/WITA/WIB" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Otomatis (Ikuti Jam Komputer)</SelectItem>
-                          <SelectItem value="7">WIB (UTC+7)</SelectItem>
-                          <SelectItem value="8">WITA (UTC+8)</SelectItem>
-                          <SelectItem value="9">WIT (UTC+9)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="h-11 rounded-md bg-background dark:bg-card/50 border-none shadow-inner px-3 flex items-center text-sm text-muted-foreground">
+                        Otomatis mengikuti waktu sistem
+                      </div>
+                      {(() => {
+                        try {
+                          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                          return (
+                            <p className="text-[10px] px-1 text-muted-foreground">
+                              OS/Sistem terdeteksi di: <span className="font-semibold text-foreground">{tz}</span>
+                            </p>
+                          );
+                        } catch (e) {
+                          return null;
+                        }
+                      })()}
                     </div>
                   </div>
                 </CardContent>

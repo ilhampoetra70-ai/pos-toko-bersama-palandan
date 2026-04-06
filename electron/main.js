@@ -600,6 +600,7 @@ function registerIpcHandlers() {
   // ─── Products ───────────────────────────────────────
   ipcMain.handle('products:getAll', (_, filters) => database.getProducts(filters));
   ipcMain.handle('products:getById', (_, id) => database.getProductById(id));
+  ipcMain.handle('products:validateActiveBulk', (_, productIds) => database.validateProductsActiveBulk(productIds));
   ipcMain.handle('products:getByBarcode', (_, barcode) => {
     const result = database.getProductByBarcode(barcode);
     return result || null;

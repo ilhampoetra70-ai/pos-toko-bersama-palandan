@@ -26,6 +26,7 @@ let htmlCache = null;
 // ─── Simple API Response Cache ──────────────────────────
 // ─── Simple API Response Cache ──────────────────────────
 const apiCache = new Map();
+const MAX_API_CACHE_SIZE = 300;
 
 // Tiered Cache TTL
 const CACHE_TTL_SHORT = 5000;    // 5s — real-time data (prices, stock)
@@ -34,13 +35,33 @@ const CACHE_TTL_LONG = 300000;   // 5min — static data (settings, categories)
 
 function getCached(key) {
   const entry = apiCache.get(key);
-  if (entry && Date.now() < entry.expiry) return entry.data;
+  if (!entry) return null;
+
+  if (Date.now() < entry.expiry) {
+    // Refresh insertion order so Map behaves like LRU.
+    apiCache.delete(key);
+    apiCache.set(key, entry);
+    return entry.data;
+  }
+
   apiCache.delete(key);
   return null;
 }
 
 function setCache(key, data, ttl = CACHE_TTL_SHORT) {
   apiCache.set(key, { data, expiry: Date.now() + ttl });
+  while (apiCache.size > MAX_API_CACHE_SIZE) {
+    const oldestKey = apiCache.keys().next().value;
+    if (!oldestKey) break;
+    apiCache.delete(oldestKey);
+  }
+}
+
+function purgeExpiredApiCache() {
+  const now = Date.now();
+  for (const [key, entry] of apiCache.entries()) {
+    if (now >= entry.expiry) apiCache.delete(key);
+  }
 }
 
 function invalidateCache(prefix) {
@@ -106,6 +127,11 @@ function getLocalIP() {
 function createAPIServer(database, port = 3001) {
   db = database;
   const app = express();
+  const REPORTS_CACHE_TTL = 15000; // 15s
+
+  // Bersihkan cache kadaluarsa berkala agar penggunaan memori stabil.
+  const cacheCleanup = setInterval(() => purgeExpiredApiCache(), 60 * 1000);
+  cacheCleanup.unref();
 
   // Percaya pada X-Forwarded-For dari reverse proxy (Cloudflare tunnel, Nginx, dll)
   // agar req.ip mengembalikan IP client asli, bukan IP proxy.
@@ -135,9 +161,9 @@ function createAPIServer(database, port = 3001) {
     if (entry.count > RATE_LIMIT_MAX) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
       res.set('Retry-After', retryAfter);
-      return res.status(429).json({ 
-        success: false, 
-        message: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} detik.` 
+      return res.status(429).json({
+        success: false,
+        message: `Terlalu banyak percobaan login. Coba lagi dalam ${retryAfter} detik.`
       });
     }
 
@@ -145,12 +171,13 @@ function createAPIServer(database, port = 3001) {
   }
 
   // Bersihkan store setiap jam agar tidak memory leak
-  setInterval(() => {
+  const rateLimitCleanup = setInterval(() => {
     const now = Date.now();
     for (const [ip, entry] of rateLimitStore.entries()) {
       if (now > entry.resetAt) rateLimitStore.delete(ip);
     }
   }, 60 * 60 * 1000);
+  rateLimitCleanup.unref();
 
   // Middleware
   app.use(rateLimit);
@@ -163,11 +190,7 @@ function createAPIServer(database, port = 3001) {
   }));
   app.use(express.json());
 
-  // Ensure connections don't hang
-  app.use((req, res, next) => {
-    res.set('Connection', 'close'); // Don't keep connections open
-    next();
-  });
+  // Biarkan keep-alive default Node.js aktif untuk menurunkan overhead koneksi berulang.
 
   // Request logging with client tracking
   let activeConnections = 0;
@@ -386,29 +409,6 @@ function createAPIServer(database, port = 3001) {
     message: 'Terlalu banyak percobaan login. Coba lagi dalam 1 menit.'
   });
 
-  // ─── Reports Endpoint (Public - untuk PWA tanpa auth) ───────
-  apiRouter.get('/reports/advanced', (req, res) => {
-    try {
-      const { start_date, end_date } = req.query;
-      
-      // Default: 30 hari terakhir
-      const endDate = end_date || new Date().toISOString().split('T')[0];
-      const startDate = start_date || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      
-      const data = db.getAdvancedReport(startDate, endDate);
-      
-      res.json({
-        success: true,
-        start_date: startDate,
-        end_date: endDate,
-        data
-      });
-    } catch (error) {
-      console.error('[API] advanced report error:', error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
   // ─── Auth Middleware — semua route di bawah ini butuh JWT ─
   // Public paths (/health, /auth/login, /store, /product/:barcode) di-handle
   // di dalam requireAuth sendiri, tidak perlu router terpisah.
@@ -453,7 +453,54 @@ function createAPIServer(database, port = 3001) {
     }
   });
 
+  // ─── Laporan Analitik Mendalam (PWA) ───────────────────────
+  apiRouter.get('/reports/advanced', (req, res) => {
+    const t0 = Date.now();
+    try {
+      // Support both naming conventions: start_date/end_date (frontend) and date_from/date_to
+      const startDate = req.query.start_date || req.query.date_from;
+      const endDate = req.query.end_date || req.query.date_to;
+      
+      // Default: 7 days back if no dates provided
+      const today = new Date().toISOString().split('T')[0];
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      const dateFrom = startDate || sevenDaysAgo;
+      const dateTo = endDate || today;
 
+      // Cache key ikut timezone setting untuk mencegah mismatch grouping date/hour.
+      const timezoneOffset = db.getSettings?.().timezone_offset || 'auto';
+      const cacheKey = `reports:advanced:${dateFrom}:${dateTo}:tz:${timezoneOffset}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        const durationMs = Date.now() - t0;
+        res.setHeader('X-Cache', 'HIT');
+        res.setHeader('Server-Timing', `cache;dur=${durationMs};desc="reports_advanced_cache_hit"`);
+        res.setHeader('X-Reports-Duration-Ms', String(durationMs));
+        return res.json(cached);
+      }
+      
+      const data = db.getAdvancedReport(dateFrom, dateTo);
+      const payload = {
+        success: true,
+        period: { start: dateFrom, end: dateTo },
+        data: data
+      };
+      setCache(cacheKey, payload, REPORTS_CACHE_TTL);
+      const durationMs = Date.now() - t0;
+      // Telemetry additive; tidak mengubah body response.
+      res.setHeader('X-Cache', 'MISS');
+      res.setHeader('Server-Timing', `db;dur=${durationMs};desc="reports_advanced_total"`);
+      res.setHeader('X-Reports-Duration-Ms', String(durationMs));
+      res.json(payload);
+    } catch (err) {
+      const durationMs = Date.now() - t0;
+      res.setHeader('Server-Timing', `db;dur=${durationMs};desc="reports_advanced_total_error"`);
+      res.setHeader('X-Reports-Duration-Ms', String(durationMs));
+      console.error('[API] /reports/advanced Error:', err);
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
 
   // ─── Products CRUD ──────────────────────────────────────────
   apiRouter.get('/products', (req, res) => {
@@ -698,6 +745,7 @@ function createAPIServer(database, port = 3001) {
     try {
       db.voidTransaction(parseInt(req.params.id));
       invalidateCache('dashboard');
+      invalidateCache('reports:advanced:');
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
@@ -710,6 +758,7 @@ function createAPIServer(database, port = 3001) {
       const result = db.addPayment(parseInt(req.params.id), amount, method, userId, notes);
       invalidateCache('dashboard');
       invalidateCache('debts:summary');
+      invalidateCache('reports:advanced:');
       res.json({ success: true, ...result });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });

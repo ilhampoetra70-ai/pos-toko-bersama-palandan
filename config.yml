@@ -1,0 +1,7 @@
+tunnel: 890367c3-2a93-414d-b825-ff6b90a23a4a
+credentials-file: C:\Users\HAMBA\.cloudflared\890367c3-2a93-414d-b825-ff6b90a23a4a.json
+
+ingress:
+  - hostname: app.tbersamapalandan.my.id
+    service: http://localhost:3001
+  - service: http_status:404
