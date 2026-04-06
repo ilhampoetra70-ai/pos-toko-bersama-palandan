@@ -28,6 +28,7 @@ pos-cashier.db-wal
 
 # Archives
 _archive_zombie_files/
+SAMPAH/
 
 # Root icon artifacts (duplikat, assets/ sudah ada)
 icon.ico
